@@ -16,6 +16,7 @@
     "check-parity": "pnpm --filter @pulpsense/funnels check-parity",
     "start": "pnpm --filter @pulpsense/funnels start",
     "lint": "pnpm --filter @pulpsense/funnels lint",
+    "test": "vitest run",
     "format": "pnpm --filter @pulpsense/funnels format && prettier '**/*.{json,yaml,yml}' '!pnpm-lock.yaml' --write --ignore-path .gitignore",
     "check-types": "pnpm -r check-types",
     "prepare": "husky"
@@ -23,6 +24,7 @@
   "devDependencies": {
     "husky": "^9.1.0",
     "lint-staged": "^15.3.0",
-    "prettier": "^3.4.0"
+    "prettier": "^3.4.0",
+    "vitest": "^4.0.18"
   }
 }
