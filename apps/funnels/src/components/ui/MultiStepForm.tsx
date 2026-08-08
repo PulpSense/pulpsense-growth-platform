@@ -65,17 +65,33 @@ export type MultiStepFormConfig = {
   ) => void;
 };
 
-type SubmissionRetryIdentity = {
-  submissionId: string;
-  token: string;
-};
-
 type AttributionTouch = {
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
   utmContent?: string;
   utmTerm?: string;
+};
+
+export type ContactSubmissionInput = {
+  data: Readonly<Record<string, string | string[]>>;
+  phoneCountryCode: string;
+  attribution: {
+    firstTouch: AttributionTouch;
+    lastTouch: AttributionTouch;
+  };
+  turnstileToken: string;
+  sourceUrl: string;
+  referrer?: string;
+  fbp?: string;
+  fbc?: string;
+};
+
+export type ContactSubmissionResult = {
+  accepted: boolean;
+  eventId?: string;
+  error?: string;
+  retryAvailable?: boolean;
 };
 
 /* ── Phone: countries + formatting ── */
@@ -364,9 +380,15 @@ declare global {
 export function MultiStepForm({
   config,
   className,
+  onContactSubmit,
+  onContactInputChanged,
 }: {
   config: MultiStepFormConfig;
   className?: string;
+  onContactSubmit?: (
+    input: ContactSubmissionInput,
+  ) => Promise<ContactSubmissionResult>;
+  onContactInputChanged?: () => boolean;
 }) {
   // Capture UTM params once on mount so they survive step transitions
   const utmParams = useRef<Record<string, string>>({});
@@ -429,10 +451,6 @@ export function MultiStepForm({
   const [turnstileToken, setTurnstileToken] = useState('');
   const emailAbortRef = useRef<AbortController | null>(null);
   const lastVerifiedEmail = useRef<string>('');
-  const contactRetryRef = useRef<SubmissionRetryIdentity | undefined>(
-    undefined,
-  );
-  const contactAttemptIdRef = useRef('');
   const turnstileContainerRef = useRef<HTMLDivElement>(null);
   const turnstileWidgetRef = useRef<string | undefined>(undefined);
 
@@ -505,23 +523,26 @@ export function MultiStepForm({
     };
   }, [config.turnstileSiteKey]);
 
-  const updateField = useCallback((name: string, value: string | string[]) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (contactAttemptIdRef.current) {
-      contactAttemptIdRef.current = crypto.randomUUID();
-    }
-    if (contactRetryRef.current && turnstileWidgetRef.current) {
-      window.turnstile?.reset(turnstileWidgetRef.current);
-      setTurnstileToken('');
-    }
-    contactRetryRef.current = undefined;
-    setSubmissionError('');
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[name];
-      return next;
-    });
-  }, []);
+  const updateField = useCallback(
+    (name: string, value: string | string[]) => {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      if (
+        step.type === 'contact' &&
+        onContactInputChanged?.() &&
+        turnstileWidgetRef.current
+      ) {
+        window.turnstile?.reset(turnstileWidgetRef.current);
+        setTurnstileToken('');
+      }
+      setSubmissionError('');
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    },
+    [onContactInputChanged, step.type],
+  );
 
   const handlePhoneChange = useCallback(
     (name: string, raw: string) => {
@@ -666,54 +687,28 @@ export function MultiStepForm({
   }, [config.qualificationRules, formData]);
 
   const submitContact = useCallback(async () => {
-    if (!contactRetryRef.current && !turnstileToken) {
+    if (!onContactSubmit) {
       setSubmissionError(
-        config.turnstileSiteKey
-          ? 'The security check is still loading. Please try again.'
-          : 'Contact submission is not configured for this environment.',
+        'Contact submission is not configured for this environment.',
       );
       return undefined;
     }
 
-    const phone = formData.phone as string | undefined;
-    contactAttemptIdRef.current ||= crypto.randomUUID();
-    const responseBody = {
-      schemaVersion: 1,
-      eventType: 'contact_submitted',
-      funnelId: config.funnelId ?? 'default',
-      attemptId: contactAttemptIdRef.current,
-      turnstileToken: turnstileToken || 'verified-by-retry-token',
-      ...(contactRetryRef.current ? { retry: contactRetryRef.current } : {}),
-      payload: {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: phone ? `${phoneCountry.code} ${phone}` : '',
-      },
-      attribution: attribution.current,
-      sourceUrl: window.location.href,
-      ...(document.referrer ? { referrer: document.referrer } : {}),
-      ...(getCookieValue('_fbp') ? { fbp: getCookieValue('_fbp') } : {}),
-      ...(getCookieValue('_fbc') ? { fbc: getCookieValue('_fbc') } : {}),
-    };
-
     try {
-      const response = await fetch('/api/funnel-events', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(responseBody),
+      const fbp = getCookieValue('_fbp');
+      const fbc = getCookieValue('_fbc');
+      const result = await onContactSubmit({
+        data: formData,
+        phoneCountryCode: phoneCountry.code,
+        attribution: attribution.current,
+        turnstileToken,
+        sourceUrl: window.location.href,
+        ...(document.referrer ? { referrer: document.referrer } : {}),
+        ...(fbp ? { fbp } : {}),
+        ...(fbc ? { fbc } : {}),
       });
-      const result = (await response.json()) as {
-        accepted?: boolean;
-        error?: string;
-        eventId?: string;
-        submissionId?: string;
-        retry?: SubmissionRetryIdentity;
-      };
 
-      if (result.retry) contactRetryRef.current = result.retry;
-
-      if (!response.ok || !result.accepted || !result.eventId) {
+      if (!result.accepted || !result.eventId) {
         if (result.error === 'email_invalid') {
           setEmailStatus('invalid');
           setErrors((previous) => ({
@@ -727,10 +722,14 @@ export function MultiStepForm({
             ? 'Too many attempts. Please wait a minute and try again.'
             : result.error === 'email_invalid'
               ? 'Please correct your business email and try again.'
-              : 'We could not save your details yet. Your answers are still here—please try again.',
+              : result.error === 'turnstile_unavailable'
+                ? config.turnstileSiteKey
+                  ? 'The security check is still loading. Please try again.'
+                  : 'Contact submission is not configured for this environment.'
+                : 'We could not save your details yet. Your answers are still here—please try again.',
         );
 
-        if (!result.retry && turnstileWidgetRef.current) {
+        if (!result.retryAvailable && turnstileWidgetRef.current) {
           window.turnstile?.reset(turnstileWidgetRef.current);
           setTurnstileToken('');
         }
@@ -750,12 +749,9 @@ export function MultiStepForm({
       return undefined;
     }
   }, [
-    config.funnelId,
     config.turnstileSiteKey,
-    formData.email,
-    formData.firstName,
-    formData.lastName,
-    formData.phone,
+    formData,
+    onContactSubmit,
     phoneCountry.code,
     turnstileToken,
   ]);

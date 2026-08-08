@@ -68,15 +68,16 @@ const twentyHeaders = (apiKey: string) => ({
   "Content-Type": "application/json",
 });
 
-const findTwentyPersonId = async (
-  fetcher: typeof fetch,
-  origin: string,
-  apiKey: string,
-  email: string,
-) => {
-  const response = await fetcher(`${origin}/graphql`, {
+type TwentyClient = {
+  fetch: typeof fetch;
+  origin: string;
+  apiKey: string;
+};
+
+const findTwentyPersonId = async (client: TwentyClient, email: string) => {
+  const response = await client.fetch(`${client.origin}/graphql`, {
     method: "POST",
-    headers: twentyHeaders(apiKey),
+    headers: twentyHeaders(client.apiKey),
     body: JSON.stringify({
       query: `
         query FindPersonByEmail($email: String!) {
@@ -119,43 +120,31 @@ const personInput = (event: ContactSubmittedEvent) => ({
 
 const upsertTwentyPerson = async (
   event: ContactSubmittedEvent,
-  fetcher: typeof fetch,
-  origin: string,
-  apiKey: string,
+  client: TwentyClient,
 ) => {
   const normalizedEmail = event.payload.email.trim().toLowerCase();
-  const existingId = await findTwentyPersonId(
-    fetcher,
-    origin,
-    apiKey,
-    normalizedEmail,
-  );
+  const existingId = await findTwentyPersonId(client, normalizedEmail);
   const endpoint = existingId
-    ? `${origin}/rest/people/${encodeURIComponent(existingId)}`
-    : `${origin}/rest/people`;
-  const response = await fetcher(endpoint, {
+    ? `${client.origin}/rest/people/${encodeURIComponent(existingId)}`
+    : `${client.origin}/rest/people`;
+  const response = await client.fetch(endpoint, {
     method: existingId ? "PATCH" : "POST",
-    headers: twentyHeaders(apiKey),
+    headers: twentyHeaders(client.apiKey),
     body: JSON.stringify(personInput(event)),
   });
 
   if (!response.ok) {
     if (response.status === 409 && !existingId) {
-      const concurrentId = await findTwentyPersonId(
-        fetcher,
-        origin,
-        apiKey,
-        normalizedEmail,
-      );
+      const concurrentId = await findTwentyPersonId(client, normalizedEmail);
       if (!concurrentId) {
         throw new Error("Twenty person conflict could not be reconciled");
       }
 
-      const updateResponse = await fetcher(
-        `${origin}/rest/people/${encodeURIComponent(concurrentId)}`,
+      const updateResponse = await client.fetch(
+        `${client.origin}/rest/people/${encodeURIComponent(concurrentId)}`,
         {
           method: "PATCH",
-          headers: twentyHeaders(apiKey),
+          headers: twentyHeaders(client.apiKey),
           body: JSON.stringify(personInput(event)),
         },
       );
@@ -270,6 +259,11 @@ export function createProcessorDependencies(
     environment.PULPSENSE_AUTOMATION_ENVIRONMENT,
     "PULPSENSE_AUTOMATION_ENVIRONMENT",
   ) as ContactSubmittedEvent["environment"];
+  const twentyClient: TwentyClient = {
+    fetch: runtime.fetch,
+    origin: twentyOrigin,
+    apiKey: twentyApiKey,
+  };
 
   return {
     assertEnvironment: (eventEnvironment) => {
@@ -277,8 +271,7 @@ export function createProcessorDependencies(
         throw new Error("Funnel event environment does not match destinations");
       }
     },
-    upsertTwentyPerson: (event) =>
-      upsertTwentyPerson(event, runtime.fetch, twentyOrigin, twentyApiKey),
+    upsertTwentyPerson: (event) => upsertTwentyPerson(event, twentyClient),
     sendMetaLead: (event) =>
       sendMetaLead(event, runtime.fetch, graphVersion, pixelId, metaToken),
     log: runtime.log,
