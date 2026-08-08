@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, type ReactNode } from 'react';
 
 import { TrackingPixels } from '@/components/ui';
 import type { PixelConfig } from '@/components/ui';
@@ -11,7 +11,7 @@ import { ProofVideoPlayer } from './ProofVideoPlayer';
 
 const CALL_URL = '#apply';
 
-const pixels = {
+export const creativeMultiplierPixels = {
   facebookPixelId: '828948073514575',
   facebookEvents: [{ name: 'PageView', type: 'standard' }],
 } satisfies PixelConfig;
@@ -236,7 +236,7 @@ const PrimaryCta = ({ children, className = '' }: { children: React.ReactNode; c
   </a>
 );
 
-const AvatarOutputMockup = () => (
+const AvatarOutputMockup = ({ video }: { video?: ReactNode }) => (
   <div className="relative mx-auto w-full max-w-[520px] rounded-[28px] border border-white/10 bg-[#0F1011]/95 p-4 shadow-[0_30px_90px_rgba(0,0,0,0.55)] backdrop-blur lg:max-w-[660px] lg:p-3">
     <div className="absolute -inset-1 -z-10 rounded-[30px] bg-[radial-gradient(circle_at_25%_20%,rgba(255,107,26,0.28),transparent_34%),radial-gradient(circle_at_80%_0%,rgba(113,112,255,0.20),transparent_30%)] blur-xl" />
 
@@ -253,17 +253,19 @@ const AvatarOutputMockup = () => (
     <div className="grid gap-3 lg:grid-cols-[0.9fr_1.65fr] lg:gap-2.5">
       <div className="rounded-2xl border border-white/10 bg-black/80 p-3 lg:p-2.5">
         <div className="relative min-h-[460px] overflow-hidden rounded-xl border border-white/10 bg-black lg:min-h-[360px]">
-          <video
-            src="/creative-multiplier-sprint/videos/ugc-example-01-loop.mp4"
-            poster="/creative-multiplier-sprint/images/ugc-example-01.jpg"
-            className="absolute inset-0 h-full w-full object-cover"
-            autoPlay
-            loop
-            muted
-            playsInline
-            preload="metadata"
-            aria-label="Authority-led hook"
-          />
+          {video ?? (
+            <video
+              src="/creative-multiplier-sprint/videos/ugc-example-01-loop.mp4"
+              poster="/creative-multiplier-sprint/images/ugc-example-01.jpg"
+              className="absolute inset-0 h-full w-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              aria-label="Authority-led hook"
+            />
+          )}
           <div className="absolute left-3 top-3 rounded-full bg-black/55 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-white/80 backdrop-blur">
             Winner
           </div>
@@ -297,7 +299,7 @@ const AvatarOutputMockup = () => (
   </div>
 );
 
-const VideoExamplesSection = () => (
+export const VideoExamplesSection = () => (
   <section id="proof" className="border-b border-white/10 bg-[#08090A] px-5 py-14 md:px-8 lg:py-20">
     <div className="mx-auto max-w-7xl">
       <div className="mb-10 flex flex-col justify-between gap-5 md:flex-row md:items-end">
@@ -337,10 +339,28 @@ const VideoExamplesSection = () => (
   </section>
 );
 
-export function CreativeMultiplierPage() {
+type CreativeMultiplierPageProps = {
+  tracking?: ReactNode;
+  carousel?: ReactNode;
+  proof?: ReactNode;
+  form?: ReactNode;
+  stickyCta?: ReactNode;
+  desktopAvatarVideo?: ReactNode;
+  mobileAvatarVideo?: ReactNode;
+};
+
+export function CreativeMultiplierPage({
+  tracking,
+  carousel,
+  proof,
+  form,
+  stickyCta,
+  desktopAvatarVideo,
+  mobileAvatarVideo,
+}: CreativeMultiplierPageProps = {}) {
   return (
     <>
-      <TrackingPixels pixels={pixels} />
+      {tracking ?? <TrackingPixels pixels={creativeMultiplierPixels} />}
       <main className="min-h-screen bg-[#010102] text-[#F7F8F8] [font-feature-settings:'cv01','ss03']">
         <section id="hero" className="relative overflow-hidden bg-[#010102]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(255,107,26,0.22),transparent_32%),radial-gradient(circle_at_78%_10%,rgba(113,112,255,0.18),transparent_30%)]" />
@@ -375,17 +395,17 @@ export function CreativeMultiplierPage() {
             </div>
 
             <div className="hidden lg:block">
-              <AvatarOutputMockup />
+              <AvatarOutputMockup video={desktopAvatarVideo} />
             </div>
           </div>
-          <DslCarousel />
+          {carousel ?? <DslCarousel />}
         </section>
 
         <section className="border-b border-white/10 bg-[#050506] px-5 py-12 md:px-8 lg:hidden">
-          <AvatarOutputMockup />
+          <AvatarOutputMockup video={mobileAvatarVideo} />
         </section>
 
-        <VideoExamplesSection />
+        {proof ?? <VideoExamplesSection />}
 
         <section className="border-b border-white/10 bg-[#08090A] px-5 py-14 md:px-8 lg:py-20">
           <div className="mx-auto max-w-7xl">
@@ -608,7 +628,7 @@ export function CreativeMultiplierPage() {
 
             <div className="overflow-visible rounded-[28px] border border-white/10 bg-[#0F1011] p-4 shadow-[0_30px_90px_rgba(0,0,0,0.45)] md:p-6">
               <Suspense fallback={<div className="h-[620px] animate-pulse rounded-2xl bg-white/[0.04]" />}>
-                <ApplicationFormIsland config={formConfig} />
+                {form ?? <ApplicationFormIsland config={formConfig} />}
               </Suspense>
             </div>
           </div>
@@ -650,7 +670,7 @@ export function CreativeMultiplierPage() {
           </div>
         </footer>
 
-        <MobileStickyCta />
+        {stickyCta ?? <MobileStickyCta />}
       </main>
     </>
   );

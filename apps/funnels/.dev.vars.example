@@ -1,13 +1,9 @@
-PUBLIC_META_PIXEL_ID=
+# Use sandbox or non-production runtime values only. Wrangler local preview does not load .env files.
 META_PIXEL_ID=
 META_CAPI_ACCESS_TOKEN=
 MILLION_VERIFIER_API_KEY=
-
-# Trigger.dev
 PULPSENSE_TRIGGER_SECRET_KEY=
 PULPSENSE_TRIGGER_API_ORIGIN=https://api.trigger.dev
-
-# Creative Multiplier Sprint Trigger task IDs
 CREATIVE_MULTIPLIER_SPRINT_CONTACT_TASK_ID=funnels.contact-submitted
 CREATIVE_MULTIPLIER_SPRINT_APPLICATION_TASK_ID=funnels.application-submitted
 CREATIVE_MULTIPLIER_SPRINT_BOOKING_TASK_ID=funnels.booking-completed

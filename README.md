@@ -6,7 +6,7 @@ The shared monorepo for PulpSense acquisition funnels and durable growth automat
 
 ```text
 apps/
-├── funnels/       # Transitional Next.js funnel app
+├── funnels/       # Astro + Cloudflare Pages funnel app
 └── automations/   # Trigger.dev tasks
 packages/
 └── contracts/     # Shared validated event schemas when both apps consume them
@@ -33,4 +33,4 @@ The current funnel behavior and the value-free runtime configuration inventory a
 
 ## Deployment
 
-This checkpoint does not define an active funnel deployment target. A separate change will migrate the parity baseline to Astro and Cloudflare Pages before a production hostname is attached. Trigger.dev configuration lives with `apps/automations` and must never expose its secret to browser code.
+The funnel builds as static Astro output and is served with Cloudflare Pages Functions. Preview deployment and environment-isolation details are in [`docs/astro-cloudflare-preview.md`](docs/astro-cloudflare-preview.md). No production hostname is attached by this repository configuration. Trigger.dev configuration lives with `apps/automations` and must never expose its secret to browser code.

@@ -115,3 +115,15 @@ For every route above, confirm:
 - Production response checks: all three public funnel routes returned 200 with the expected robots metadata and `X-Robots-Tag`; `/robots.txt` returned the disallow-all policy.
 - Trigger.dev local worker: registered `health-check` in version `20260808.1` on the `default` dev branch.
 - Harmless run `run_06fu42eqjmsg2p255dnedj4t01`: completed successfully in 5 ms with `ok: true` and message `Issue #80 checkpoint`.
+
+## Astro preview verification — 2026-08-08
+
+- Cloudflare Pages Preview: <https://issue-81.pulpsense-funnels-preview.pages.dev/creative-multiplier-sprint/>
+- Dedicated project: `pulpsense-funnels-preview`; production branch: `never-production`; deployed branch: `issue-81`.
+- The desktop and mobile lander matched the Next.js checkpoint in browser comparison.
+- Carousel controls, contact validation, qualified Cal.com progression, and unqualified redirects passed in-browser checks.
+- Proof video sources remained detached above the fold and attached near `#proof`; Cal.com stayed unmounted until the qualified booking step.
+- Browser console checks returned no errors or warnings.
+- The executable parity check passed against the public preview for all three routes, six narrow React island exports, three sandbox API fallbacks, and `robots.txt`.
+- The preview response includes `X-Robots-Tag: noindex, nofollow, noarchive, noimageindex`; each page includes noindex metadata; `robots.txt` disallows all crawling.
+- The deployment has no production Pixel ID or runtime credentials. Browser Meta tracking is absent unless a non-production `PUBLIC_META_PIXEL_ID` is supplied at build time.

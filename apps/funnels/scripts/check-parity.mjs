@@ -1,12 +1,39 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { createServer } from "node:net";
 import { fileURLToPath } from "node:url";
 
 const host = "127.0.0.1";
-const port = Number(process.env.PARITY_CHECK_PORT ?? 43180);
-const origin = `http://${host}:${port}`;
-const nextBin = fileURLToPath(
-  new URL("../node_modules/next/dist/bin/next", import.meta.url),
+const externalOrigin = process.env.PARITY_CHECK_ORIGIN?.replace(/\/$/, "");
+const findAvailablePort = () =>
+  new Promise((resolve, reject) => {
+    const probe = createServer();
+    probe.unref();
+    probe.once("error", reject);
+    probe.listen(0, host, () => {
+      const address = probe.address();
+      probe.close(() => {
+        if (!address || typeof address === "string") {
+          reject(new Error("Could not allocate a parity-check port"));
+          return;
+        }
+        resolve(address.port);
+      });
+    });
+  });
+const configuredPort = process.env.PARITY_CHECK_PORT
+  ? Number(process.env.PARITY_CHECK_PORT)
+  : undefined;
+if (
+  configuredPort !== undefined &&
+  (!Number.isInteger(configuredPort) || configuredPort < 1 || configuredPort > 65535)
+) {
+  throw new Error("PARITY_CHECK_PORT must be an integer from 1 to 65535");
+}
+const port = configuredPort ?? (await findAvailablePort());
+const origin = externalOrigin ?? `http://${host}:${port}`;
+const wranglerBin = fileURLToPath(
+  new URL("../node_modules/wrangler/bin/wrangler.js", import.meta.url),
 );
 
 const publicRoutes = [
@@ -26,21 +53,47 @@ const publicRoutes = [
     markers: ["Thanks for applying.", "Application received"],
   },
 ];
+let landerHtml = "";
 
-const server = spawn(
-  process.execPath,
-  [nextBin, "start", "--hostname", host, "--port", String(port)],
-  {
-    env: process.env,
-    stdio: ["ignore", "pipe", "pipe"],
-  },
-);
+async function postJson(path, body) {
+  return fetch(`${origin}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+const server = externalOrigin
+  ? undefined
+  : spawn(
+      process.execPath,
+      [
+        wranglerBin,
+        "pages",
+        "dev",
+        "dist",
+        "--ip",
+        host,
+        "--port",
+        String(port),
+        "--compatibility-date",
+        "2026-08-08",
+      ],
+      {
+        env: {
+          ...process.env,
+          CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV: "false",
+          WRANGLER_SEND_METRICS: "false",
+        },
+        stdio: ["ignore", "pipe", "pipe"],
+      },
+    );
 
 let serverOutput = "";
-server.stdout.on("data", (chunk) => {
+server?.stdout.on("data", (chunk) => {
   serverOutput += chunk;
 });
-server.stderr.on("data", (chunk) => {
+server?.stderr.on("data", (chunk) => {
   serverOutput += chunk;
 });
 
@@ -48,8 +101,8 @@ async function waitUntilReady() {
   const deadline = Date.now() + 15_000;
 
   while (Date.now() < deadline) {
-    if (server.exitCode !== null) {
-      throw new Error(`Next.js exited before becoming ready.\n${serverOutput}`);
+    if (server && server.exitCode !== null) {
+      throw new Error(`Cloudflare Pages exited before becoming ready.\n${serverOutput}`);
     }
 
     try {
@@ -62,7 +115,7 @@ async function waitUntilReady() {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
 
-  throw new Error(`Timed out waiting for Next.js.\n${serverOutput}`);
+  throw new Error(`Timed out waiting for Cloudflare Pages.\n${serverOutput}`);
 }
 
 try {
@@ -71,8 +124,13 @@ try {
   for (const route of publicRoutes) {
     const response = await fetch(`${origin}${route.path}`);
     const html = await response.text();
+    if (route.path === "/creative-multiplier-sprint/") landerHtml = html;
 
     assert.equal(response.status, 200, `${route.path} should return 200`);
+    assert.ok(
+      response.url.endsWith(route.path),
+      `${route.path} should retain its trailing-slash URL`,
+    );
     assert.equal(
       response.headers.get("x-robots-tag"),
       "noindex, nofollow, noarchive, noimageindex",
@@ -101,9 +159,74 @@ try {
     "/robots.txt should disallow every crawler",
   );
 
+  const landerIslands = [
+    "DslCarousel",
+    "VideoExamplesSection",
+    "ApplicationFormIsland",
+    "MobileStickyCta",
+    "TrackingPixels",
+    "DeferredLoopVideo",
+  ];
+  for (const island of landerIslands) {
+    assert.ok(
+      landerHtml.includes(`component-export="${island}"`),
+      `lander should hydrate the ${island} island`,
+    );
+  }
+  assert.ok(
+    !landerHtml.includes('component-export="CreativeMultiplierPage"'),
+    "lander shell should remain static HTML",
+  );
+  assert.ok(
+    !landerHtml.includes("828948073514575"),
+    "preview output should not include the production Pixel ID",
+  );
+
+  if (!externalOrigin) {
+    const personalEmailResponse = await postJson("/api/verify-email", {
+      email: "person@gmail.com",
+    });
+    assert.equal(personalEmailResponse.status, 200);
+    assert.deepEqual(await personalEmailResponse.json(), {
+      valid: false,
+      result: "non_business_email",
+    });
+
+    const sandboxEmailResponse = await postJson("/api/verify-email", {
+      email: "person@example.org",
+    });
+    assert.equal(sandboxEmailResponse.status, 200);
+    assert.deepEqual(await sandboxEmailResponse.json(), {
+      valid: true,
+      result: "skipped",
+    });
+
+    const unknownEventResponse = await postJson("/api/form-submit", {
+      event: "unknown",
+    });
+    assert.equal(unknownEventResponse.status, 400);
+
+    const sandboxEventResponse = await postJson("/api/form-submit", {
+      event: "contact_submitted",
+      data: { funnelId: "creative-multiplier-sprint" },
+    });
+    assert.equal(sandboxEventResponse.status, 202);
+    assert.deepEqual(await sandboxEventResponse.json(), {
+      ok: false,
+      skipped: true,
+      reason: "Trigger not configured",
+    });
+
+    const sandboxMetaResponse = await postJson("/api/meta-capi", {});
+    assert.equal(sandboxMetaResponse.status, 500);
+    assert.deepEqual(await sandboxMetaResponse.json(), {
+      error: "Meta CAPI not configured",
+    });
+  }
+
   console.log(
-    `Parity check passed for ${publicRoutes.length} public funnel routes and robots.txt.`,
+    `Parity check passed for ${publicRoutes.length} public routes, ${landerIslands.length} React island exports, ${externalOrigin ? "non-mutating preview checks" : "three API fallbacks"}, and robots.txt.`,
   );
 } finally {
-  server.kill("SIGTERM");
+  server?.kill("SIGTERM");
 }
