@@ -1,9 +1,10 @@
+import { contactSubmittedEventSchema } from "@pulpsense/contracts";
+import { isBusinessEmail } from "@/utils/businessEmail";
+
 import {
   contactSubmissionRequestSchema,
-  contactSubmittedEventSchema,
   type ContactSubmissionRequest,
-} from "@pulpsense/contracts";
-import { isBusinessEmail } from "@/utils/businessEmail";
+} from "./contact-submission-contract";
 
 type FormEvent =
   | "contact_submitted"
@@ -92,6 +93,52 @@ const digestRetryRequest = async (request: ContactSubmissionRequest) => {
 type EmailVerification = {
   status: "verified" | "unverified";
   result: "business" | "catch_all" | "provider_error";
+};
+
+type BusinessEmailVerification =
+  | { result: "business"; status: "verified" }
+  | { result: "catch_all" | "provider_error"; status: "unverified" }
+  | { result: "invalid"; status: "invalid" };
+
+const getClientIp = (request: Request) =>
+  request.headers.get("cf-connecting-ip") ??
+  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+  "unknown";
+
+const verifyBusinessEmail = async (
+  email: string,
+  apiKey: string | undefined,
+): Promise<BusinessEmailVerification> => {
+  if (!apiKey) return { status: "unverified", result: "provider_error" };
+
+  try {
+    const response = await fetch(
+      `https://api.millionverifier.com/api/v3/?api=${apiKey}&email=${encodeURIComponent(email)}&timeout=10`,
+    );
+    if (!response.ok) throw new Error("Verifier request failed");
+
+    const verification = (await response.json()) as {
+      result?: string;
+      free?: boolean;
+    };
+    if (
+      verification.free === true ||
+      verification.result === "invalid" ||
+      verification.result === "disposable"
+    ) {
+      return { status: "invalid", result: "invalid" };
+    }
+    if (verification.result === "ok") {
+      return { status: "verified", result: "business" };
+    }
+    if (verification.result === "catch_all") {
+      return { status: "unverified", result: "catch_all" };
+    }
+
+    return { status: "unverified", result: "provider_error" };
+  } catch {
+    return { status: "unverified", result: "provider_error" };
+  }
 };
 
 type RetryClaims = {
@@ -188,10 +235,7 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
     return json({ error: "rate_limiter_unavailable" }, 503);
   }
 
-  const clientIp =
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    "unknown";
+  const clientIp = getClientIp(request);
   const rateLimit = await env.FUNNEL_RATE_LIMITER.limit({
     key: `contact:${clientIp}`,
   });
@@ -244,11 +288,13 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
       const turnstileResult = (await turnstileResponse.json()) as {
         success?: boolean;
         action?: string;
+        hostname?: string;
       };
 
       if (
         !turnstileResult.success ||
-        turnstileResult.action !== "contact_submit"
+        turnstileResult.action !== "contact_submit" ||
+        turnstileResult.hostname !== new URL(request.url).hostname
       ) {
         return json({ error: "turnstile_rejected" }, 403);
       }
@@ -260,39 +306,14 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
       return json({ error: "email_invalid" }, 422);
     }
 
-    emailVerification = { status: "unverified", result: "provider_error" };
-
-    if (env.MILLION_VERIFIER_API_KEY) {
-      try {
-        const verifierResponse = await fetch(
-          `https://api.millionverifier.com/api/v3/?api=${env.MILLION_VERIFIER_API_KEY}&email=${encodeURIComponent(parsed.data.payload.email)}&timeout=10`,
-        );
-
-        if (!verifierResponse.ok) throw new Error("Verifier request failed");
-
-        const verifierResult = (await verifierResponse.json()) as {
-          result?: string;
-        };
-
-        if (
-          verifierResult.result === "invalid" ||
-          verifierResult.result === "disposable"
-        ) {
-          return json({ error: "email_invalid" }, 422);
-        }
-
-        if (verifierResult.result === "ok") {
-          emailVerification = { status: "verified", result: "business" };
-        } else if (verifierResult.result === "catch_all") {
-          emailVerification = { status: "verified", result: "catch_all" };
-        }
-      } catch {
-        emailVerification = {
-          status: "unverified",
-          result: "provider_error",
-        };
-      }
+    const verification = await verifyBusinessEmail(
+      parsed.data.payload.email,
+      env.MILLION_VERIFIER_API_KEY,
+    );
+    if (verification.status === "invalid") {
+      return json({ error: "email_invalid" }, 422);
     }
+    emailVerification = verification;
 
     if (!env.SUBMISSION_SIGNING_SECRET || !env.PULPSENSE_TRIGGER_SECRET_KEY) {
       return json({ error: "handoff_unavailable" }, 503);
@@ -409,6 +430,16 @@ export async function handleVerifyEmail(request: Request, env: FunnelEnv) {
     return json({ error: "origin_not_allowed" }, 403);
   }
 
+  if (!env.FUNNEL_RATE_LIMITER) {
+    return json({ error: "rate_limiter_unavailable" }, 503);
+  }
+  const rateLimit = await env.FUNNEL_RATE_LIMITER.limit({
+    key: `verify-email:${getClientIp(request)}`,
+  });
+  if (!rateLimit.success) {
+    return json({ error: "rate_limited" }, 429);
+  }
+
   const body = await parseJson<{ email?: unknown }>(request);
   const email = body?.email;
 
@@ -424,49 +455,15 @@ export async function handleVerifyEmail(request: Request, env: FunnelEnv) {
     });
   }
 
-  if (!env.MILLION_VERIFIER_API_KEY) {
-    return json({
-      valid: true,
-      status: "unverified",
-      result: "not_configured",
-    });
+  const verification = await verifyBusinessEmail(
+    email,
+    env.MILLION_VERIFIER_API_KEY,
+  );
+  if (verification.status === "invalid") {
+    return json({ valid: false, ...verification });
   }
 
-  try {
-    const response = await fetch(
-      `https://api.millionverifier.com/api/v3/?api=${env.MILLION_VERIFIER_API_KEY}&email=${encodeURIComponent(email)}&timeout=10`,
-    );
-    if (!response.ok) throw new Error("Verifier request failed");
-
-    const result = (await response.json()) as { result?: string };
-    if (result.result === "ok" || result.result === "catch_all") {
-      return json({
-        valid: true,
-        status: "verified",
-        result: result.result,
-      });
-    }
-
-    if (result.result === "invalid" || result.result === "disposable") {
-      return json({
-        valid: false,
-        status: "invalid",
-        result: result.result,
-      });
-    }
-
-    return json({
-      valid: true,
-      status: "unverified",
-      result: "provider_error",
-    });
-  } catch {
-    return json({
-      valid: true,
-      status: "unverified",
-      result: "provider_error",
-    });
-  }
+  return json({ valid: true, ...verification });
 }
 
 export async function handleFormSubmit(request: Request, env: FunnelEnv) {

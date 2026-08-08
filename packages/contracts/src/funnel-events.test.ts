@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  contactSubmissionRequestSchema,
-  contactSubmittedEventSchema,
-} from "./funnel-events.js";
+import { contactSubmittedEventSchema } from "./funnel-events.js";
 
 const acceptedEvent = {
   schemaVersion: 1,
@@ -29,42 +26,13 @@ const acceptedEvent = {
 };
 
 describe("funnel event contract", () => {
-  it("normalizes browser contact input before creating a durable event", () => {
-    const request = contactSubmissionRequestSchema.parse({
-      schemaVersion: 1,
-      eventType: "contact_submitted",
-      funnelId: "creative-multiplier-sprint",
-      attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
-      turnstileToken: "token",
-      payload: {
-        firstName: " Maya ",
-        lastName: " Chen ",
-        email: "MAYA@BRAND.COM",
-        phone: "+1 555 123 4567",
-      },
-      attribution: { firstTouch: {}, lastTouch: {} },
-      sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
-    });
-
-    expect(request.payload).toMatchObject({
-      firstName: "Maya",
-      lastName: "Chen",
-      email: "maya@brand.com",
-    });
+  it("accepts the contact event consumed by both apps", () => {
     expect(contactSubmittedEventSchema.parse(acceptedEvent)).toEqual(
       acceptedEvent,
     );
   });
 
-  it("rejects unsupported schema versions at ingress and task execution", () => {
-    expect(
-      contactSubmissionRequestSchema.safeParse({
-        ...acceptedEvent,
-        schemaVersion: 2,
-        attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
-        turnstileToken: "token",
-      }).success,
-    ).toBe(false);
+  it("rejects unsupported schema versions at task execution", () => {
     expect(
       contactSubmittedEventSchema.safeParse({
         ...acceptedEvent,

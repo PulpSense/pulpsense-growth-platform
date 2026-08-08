@@ -43,6 +43,12 @@ const requestWithBody = (body: unknown) =>
     body: JSON.stringify(body),
   });
 
+const allowingRateLimit = {
+  FUNNEL_RATE_LIMITER: {
+    limit: async () => ({ success: true }),
+  },
+};
+
 describe("POST /api/funnel-events", () => {
   it("rejects cross-origin contact submissions", async () => {
     const response = await handleFunnelEvent(
@@ -144,7 +150,11 @@ describe("POST /api/funnel-events", () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
-        Response.json({ success: true, action: "contact_submit" }),
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
       )
       .mockResolvedValueOnce(Response.json({ result: "invalid" }));
     vi.stubGlobal("fetch", fetchMock);
@@ -185,7 +195,11 @@ describe("POST /api/funnel-events", () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
-        Response.json({ success: true, action: "contact_submit" }),
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
       )
       .mockResolvedValueOnce(Response.json({ result: "ok" }))
       .mockResolvedValueOnce(Response.json({ id: "run_123" }));
@@ -284,7 +298,11 @@ describe("POST /api/funnel-events", () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
-        Response.json({ success: true, action: "contact_submit" }),
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
       )
       .mockResolvedValueOnce(Response.json({ result: "ok" }))
       .mockResolvedValueOnce(new Response("upstream error", { status: 500 }));
@@ -356,12 +374,20 @@ describe("POST /api/funnel-events", () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
-        Response.json({ success: true, action: "contact_submit" }),
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
       )
       .mockResolvedValueOnce(Response.json({ result: "ok" }))
       .mockResolvedValueOnce(new Response("upstream error", { status: 500 }))
       .mockResolvedValueOnce(
-        Response.json({ success: true, action: "contact_submit" }),
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
       )
       .mockResolvedValueOnce(Response.json({ result: "ok" }))
       .mockResolvedValueOnce(Response.json({ id: "run_after_retry" }));
@@ -392,6 +418,64 @@ describe("POST /api/funnel-events", () => {
       runId: "run_after_retry",
     });
   });
+
+  it("rejects a Turnstile token minted for another hostname", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "attacker.example",
+        }),
+      ),
+    );
+
+    const response = await handleFunnelEvent(
+      contactRequest("https://preview.pulpsense.com"),
+      {
+        FUNNEL_RATE_LIMITER: {
+          limit: async () => ({ success: true }),
+        },
+        TURNSTILE_SECRET_KEY: "turnstile-secret",
+      },
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "turnstile_rejected",
+    });
+  });
+
+  it("rejects a free mailbox identified by the verifier", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ result: "ok", free: true }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleFunnelEvent(
+      contactRequest("https://preview.pulpsense.com"),
+      {
+        FUNNEL_RATE_LIMITER: {
+          limit: async () => ({ success: true }),
+        },
+        TURNSTILE_SECRET_KEY: "turnstile-secret",
+        MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      },
+    );
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toMatchObject({
+      error: "email_invalid",
+    });
+  });
 });
 
 describe("POST /api/verify-email", () => {
@@ -416,6 +500,65 @@ describe("POST /api/verify-email", () => {
     });
   });
 
+  it("rate limits verification requests before calling the provider", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new Request(
+      "https://preview.pulpsense.com/api/verify-email",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://preview.pulpsense.com",
+          "cf-connecting-ip": "203.0.113.10",
+        },
+        body: JSON.stringify({ email: "maya@brand.com" }),
+      },
+    );
+
+    const response = await handleVerifyEmail(request, {
+      FUNNEL_RATE_LIMITER: {
+        limit: async () => ({ success: false }),
+      },
+    });
+
+    expect(response.status).toBe(429);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("allows catch-all domains but marks them unverified", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(Response.json({ result: "catch_all", free: false })),
+    );
+    const request = new Request(
+      "https://preview.pulpsense.com/api/verify-email",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://preview.pulpsense.com",
+        },
+        body: JSON.stringify({ email: "maya@brand.com" }),
+      },
+    );
+
+    const response = await handleVerifyEmail(request, {
+      FUNNEL_RATE_LIMITER: {
+        limit: async () => ({ success: true }),
+      },
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+    });
+
+    await expect(response.json()).resolves.toEqual({
+      valid: true,
+      status: "unverified",
+      result: "catch_all",
+    });
+  });
+
   it("fails closed for an email the verifier identifies as invalid", async () => {
     vi.stubGlobal(
       "fetch",
@@ -436,6 +579,7 @@ describe("POST /api/verify-email", () => {
     );
 
     const response = await handleVerifyEmail(request, {
+      ...allowingRateLimit,
       MILLION_VERIFIER_API_KEY: "million-verifier-key",
     });
 
@@ -465,6 +609,7 @@ describe("POST /api/verify-email", () => {
     );
 
     const response = await handleVerifyEmail(request, {
+      ...allowingRateLimit,
       MILLION_VERIFIER_API_KEY: "million-verifier-key",
     });
 
@@ -498,6 +643,7 @@ describe("POST /api/verify-email", () => {
     );
 
     const response = await handleVerifyEmail(request, {
+      ...allowingRateLimit,
       MILLION_VERIFIER_API_KEY: "million-verifier-key",
     });
 
