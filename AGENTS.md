@@ -5,7 +5,7 @@ Guidance for Codex when working in the PulpSense growth platform monorepo.
 ## Commands
 
 ```bash
-pnpm dev                 # Start the Next.js funnel app
+pnpm dev                 # Start the Astro funnel app
 pnpm dev:automations     # Start the Trigger.dev worker
 pnpm build               # Production-build the funnel app
 pnpm lint                # Lint the funnel app
@@ -33,16 +33,17 @@ Use pnpm for the whole workspace. Do not add npm lockfiles or Turborepo unless e
 
 ## Funnel app
 
-The transitional implementation in `apps/funnels` is Next.js 16, React 19, and Tailwind CSS 4. It has no active deployment target in this checkpoint; a separate change will migrate it to Astro and Cloudflare Pages.
+The active implementation in `apps/funnels` is Astro static output for Cloudflare Pages, with React 19 islands and Tailwind CSS 4. The transitional Next.js 16 route files and rollback scripts remain until visual and behavioral parity is accepted.
 
 Funnels are built for paid/direct traffic and are not intended to be discovered through organic search. Treat `noindex` and crawler blocking as intentional unless explicitly asked to make a funnel public.
 
 The app follows props-driven layering:
 
-1. Pages in `apps/funnels/src/app/[funnel-name]/` define content as props.
-2. Funnel primitives in `apps/funnels/src/components/funnel/` provide reusable shells, sections, CTAs, checklists, marquees, video grids, and legal footers.
-3. Funnel-specific sections live under each funnel's `_components` directory.
-4. Shared UI modules live in `apps/funnels/src/components/ui/`.
+1. Astro pages in `apps/funnels/src/pages/[funnel-name]/` compose server-rendered page shells and explicit client islands.
+2. Content and React components under `apps/funnels/src/app/[funnel-name]/` remain the shared parity source and Next.js rollback reference.
+3. Funnel primitives in `apps/funnels/src/components/funnel/` provide reusable shells, sections, CTAs, checklists, marquees, video grids, and legal footers.
+4. Funnel-specific sections live under each funnel's `_components` directory.
+5. Shared UI modules live in `apps/funnels/src/components/ui/`.
 
 Keep funnel-specific assets under `apps/funnels/public/[funnel-name]/` and shared assets under `apps/funnels/public/assets/`.
 
@@ -52,7 +53,7 @@ Keep secrets in ignored `.env` files or Trigger.dev environment variables.
 
 ## Code standards
 
-- ESLint with Next.js and TypeScript configs
+- ESLint with Next.js compatibility and TypeScript configs
 - Prettier with the Tailwind plugin
 - Prefix intentionally unused variables with `_`
 - Use consistent type imports (`import type { X }`)

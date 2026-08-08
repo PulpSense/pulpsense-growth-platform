@@ -1,0 +1,16 @@
+---
+import {
+  SprintThankYouPage,
+  SprintThankYouVideos,
+} from "@/app/creative-multiplier-sprint/_components/SprintThankYouPage";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Call Booked | Creative Multiplier Sprint"
+  description="What to prepare before your Creative Multiplier Sprint fit call."
+>
+  <SprintThankYouPage qualified>
+    <SprintThankYouVideos slot="proof" client:visible />
+  </SprintThankYouPage>
+</BaseLayout>

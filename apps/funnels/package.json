@@ -3,26 +3,36 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "^22.12.0 || >=24.0.0"
+  },
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "build-stats": "cross-env ANALYZE=true pnpm build",
+    "dev": "astro dev",
+    "dev:next": "next dev --turbopack",
+    "build": "astro build",
+    "build:next": "next build",
+    "deploy:preview": "pnpm build && wrangler pages deploy dist --project-name pulpsense-funnels-preview --branch issue-81",
+    "start": "cross-env CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler pages dev dist",
+    "start:next": "next start",
     "build-prod": "run-s clean build",
     "check-parity": "node scripts/check-parity.mjs",
-    "clean": "rimraf .next .swc out",
+    "clean": "rimraf .astro dist",
     "lint": "eslint .",
-    "format": "eslint . --fix && prettier '**/*.{json,yaml}' --write --ignore-path .gitignore",
-    "check-types": "tsc --noEmit --pretty"
+    "format": "eslint . --fix && prettier 'src/**/*.astro' 'package.json' 'tsconfig.json' --write",
+    "check-types": "astro check && tsc --noEmit --pretty"
   },
   "dependencies": {
+    "@astrojs/react": "^6.0.2",
     "@calcom/embed-react": "^1.5.3",
+    "@tailwindcss/vite": "^4.3.3",
+    "astro": "^7.2.0",
     "classnames": "^2.5.1",
     "next": "^16.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@astrojs/check": "^0.9.10",
     "@eslint/eslintrc": "^3.2.0",
     "@next/bundle-analyzer": "^16.1.0",
     "@tailwindcss/postcss": "^4.0.0",
@@ -36,11 +46,13 @@
     "eslint-plugin-prettier": "^5.2.0",
     "npm-run-all": "^4.1.5",
     "prettier": "^3.4.0",
+    "prettier-plugin-astro": "^0.14.1",
     "prettier-plugin-tailwindcss": "^0.6.0",
     "rimraf": "^6.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",
-    "typescript-eslint": "^8.18.0"
+    "typescript-eslint": "^8.18.0",
+    "wrangler": "^4.120.0"
   },
   "license": "ISC"
 }

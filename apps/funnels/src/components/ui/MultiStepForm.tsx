@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
 import Cal, { getCalApi } from '@calcom/embed-react';
 import { isBusinessEmail } from '@/utils/businessEmail';
 import { trackMetaEvent } from '@/utils/metaCapi';
@@ -266,12 +265,10 @@ function EmailStatus({ status }: { status: 'idle' | 'verifying' | 'valid' | 'inv
 }
 
 export function MultiStepForm({ config, className }: { config: MultiStepFormConfig; className?: string }) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
   // Capture UTM params once on mount so they survive step transitions
   const utmParams = useRef<Record<string, string>>({});
   useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
     const keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
     const params: Record<string, string> = {};
     for (const key of keys) {
@@ -279,7 +276,7 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
       if (val) params[key] = val;
     }
     if (Object.keys(params).length > 0) utmParams.current = params;
-  }, [searchParams]);
+  }, []);
 
   const [currentStep, setCurrentStep] = useState(0);
   const [formData, setFormData] = useState<Record<string, string | string[]>>({});
@@ -505,7 +502,7 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
 
       if (!qualified) {
         config.onStepComplete?.(currentStep, formData);
-        router.push(config.unqualifiedRedirect);
+        window.location.assign(config.unqualifiedRedirect);
         setSubmitting(false);
         return;
       }
@@ -517,7 +514,7 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
       setCurrentStep((prev) => prev + 1);
     }
     setSubmitting(false);
-  }, [validate, currentStep, step, totalSteps, sendWebhook, checkQualification, config, formData, router, getMetaUserData]);
+  }, [validate, currentStep, step, totalSteps, sendWebhook, checkQualification, config, formData, getMetaUserData]);
 
   const handleBack = useCallback(() => {
     if (currentStep > 0) setCurrentStep((prev) => prev - 1);
@@ -605,14 +602,14 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
                 },
               );
             }
-            router.push(config.qualifiedRedirect);
+            window.location.assign(config.qualifiedRedirect);
           } else {
-            router.push(config.unqualifiedRedirect);
+            window.location.assign(config.unqualifiedRedirect);
           }
         },
       });
     })();
-  }, [step.type, calNamespace, config, router]);
+  }, [step.type, calNamespace, config]);
 
   return (
     <div className={className}>
