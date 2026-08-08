@@ -32,7 +32,12 @@ const previewPixels = {
     <TrackingPixels slot="tracking" pixels={previewPixels} client:load />
     <DslCarousel slot="carousel" client:load />
     <VideoExamplesSection slot="proof" client:visible />
-    <ApplicationFormIsland slot="form" config={formConfig} client:visible />
+    <ApplicationFormIsland
+      slot="form"
+      config={formConfig}
+      turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}
+      client:visible
+    />
     <MobileStickyCta slot="sticky-cta" client:load />
     <DeferredLoopVideo
       slot="desktop-avatar-video"

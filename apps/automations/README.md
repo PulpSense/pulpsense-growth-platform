@@ -13,7 +13,11 @@ The shared home for PulpSense background jobs, scheduled workflows, and durable 
    pnpm dev:automations
    ```
 
-The starter task is `health-check`. Once the dev worker registers it, run it from the Trigger.dev dashboard with an optional payload:
+The starter task is `health-check`. The public funnel task is `process-funnel-event`; it validates the shared versioned contact-event contract, upserts the Person in Twenty, and delivers the matching Meta Lead event.
+
+Preview deployments must set `PULPSENSE_AUTOMATION_ENVIRONMENT=preview` and use only sandbox Twenty and Meta credentials. The task rejects an event whose environment does not match its configured destinations.
+
+Once the dev worker registers the health check, run it from the Trigger.dev dashboard with an optional payload:
 
 ```json
 {

@@ -20,24 +20,30 @@ export function trackMetaEvent(
     email?: string;
     phone?: string;
   },
+  options?: {
+    eventId?: string;
+    serverHandled?: boolean;
+  },
 ) {
-  const eventId = generateEventId(eventName);
+  const eventId = options?.eventId ?? generateEventId(eventName);
 
   // Fire pixel with event ID for deduplication
-  if (typeof window !== 'undefined' && window.fbq) {
-    window.fbq('track', eventName, customData ?? {}, { eventID: eventId });
+  if (typeof window !== "undefined" && window.fbq) {
+    window.fbq("track", eventName, customData ?? {}, { eventID: eventId });
   }
 
-  // Fire CAPI via API route
-  fetch('/api/meta-capi/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+  if (options?.serverHandled) return eventId;
+
+  // Transitional CAPI path for lifecycle events not yet handled by Trigger.dev.
+  fetch("/api/meta-capi/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       event_name: eventName,
       event_id: eventId,
       event_source_url: window.location.href,
-      fbc: getCookie('_fbc'),
-      fbp: getCookie('_fbp'),
+      fbc: getCookie("_fbc"),
+      fbp: getCookie("_fbp"),
       ...(userData?.email ? { user_email: userData.email } : {}),
       ...(userData?.phone ? { user_phone: userData.phone } : {}),
       ...(customData ? { custom_data: customData } : {}),
@@ -45,4 +51,6 @@ export function trackMetaEvent(
   }).catch(() => {
     // Fire-and-forget — don't block the user experience
   });
+
+  return eventId;
 }
