@@ -1,47 +1,25 @@
 {
-  "name": "launch-funnels",
-  "version": "1.0.0",
+  "name": "pulpsense-growth-platform",
+  "version": "0.1.0",
+  "private": true,
   "type": "module",
+  "packageManager": "pnpm@11.20.0",
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
-    "build-stats": "cross-env ANALYZE=true npm run build",
-    "build-prod": "run-s clean build",
-    "clean": "rimraf .next .swc out",
-    "lint": "eslint .",
-    "format": "eslint . --fix && prettier '**/*.{json,yaml}' --write --ignore-path .gitignore",
-    "check-types": "tsc --noEmit --pretty",
+    "dev": "pnpm --filter @pulpsense/funnels dev",
+    "dev:funnels": "pnpm --filter @pulpsense/funnels dev",
+    "dev:automations": "pnpm --filter @pulpsense/automations dev",
+    "build": "pnpm --filter @pulpsense/funnels build",
+    "build-prod": "pnpm --filter @pulpsense/funnels build-prod",
+    "check-parity": "pnpm --filter @pulpsense/funnels check-parity",
+    "start": "pnpm --filter @pulpsense/funnels start",
+    "lint": "pnpm --filter @pulpsense/funnels lint",
+    "format": "pnpm --filter @pulpsense/funnels format && prettier '**/*.{json,yaml,yml}' --write --ignore-path .gitignore",
+    "check-types": "pnpm -r check-types",
     "prepare": "husky"
   },
-  "dependencies": {
-    "@calcom/embed-react": "^1.5.3",
-    "classnames": "^2.5.1",
-    "next": "^16.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.2.0",
-    "@next/bundle-analyzer": "^16.1.0",
-    "@tailwindcss/postcss": "^4.0.0",
-    "@types/node": "^22.10.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "cross-env": "^7.0.3",
-    "eslint": "^9.17.0",
-    "eslint-config-next": "^16.1.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.2.0",
     "husky": "^9.1.0",
     "lint-staged": "^15.3.0",
-    "npm-run-all": "^4.1.5",
-    "prettier": "^3.4.0",
-    "prettier-plugin-tailwindcss": "^0.6.0",
-    "rimraf": "^6.0.0",
-    "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.0",
-    "typescript-eslint": "^8.18.0"
-  },
-  "license": "ISC"
+    "prettier": "^3.4.0"
+  }
 }

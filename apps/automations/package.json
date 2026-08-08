@@ -1,0 +1,25 @@
+{
+  "name": "@pulpsense/automations",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Trigger.dev automations for PulpSense.",
+  "type": "module",
+  "scripts": {
+    "dev": "trigger dev",
+    "deploy": "trigger deploy",
+    "check-types": "tsc --noEmit",
+    "typecheck": "pnpm check-types"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@trigger.dev/sdk": "4.5.9"
+  },
+  "devDependencies": {
+    "@trigger.dev/build": "4.5.9",
+    "@types/node": "24.10.1",
+    "trigger.dev": "4.5.9",
+    "typescript": "5.9.3"
+  }
+}

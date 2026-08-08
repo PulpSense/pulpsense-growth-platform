@@ -1,90 +1,59 @@
 # AGENTS.md
 
-This file provides guidance to Codex (Codex.ai/code) when working with code in this repository.
+Guidance for Codex when working in the PulpSense growth platform monorepo.
 
 ## Commands
 
 ```bash
-pnpm dev          # Start dev server with Turbopack
-pnpm build        # Production build
-pnpm start        # Run production build locally
-pnpm lint         # Run ESLint
-pnpm format       # Fix lint + format JSON/YAML with Prettier
-pnpm check-types  # TypeScript type checking
-pnpm build-prod   # Clean + production build
+pnpm dev                 # Start the Next.js funnel app
+pnpm dev:automations     # Start the Trigger.dev worker
+pnpm build               # Production-build the funnel app
+pnpm lint                # Lint the funnel app
+pnpm check-types         # Type-check every workspace package
+pnpm format              # Format the funnel app and workspace JSON/YAML
 ```
 
-## Architecture
+## Workspace architecture
 
-This is a Next.js 16 funnel app using the App Router, Tailwind CSS v4, and React 19. Creative Multiplier Sprint is the current live funnel.
-
-### Funnel Discovery
-
-Funnels are built for paid/direct traffic and are not intended to be discovered through organic search. Treat `noindex`/crawler-blocking behavior as intentional unless the user explicitly asks to make a funnel public or discoverable.
-
-### Component Layering
-
-The codebase follows a props-driven component architecture:
-
-1. **Pages** (`src/app/[funnel-name]/`) - Route entry points that define all content as props
-2. **Funnel Primitives** (`src/components/funnel/`) - Reusable page shell, section, CTA, checklist, marquee, video grid, and legal footer primitives for future funnels
-3. **Feature Sections** (`src/app/[funnel-name]/_components/`) - Funnel-specific sections and CSS Modules that compose primitives
-4. **UI Components** (`src/components/ui/`) - Reusable UI primitives and interactive widgets
-
-### Funnel Routing
-
-Each funnel has its own explicit folder in `src/app/`. Creative Multiplier Sprint is currently the live funnel. To add a new funnel:
-
-1. Create a new folder: `src/app/[your-funnel-name]/`
-2. Add `content.ts` with typed copy, media, form config, and section data
-3. Add `page.tsx` that composes feature sections from `content.ts`
-4. Add `thank-you/page.tsx` and `thank-you-u/page.tsx` as needed
-
-Example structure:
-```
-src/app/creative-multiplier-sprint/
-├── content.ts            # Typed funnel content/config
-├── page.tsx              # Lander route entry
-├── _components/          # Funnel-specific sections and CSS Modules
-├── thank-you/page.tsx    # Qualified thank-you page
-└── thank-you-u/page.tsx  # Unqualified thank-you page
+```text
+apps/
+├── funnels/       # Request-time funnel application and public assets
+└── automations/   # Durable Trigger.dev workflows
+packages/
+└── contracts/     # Shared validated event schemas once both apps consume them
 ```
 
-### Creating New Funnels
+Keep the deployment seam explicit:
 
-Use the live funnel as the architecture reference, but keep future funnel-specific styling in that funnel's `_components` folder. Reuse `src/components/funnel` primitives instead of copying large page components.
+- The funnel host owns synchronous validation, qualification, redirects, request-scoped attribution, and durable-task enqueue confirmation.
+- Trigger.dev owns lead processing, downstream delivery, retries, enrichment, follow-ups, waits, and human-in-the-loop work.
+- Never trigger private tasks directly from untrusted browser code with a secret.
 
-### Asset Organization
+Use pnpm for the whole workspace. Do not add npm lockfiles or Turborepo unless explicitly requested.
 
-Assets are organized in `public/` with a parallel structure to funnels:
+## Funnel app
 
-```
-public/
-├── assets/                    # Shared assets across all funnels
-│   └── images/
-├── [another-funnel]/          # Each funnel gets its own folder
-│   └── images/
-└── favicon.ico                # Root-level files
-```
+The transitional implementation in `apps/funnels` is Next.js 16, React 19, and Tailwind CSS 4. It has no active deployment target in this checkpoint; a separate change will migrate it to Astro and Cloudflare Pages.
 
-**Usage in content objects:**
-- Shared: `"/assets/images/logo.svg"`
-- Funnel-specific: `"/[funnel-name]/images/hero.png"`
+Funnels are built for paid/direct traffic and are not intended to be discovered through organic search. Treat `noindex` and crawler blocking as intentional unless explicitly asked to make a funnel public.
 
-Create a matching folder in `public/` only when the funnel has assets that should not be shared.
+The app follows props-driven layering:
 
-### Configuration
+1. Pages in `apps/funnels/src/app/[funnel-name]/` define content as props.
+2. Funnel primitives in `apps/funnels/src/components/funnel/` provide reusable shells, sections, CTAs, checklists, marquees, video grids, and legal footers.
+3. Funnel-specific sections live under each funnel's `_components` directory.
+4. Shared UI modules live in `apps/funnels/src/components/ui/`.
 
-- `src/utils/AppConfig.ts` - Global site config (name, title, description, locale)
+Keep funnel-specific assets under `apps/funnels/public/[funnel-name]/` and shared assets under `apps/funnels/public/assets/`.
 
-### Styling
+## Automation app
 
-Uses Tailwind v4 with PostCSS. Global styles are in `src/app/globals.css`. Funnel-specific visual systems should live in CSS Modules under the funnel's `_components` folder.
+Keep secrets in ignored `.env` files or Trigger.dev environment variables.
 
-### Code Standards
+## Code standards
 
-- ESLint with Next.js + TypeScript configs
-- Prettier for formatting (with Tailwind plugin)
-- Husky + lint-staged for pre-commit hooks
-- Prefix unused variables with `_` (configured in eslint)
+- ESLint with Next.js and TypeScript configs
+- Prettier with the Tailwind plugin
+- Prefix intentionally unused variables with `_`
 - Use consistent type imports (`import type { X }`)
+- Preserve the small event-enqueue interface between the two apps; add `packages/contracts` only when both apps consume the schema

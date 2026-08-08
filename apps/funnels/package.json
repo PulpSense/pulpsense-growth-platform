@@ -1,0 +1,46 @@
+{
+  "name": "@pulpsense/funnels",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "build-stats": "cross-env ANALYZE=true pnpm build",
+    "build-prod": "run-s clean build",
+    "check-parity": "node scripts/check-parity.mjs",
+    "clean": "rimraf .next .swc out",
+    "lint": "eslint .",
+    "format": "eslint . --fix && prettier '**/*.{json,yaml}' --write --ignore-path .gitignore",
+    "check-types": "tsc --noEmit --pretty"
+  },
+  "dependencies": {
+    "@calcom/embed-react": "^1.5.3",
+    "classnames": "^2.5.1",
+    "next": "^16.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.2.0",
+    "@next/bundle-analyzer": "^16.1.0",
+    "@tailwindcss/postcss": "^4.0.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^16.1.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.0",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.4.0",
+    "prettier-plugin-tailwindcss": "^0.6.0",
+    "rimraf": "^6.0.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.18.0"
+  },
+  "license": "ISC"
+}
