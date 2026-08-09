@@ -1,5 +1,3 @@
-import Image from 'next/image';
-
 import { ContentCard } from '@/components/ui/ContentCard';
 import { VideoEmbed } from '@/components/ui/VideoEmbed';
 
@@ -37,11 +35,13 @@ const ThankYouContent = ({ steps, bottomVideos }: ThankYouContentProps) => {
             {/* Optional email screenshot image */}
             {step.imageSrc && (
               <div className="mx-auto mb-4 max-w-xl overflow-hidden rounded-lg border border-gray-200 shadow-sm">
-                <Image
+                <img
                   src={step.imageSrc}
                   alt={step.imageAlt || 'Step illustration'}
                   width={754}
                   height={360}
+                  loading="lazy"
+                  decoding="async"
                   className="h-auto w-full"
                 />
               </div>
@@ -87,11 +87,12 @@ const ThankYouContent = ({ steps, bottomVideos }: ThankYouContentProps) => {
                   className="group relative block aspect-video overflow-hidden rounded-lg bg-navy-800"
                 >
                   {video.thumbnailSrc ? (
-                    <Image
+                    <img
                       src={video.thumbnailSrc}
                       alt={video.title}
-                      fill
-                      className="object-cover transition-transform group-hover:scale-105"
+                      loading="lazy"
+                      decoding="async"
+                      className="absolute inset-0 size-full object-cover transition-transform group-hover:scale-105"
                     />
                   ) : (
                     <div className="flex size-full items-center justify-center bg-navy-800" />

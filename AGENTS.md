@@ -35,14 +35,14 @@ Use pnpm for the whole workspace. Do not add npm lockfiles or Turborepo unless e
 
 ## Funnel app
 
-The active implementation in `apps/funnels` is Astro static output for Cloudflare Pages, with React 19 islands and Tailwind CSS 4. The transitional Next.js 16 route files and rollback scripts remain until visual and behavioral parity is accepted.
+The implementation in `apps/funnels` is Astro static output for Cloudflare Pages, with React 19 islands and Tailwind CSS 4. Cloudflare Pages deployments and git history are the rollback references; do not reintroduce a parallel framework runtime.
 
 Funnels are built for paid/direct traffic and are not intended to be discovered through organic search. Treat `noindex` and crawler blocking as intentional unless explicitly asked to make a funnel public.
 
 The app follows props-driven layering:
 
 1. Astro pages in `apps/funnels/src/pages/[funnel-name]/` compose server-rendered page shells and explicit client islands.
-2. Content and React components under `apps/funnels/src/app/[funnel-name]/` remain the shared parity source and Next.js rollback reference.
+2. Funnel content and React components live under `apps/funnels/src/funnels/[funnel-name]/`.
 3. Funnel primitives in `apps/funnels/src/components/funnel/` provide reusable shells, sections, CTAs, checklists, marquees, video grids, and legal footers.
 4. Funnel-specific sections live under each funnel's `_components` directory.
 5. Shared UI modules live in `apps/funnels/src/components/ui/`.
@@ -55,7 +55,7 @@ Keep secrets in ignored `.env` files or Trigger.dev environment variables.
 
 ## Code standards
 
-- ESLint with Next.js compatibility and TypeScript configs
+- ESLint with TypeScript configs
 - Prettier with the Tailwind plugin
 - Prefix intentionally unused variables with `_`
 - Use consistent type imports (`import type { X }`)

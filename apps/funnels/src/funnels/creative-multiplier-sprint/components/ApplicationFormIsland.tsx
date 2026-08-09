@@ -1,5 +1,3 @@
-"use client";
-
 import { useCallback, useRef } from "react";
 
 import { MultiStepForm } from "@/components/ui/MultiStepForm";
@@ -35,7 +33,7 @@ const normalizeSubmissionError = (
 
 export function ApplicationFormIsland({
   config,
-  turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
+  turnstileSiteKey,
 }: ApplicationFormIslandProps) {
   const attemptIdRef = useRef("");
   const retryRef = useRef<{ submissionId: string; token: string } | undefined>(

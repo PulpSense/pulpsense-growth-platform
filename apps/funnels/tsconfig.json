@@ -30,12 +30,6 @@
     },
     "allowJs": true
   },
-  "exclude": ["./.next/**/*", "./dist/**/*", "./node_modules/**/*"],
-  "include": [
-    ".astro/types.d.ts",
-    "src/**/*.astro",
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx"
-  ]
+  "exclude": ["./dist/**/*", "./node_modules/**/*"],
+  "include": [".astro/types.d.ts", "src/**/*.astro", "**/*.ts", "**/*.tsx"]
 }

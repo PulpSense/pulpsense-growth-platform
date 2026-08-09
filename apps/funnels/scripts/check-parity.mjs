@@ -37,6 +37,12 @@ const origin = externalOrigin ?? `http://${host}:${port}`;
 const wranglerBin = fileURLToPath(
   new URL("../node_modules/wrangler/bin/wrangler.js", import.meta.url),
 );
+const isolatedFallbackBindings = [
+  "META_CAPI_ACCESS_TOKEN=",
+  "META_PIXEL_ID=",
+  "MILLION_VERIFIER_API_KEY=",
+  "PULPSENSE_TRIGGER_SECRET_KEY=",
+];
 
 const publicRoutes = [
   {
@@ -84,6 +90,10 @@ const server = externalOrigin
         String(port),
         "--compatibility-date",
         "2026-08-08",
+        ...isolatedFallbackBindings.flatMap((binding) => [
+          "--binding",
+          binding,
+        ]),
       ],
       {
         env: {

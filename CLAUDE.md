@@ -3,7 +3,7 @@
 This is the PulpSense growth platform pnpm monorepo.
 
 ```text
-apps/funnels       Transitional Next.js funnel app; not currently deployed
+apps/funnels       Astro funnel app for Cloudflare Pages
 apps/automations   Trigger.dev durable workflows
 packages/contracts Shared schemas once both apps consume them
 ```

@@ -101,11 +101,6 @@ For an application regression, select the last verified deployment in Cloudflare
 
 The deployment remains rollback-capable after 30 minutes; later incidents follow the same procedure without the scheduled T+ checks.
 
-## Post-cutover retirement
+## Framework retirement
 
-Only after the T+30 owner decision is recorded as accepted:
-
-1. remove the transitional Next.js routes, scripts, dependencies, configuration, and `.next`/Vercel assumptions;
-2. rerun the full automated gate against `go.pulpsense.com`;
-3. update architecture, app, runtime, and recovery documentation to describe Astro, Cloudflare Pages, the private rate-limiter Worker, and Trigger.dev as the only live path;
-4. keep the approved Cloudflare deployment ID and Git tag as the rollback reference.
+The transitional Next.js/Vercel implementation was removed from the release candidate at the owner's explicit direction. Astro, Cloudflare Pages, the private rate-limiter Worker, and Trigger.dev are the only supported path. Keep the approved Cloudflare deployment ID and corresponding git commit as the rollback reference; do not maintain a second framework runtime.

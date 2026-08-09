@@ -1,5 +1,3 @@
-import Image from 'next/image';
-
 const DEFAULT_AVATARS = [
   '/assets/images/avatars/avatar-1.avif',
   '/assets/images/avatars/avatar-2.avif',
@@ -23,12 +21,14 @@ const TrustBadge = ({
       {/* Overlapping profile images - hidden on mobile */}
       <div className="hidden -space-x-2 md:flex">
         {avatars.map((src, i) => (
-          <Image
+          <img
             key={i}
             src={src}
             alt=""
             width={32}
             height={32}
+            loading="lazy"
+            decoding="async"
             className="size-8 rounded-full border-2 border-navy-900 object-cover"
             aria-hidden="true"
           />

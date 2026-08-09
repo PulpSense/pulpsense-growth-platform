@@ -1,5 +1,3 @@
-import Image from 'next/image';
-
 import type { TestimonialsSectionProps } from './types';
 
 const StarIcon = () => (
@@ -45,11 +43,13 @@ const TestimonialsSection = ({
               {/* Author */}
               <div className="flex items-center gap-3">
                 {testimonial.avatar ? (
-                  <Image
+                  <img
                     src={testimonial.avatar}
                     alt={testimonial.name}
                     width={48}
                     height={48}
+                    loading="lazy"
+                    decoding="async"
                     className="size-12 rounded-full object-cover"
                   />
                 ) : (

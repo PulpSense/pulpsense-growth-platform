@@ -18,11 +18,11 @@ Candidate: the full `master` SHA containing this evidence; record it before depl
 | Preview browser Meta configuration  | Blocked | Meta Pixel logged `Invalid PixelID`; the configured preview value is not a numeric Meta Pixel ID. The release candidate now rejects this at build time, so Preview must receive a valid sandbox Pixel ID before redeployment |
 | Production Pages project            | Blocked | No production Pages project exists yet                                                                                                                                                                                       |
 | GitHub Production configuration     | Blocked | Required production variables and secrets are not configured                                                                                                                                                                 |
-| Trigger.dev Production destinations | Blocked | Only platform telemetry variables exist; Twenty, Meta, PostHog, Slack, and `PULPSENSE_AUTOMATION_ENVIRONMENT` are absent                                                                                                     |
+| Trigger.dev Production destinations | Partial | Eleven Meta, Twenty, PostHog, and environment variables were provisioned and verified without exposing values. `META_TEST_EVENT_CODE_AI_SEO_L` was intentionally excluded; `SLACK_FAILURE_WEBHOOK_URL` is still missing.     |
 | Current hostname                    | Blocked | `https://go.pulpsense.com/` returned Cloudflare `522` during the audit; the hostname has not been cut over                                                                                                                   |
 | Explicit owner approval             | Blocked | No SHA-specific production-cutover approval has been given                                                                                                                                                                   |
 
-The unapproved production job from run `31337577034` was cancelled after its successful `Verify` job. No production deployment, custom-domain attachment, credential copy, or production vendor event was performed during this audit.
+The unapproved production job from run `31337577034` was cancelled after its successful `Verify` job. No production deployment, custom-domain attachment, or production vendor event was performed. On 2026-08-10, the owner directed the existing Development Meta token and Pixel ID plus the existing Twenty and PostHog configuration to be provisioned in Trigger.dev Production. No test-event code was copied.
 
 ## Qualification results
 
@@ -55,4 +55,4 @@ The inspected preview predates the issue #87 release-control commit. Repeat ever
 - T+0 / T+5 / T+15 / T+30 smoke results: pending
 - T+30 owner decision: pending
 - Rollback performed: no
-- Transitional Next.js/Vercel retirement commit: pending live acceptance
+- Transitional Next.js/Vercel retirement: complete in this candidate at owner direction; Cloudflare deployment history and git are the rollback references

@@ -1,5 +1,3 @@
-import Image from 'next/image';
-
 export type FunnelLogo = {
   src: string;
   alt: string;
@@ -17,16 +15,17 @@ export function FunnelLogoMarquee({
   return (
     <>
       {[...logos, ...logos].map((logo, index) => (
-        <Image
+        <img
           key={`${logo.src}-${index}`}
           src={logo.src}
           alt={logo.alt}
           width={120}
           height={44}
+          loading="lazy"
+          decoding="async"
           className={imageClassName}
         />
       ))}
     </>
   );
 }
-
