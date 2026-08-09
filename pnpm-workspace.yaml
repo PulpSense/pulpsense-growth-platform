@@ -1,0 +1,8 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+allowBuilds:
+  "@depot/cli": true
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
