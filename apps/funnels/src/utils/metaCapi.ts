@@ -1,7 +1,4 @@
-function getCookie(name: string): string | undefined {
-  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
-  return match?.[2];
-}
+import { getBrowserCookie } from "./browserCookie";
 
 function generateEventId(eventName: string): string {
   return `${eventName}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -42,8 +39,8 @@ export function trackMetaEvent(
       event_name: eventName,
       event_id: eventId,
       event_source_url: window.location.href,
-      fbc: getCookie("_fbc"),
-      fbp: getCookie("_fbp"),
+      fbc: getBrowserCookie("_fbc"),
+      fbp: getBrowserCookie("_fbp"),
       ...(userData?.email ? { user_email: userData.email } : {}),
       ...(userData?.phone ? { user_phone: userData.phone } : {}),
       ...(customData ? { custom_data: customData } : {}),

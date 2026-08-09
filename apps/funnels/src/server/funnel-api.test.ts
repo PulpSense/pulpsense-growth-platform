@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { handleFunnelEvent, handleVerifyEmail } from "./funnel-api";
+import { handleFunnelEvent } from "./contact-submission";
+import { handleVerifyEmail } from "./email-verification";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -417,6 +418,66 @@ describe("POST /api/funnel-events", () => {
       eventId: first.eventId,
       runId: "run_after_retry",
     });
+  });
+
+  it("does not reuse an accepted identity when contact data changes", async () => {
+    const body = {
+      schemaVersion: 1,
+      eventType: "contact_submitted",
+      funnelId: "creative-multiplier-sprint",
+      attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
+      turnstileToken: "turnstile-token",
+      payload: {
+        firstName: "Maya",
+        lastName: "Chen",
+        email: "maya@brand.com",
+        phone: "+1 555 123 4567",
+      },
+      attribution: { firstTouch: {}, lastTouch: {} },
+      sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+    };
+    const turnstileResult = {
+      success: true,
+      action: "contact_submit",
+      hostname: "preview.pulpsense.com",
+    };
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json(turnstileResult))
+      .mockResolvedValueOnce(Response.json({ result: "ok" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_original" }))
+      .mockResolvedValueOnce(Response.json(turnstileResult))
+      .mockResolvedValueOnce(Response.json({ result: "ok" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_changed" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const env = {
+      FUNNEL_RATE_LIMITER: {
+        limit: async () => ({ success: true }),
+      },
+      TURNSTILE_SECRET_KEY: "turnstile-secret",
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+      PULPSENSE_ENVIRONMENT: "preview" as const,
+    };
+
+    const originalResponse = await handleFunnelEvent(
+      requestWithBody(body),
+      env,
+    );
+    const original = (await originalResponse.json()) as { eventId: string };
+    const changedResponse = await handleFunnelEvent(
+      requestWithBody({
+        ...body,
+        payload: { ...body.payload, email: "maya@new-brand.com" },
+      }),
+      env,
+    );
+    const changed = (await changedResponse.json()) as { eventId: string };
+
+    expect(originalResponse.status).toBe(200);
+    expect(changedResponse.status).toBe(200);
+    expect(changed.eventId).not.toBe(original.eventId);
   });
 
   it("rejects a Turnstile token minted for another hostname", async () => {

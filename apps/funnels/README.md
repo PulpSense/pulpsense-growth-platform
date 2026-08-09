@@ -23,17 +23,17 @@ Open <http://localhost:4321/creative-multiplier-sprint/>.
 
 ## Scripts
 
-| Command | Description |
-| --- | --- |
-| `pnpm dev` | Start Astro development |
-| `pnpm build` | Produce static output in `dist/` |
-| `pnpm start` | Serve `dist/` with Pages Functions through Wrangler |
-| `pnpm check-parity` | Check routes, crawler controls, API fallbacks, and trailing slashes |
-| `pnpm check-types` | Check Astro and TypeScript |
-| `pnpm lint` | Lint source and function files |
-| `pnpm deploy:preview` | Deploy the `issue-81` branch to the non-production Pages project |
-| `pnpm dev:next` | Start the transitional Next.js rollback reference |
-| `pnpm build:next` | Build the transitional Next.js rollback reference |
+| Command               | Description                                                         |
+| --------------------- | ------------------------------------------------------------------- |
+| `pnpm dev`            | Start Astro development                                             |
+| `pnpm build`          | Produce static output in `dist/`                                    |
+| `pnpm start`          | Serve `dist/` with Pages Functions through Wrangler                 |
+| `pnpm check-parity`   | Check routes, crawler controls, API fallbacks, and trailing slashes |
+| `pnpm check-types`    | Check Astro and TypeScript                                          |
+| `pnpm lint`           | Lint source and function files                                      |
+| `pnpm deploy:preview` | Deploy the `issue-81` branch to the non-production Pages project    |
+| `pnpm dev:next`       | Start the transitional Next.js rollback reference                   |
+| `pnpm build:next`     | Build the transitional Next.js rollback reference                   |
 
 ## Project structure
 
@@ -50,7 +50,9 @@ src/
 
 ## Runtime isolation
 
-Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` copied from `.dev.vars.example`, with sandbox values only. Browser Meta tracking is disabled unless a non-production `PUBLIC_META_PIXEL_ID` is supplied at Astro build time.
+Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` copied from `.dev.vars.example`, with sandbox values only. Local builds may omit browser Meta tracking. Preview builds require a non-production `PUBLIC_META_PIXEL_ID` and a non-production `PUBLIC_CAL_LINK`; the build fails if either is absent or if the known production Meta dataset is supplied.
+
+Browser-facing `PUBLIC_*` values must be present in the Astro build environment. Pages Function secrets belong in the Cloudflare preview environment instead. `PUBLIC_CAL_NAMESPACE` may be set when the sandbox event uses a distinct embed namespace.
 
 Form lifecycle events are accepted through `/api/form-submit` and forwarded by the Pages Function only when a Trigger.dev preview secret and matching task ID are configured. Email verification and Meta CAPI use the same Pages Function boundary.
 

@@ -5,45 +5,12 @@ import {
   contactSubmissionRequestSchema,
   type ContactSubmissionRequest,
 } from "./contact-submission-contract";
-
-type FormEvent =
-  | "contact_submitted"
-  | "application_submitted"
-  | "booking_completed";
-
-type FormSubmitBody = {
-  event?: string;
-  data?: Record<string, unknown>;
-  submittedAt?: string;
-};
-
-type CapiRequestBody = {
-  event_name: string;
-  event_id: string;
-  event_source_url: string;
-  user_email?: string;
-  user_phone?: string;
-  fbc?: string;
-  fbp?: string;
-  custom_data?: Record<string, unknown>;
-};
-
-export type FunnelEnv = {
-  FUNNEL_RATE_LIMITER?: {
-    limit(input: { key: string }): Promise<{ success: boolean }>;
-  };
-  TURNSTILE_SECRET_KEY?: string;
-  SUBMISSION_SIGNING_SECRET?: string;
-  PULPSENSE_ENVIRONMENT?: "local" | "preview" | "production";
-  MILLION_VERIFIER_API_KEY?: string;
-  PULPSENSE_TRIGGER_API_ORIGIN?: string;
-  PULPSENSE_TRIGGER_SECRET_KEY?: string;
-  CREATIVE_MULTIPLIER_SPRINT_CONTACT_TASK_ID?: string;
-  CREATIVE_MULTIPLIER_SPRINT_APPLICATION_TASK_ID?: string;
-  CREATIVE_MULTIPLIER_SPRINT_BOOKING_TASK_ID?: string;
-  META_PIXEL_ID?: string;
-  META_CAPI_ACCESS_TOKEN?: string;
-};
+import {
+  verifyBusinessEmail,
+  type EmailVerification,
+} from "./email-verification";
+import type { FunnelEnv } from "./funnel-env";
+import { getClientIp, json, parseJson, rejectCrossOrigin } from "./http";
 
 const encodeBase64Url = (bytes: Uint8Array) => {
   let binary = "";
@@ -90,57 +57,6 @@ const digestRetryRequest = async (request: ContactSubmissionRequest) => {
   return encodeBase64Url(new Uint8Array(digest));
 };
 
-type EmailVerification = {
-  status: "verified" | "unverified";
-  result: "business" | "catch_all" | "provider_error";
-};
-
-type BusinessEmailVerification =
-  | { result: "business"; status: "verified" }
-  | { result: "catch_all" | "provider_error"; status: "unverified" }
-  | { result: "invalid"; status: "invalid" };
-
-const getClientIp = (request: Request) =>
-  request.headers.get("cf-connecting-ip") ??
-  request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-  "unknown";
-
-const verifyBusinessEmail = async (
-  email: string,
-  apiKey: string | undefined,
-): Promise<BusinessEmailVerification> => {
-  if (!apiKey) return { status: "unverified", result: "provider_error" };
-
-  try {
-    const response = await fetch(
-      `https://api.millionverifier.com/api/v3/?api=${apiKey}&email=${encodeURIComponent(email)}&timeout=10`,
-    );
-    if (!response.ok) throw new Error("Verifier request failed");
-
-    const verification = (await response.json()) as {
-      result?: string;
-      free?: boolean;
-    };
-    if (
-      verification.free === true ||
-      verification.result === "invalid" ||
-      verification.result === "disposable"
-    ) {
-      return { status: "invalid", result: "invalid" };
-    }
-    if (verification.result === "ok") {
-      return { status: "verified", result: "business" };
-    }
-    if (verification.result === "catch_all") {
-      return { status: "unverified", result: "catch_all" };
-    }
-
-    return { status: "unverified", result: "provider_error" };
-  } catch {
-    return { status: "unverified", result: "provider_error" };
-  }
-};
-
 type RetryClaims = {
   submissionId: string;
   requestDigest: string;
@@ -160,13 +76,17 @@ const createRetryToken = async (claims: RetryClaims, secret: string) => {
   return `${encodedClaims}.${encodeBase64Url(new Uint8Array(signature))}`;
 };
 
-const deriveSubmissionId = async (attemptId: string, secret: string) => {
+const deriveSubmissionId = async (
+  attemptId: string,
+  requestDigest: string,
+  secret: string,
+) => {
   const key = await importHmacKey(secret, ["sign"]);
   const signature = new Uint8Array(
     await crypto.subtle.sign(
       "HMAC",
       key,
-      new TextEncoder().encode(`submission:${attemptId}`),
+      new TextEncoder().encode(`submission:${attemptId}:${requestDigest}`),
     ),
   ).slice(0, 16);
   signature[6] = (signature[6]! & 0x0f) | 0x40;
@@ -217,16 +137,11 @@ const readRetryToken = async (
 };
 
 export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
-  const requestOrigin = new URL(request.url).origin;
-  const origin = request.headers.get("origin");
-
-  if (origin !== requestOrigin) {
-    return json({ error: "origin_not_allowed" }, 403);
-  }
+  const originError = rejectCrossOrigin(request);
+  if (originError) return originError;
 
   const body = await parseJson<unknown>(request);
   const parsed = contactSubmissionRequestSchema.safeParse(body);
-
   if (!parsed.success) {
     return json({ error: "invalid_request" }, 400);
   }
@@ -239,7 +154,6 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
   const rateLimit = await env.FUNNEL_RATE_LIMITER.limit({
     key: `contact:${clientIp}`,
   });
-
   if (!rateLimit.success) {
     return json({ error: "rate_limited" }, 429);
   }
@@ -258,7 +172,6 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
       parsed.data.retry.token,
       env.SUBMISSION_SIGNING_SECRET,
     );
-
     if (
       !retryClaims ||
       retryClaims.submissionId !== parsed.data.retry.submissionId ||
@@ -290,7 +203,6 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
         action?: string;
         hostname?: string;
       };
-
       if (
         !turnstileResult.success ||
         turnstileResult.action !== "contact_submit" ||
@@ -305,7 +217,6 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
     if (!isBusinessEmail(parsed.data.payload.email)) {
       return json({ error: "email_invalid" }, 422);
     }
-
     const verification = await verifyBusinessEmail(
       parsed.data.payload.email,
       env.MILLION_VERIFIER_API_KEY,
@@ -318,9 +229,9 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
     if (!env.SUBMISSION_SIGNING_SECRET || !env.PULPSENSE_TRIGGER_SECRET_KEY) {
       return json({ error: "handoff_unavailable" }, 503);
     }
-
     submissionId = await deriveSubmissionId(
       parsed.data.attemptId,
+      requestDigest,
       env.SUBMISSION_SIGNING_SECRET,
     );
     retryToken = await createRetryToken(
@@ -337,10 +248,7 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
     submissionId,
     eventId,
     occurredAt: new Date().toISOString(),
-    payload: {
-      ...parsed.data.payload,
-      emailVerification,
-    },
+    payload: { ...parsed.data.payload, emailVerification },
     attribution: parsed.data.attribution,
     requestContext: {
       clientIp,
@@ -369,7 +277,6 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
         }),
       },
     );
-
     if (!triggerResponse.ok) throw new Error("Trigger rejected event");
 
     const triggerResult = (await triggerResponse.json()) as { id?: string };
@@ -393,199 +300,5 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
       },
       502,
     );
-  }
-}
-
-const json = (body: unknown, status = 200) =>
-  Response.json(body, {
-    status,
-    headers: { "Cache-Control": "no-store" },
-  });
-
-const parseJson = async <T>(request: Request): Promise<T | undefined> => {
-  try {
-    return (await request.json()) as T;
-  } catch {
-    return undefined;
-  }
-};
-
-const isFormEvent = (event: string | undefined): event is FormEvent =>
-  event === "contact_submitted" ||
-  event === "application_submitted" ||
-  event === "booking_completed";
-
-const taskIdFor = (env: FunnelEnv, funnelId: string, event: FormEvent) => {
-  if (funnelId !== "creative-multiplier-sprint") return undefined;
-
-  return {
-    contact_submitted: env.CREATIVE_MULTIPLIER_SPRINT_CONTACT_TASK_ID,
-    application_submitted: env.CREATIVE_MULTIPLIER_SPRINT_APPLICATION_TASK_ID,
-    booking_completed: env.CREATIVE_MULTIPLIER_SPRINT_BOOKING_TASK_ID,
-  }[event];
-};
-
-export async function handleVerifyEmail(request: Request, env: FunnelEnv) {
-  if (request.headers.get("origin") !== new URL(request.url).origin) {
-    return json({ error: "origin_not_allowed" }, 403);
-  }
-
-  if (!env.FUNNEL_RATE_LIMITER) {
-    return json({ error: "rate_limiter_unavailable" }, 503);
-  }
-  const rateLimit = await env.FUNNEL_RATE_LIMITER.limit({
-    key: `verify-email:${getClientIp(request)}`,
-  });
-  if (!rateLimit.success) {
-    return json({ error: "rate_limited" }, 429);
-  }
-
-  const body = await parseJson<{ email?: unknown }>(request);
-  const email = body?.email;
-
-  if (typeof email !== "string" || !email) {
-    return json({ error: "Email is required" }, 400);
-  }
-
-  if (!isBusinessEmail(email)) {
-    return json({
-      valid: false,
-      status: "invalid",
-      result: "non_business_email",
-    });
-  }
-
-  const verification = await verifyBusinessEmail(
-    email,
-    env.MILLION_VERIFIER_API_KEY,
-  );
-  if (verification.status === "invalid") {
-    return json({ valid: false, ...verification });
-  }
-
-  return json({ valid: true, ...verification });
-}
-
-export async function handleFormSubmit(request: Request, env: FunnelEnv) {
-  const body = await parseJson<FormSubmitBody>(request);
-
-  if (!body || !isFormEvent(body.event)) {
-    return json({ error: "Unknown event" }, 400);
-  }
-
-  const data = body.data ?? {};
-  const funnelId =
-    typeof data.funnelId === "string" ? data.funnelId : "default";
-  const taskId = taskIdFor(env, funnelId, body.event);
-
-  if (!env.PULPSENSE_TRIGGER_SECRET_KEY || !taskId) {
-    return json(
-      { ok: false, skipped: true, reason: "Trigger not configured" },
-      202,
-    );
-  }
-
-  const payload = {
-    event: body.event,
-    funnelId,
-    data,
-    submittedAt: body.submittedAt ?? new Date().toISOString(),
-  };
-
-  try {
-    const response = await fetch(
-      `${env.PULPSENSE_TRIGGER_API_ORIGIN ?? "https://api.trigger.dev"}/api/v1/tasks/${encodeURIComponent(taskId)}/trigger`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.PULPSENSE_TRIGGER_SECRET_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ payload }),
-      },
-    );
-
-    if (!response.ok) {
-      return json({ error: "Trigger delivery failed" }, 502);
-    }
-
-    return json({ ok: true });
-  } catch {
-    return json({ error: "Trigger delivery failed" }, 502);
-  }
-}
-
-const sha256 = async (value: string) => {
-  const bytes = new TextEncoder().encode(value.trim().toLowerCase());
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-
-  return Array.from(new Uint8Array(digest), (byte) =>
-    byte.toString(16).padStart(2, "0"),
-  ).join("");
-};
-
-export async function handleMetaCapi(request: Request, env: FunnelEnv) {
-  if (!env.META_PIXEL_ID || !env.META_CAPI_ACCESS_TOKEN) {
-    return json({ error: "Meta CAPI not configured" }, 500);
-  }
-
-  const body = await parseJson<CapiRequestBody>(request);
-  if (!body?.event_name || !body.event_id || !body.event_source_url) {
-    return json({ error: "Invalid Meta CAPI event" }, 400);
-  }
-
-  const clientIp =
-    request.headers.get("cf-connecting-ip") ??
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
-    request.headers.get("x-real-ip") ??
-    "unknown";
-  const userData: Record<string, unknown> = {
-    client_ip_address: clientIp,
-    client_user_agent: request.headers.get("user-agent") ?? "",
-  };
-
-  if (body.user_email) userData.em = [await sha256(body.user_email)];
-  if (body.user_phone) userData.ph = [await sha256(body.user_phone)];
-  if (body.fbc) userData.fbc = body.fbc;
-  if (body.fbp) userData.fbp = body.fbp;
-
-  const payload = {
-    data: [
-      {
-        event_name: body.event_name,
-        event_time: Math.floor(Date.now() / 1000),
-        action_source: "website",
-        event_source_url: body.event_source_url,
-        event_id: body.event_id,
-        user_data: userData,
-        ...(body.custom_data ? { custom_data: body.custom_data } : {}),
-      },
-    ],
-  };
-
-  try {
-    const response = await fetch(
-      `https://graph.facebook.com/v22.0/${env.META_PIXEL_ID}/events?access_token=${env.META_CAPI_ACCESS_TOKEN}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      },
-    );
-    const result = (await response.json()) as {
-      events_received?: number;
-      error?: unknown;
-    };
-
-    if (!response.ok) {
-      return json(
-        { error: result.error ?? "Meta CAPI delivery failed" },
-        response.status,
-      );
-    }
-
-    return json({ success: true, events_received: result.events_received });
-  } catch {
-    return json({ error: "Meta CAPI delivery failed" }, 502);
   }
 }
