@@ -1,10 +1,29 @@
-import type { ContactSubmittedEvent } from "@pulpsense/contracts";
+import type {
+  ApplicationSubmittedEvent,
+  BookingCompletedEvent,
+  ContactSubmittedEvent,
+} from "@pulpsense/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  type AdapterExecutor,
   createProcessorDependencies,
   processFunnelEvent,
 } from "./process-funnel-event.js";
+
+const retryImmediately =
+  (maxAttempts: number): AdapterExecutor =>
+  async (_context, operation) => {
+    let lastError: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError;
+  };
 
 const event: ContactSubmittedEvent = {
   schemaVersion: 1,
@@ -33,7 +52,848 @@ const event: ContactSubmittedEvent = {
   environment: "preview",
 };
 
+const applicationEvent: ApplicationSubmittedEvent = {
+  schemaVersion: 1,
+  eventType: "application_submitted",
+  funnelId: "creative-multiplier-sprint",
+  submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+  eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+  occurredAt: "2026-08-08T12:05:00.000Z",
+  payload: {
+    ...event.payload,
+    application: {
+      brandUrl: "https://www.brand.com/products",
+      paidSocialSpend: "Less than $20k/month",
+      winnerStatus: "Yes, several winners",
+      platforms: ["Meta", "TikTok"],
+      deliveryTimeline: "Next 2 weeks",
+    },
+  },
+  qualificationStatus: "unqualified",
+  companyDomain: "brand.com",
+  attribution: event.attribution,
+  requestContext: event.requestContext,
+  environment: "preview",
+};
+
+const qualifiedApplicationEvent: ApplicationSubmittedEvent = {
+  ...applicationEvent,
+  payload: {
+    ...applicationEvent.payload,
+    application: {
+      ...applicationEvent.payload.application,
+      paidSocialSpend: "$50k - $150k/month",
+    },
+  },
+  qualificationStatus: "qualified",
+};
+
+const bookingEvent: BookingCompletedEvent = {
+  schemaVersion: 1,
+  eventType: "booking_completed",
+  funnelId: "creative-multiplier-sprint",
+  submissionId: applicationEvent.submissionId,
+  eventId: "booking_completed:cal_booking_123",
+  occurredAt: "2026-08-09T12:00:00.000Z",
+  payload: {
+    firstName: event.payload.firstName,
+    lastName: event.payload.lastName,
+    email: event.payload.email,
+    phone: event.payload.phone,
+    emailVerification: { status: "verified", result: "business" },
+    booking: {
+      uid: "cal_booking_123",
+      title: "Creative Multiplier Sprint Fit Call",
+      startTime: "2026-08-10T14:00:00.000Z",
+      endTime: "2026-08-10T14:15:00.000Z",
+    },
+  },
+  qualificationStatus: "qualified",
+  attribution: event.attribution,
+  requestContext: event.requestContext,
+  environment: "preview",
+};
+
 describe("process-funnel-event", () => {
+  it("rejects startup without the required Twenty failure alert destination", () => {
+    expect(() =>
+      createProcessorDependencies(
+        {
+          TWENTY_API_KEY: "twenty-sandbox-key",
+          TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+          META_PIXEL_ID: "pixel_123",
+          META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+          META_GRAPH_API_VERSION: "v26.0",
+          PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+        },
+        { fetch, log: { info: vi.fn() } },
+      ),
+    ).toThrow("SLACK_FAILURE_WEBHOOK_URL is not configured");
+  });
+
+  it("retries Meta independently without re-running successful Twenty effects", async () => {
+    const upsertTwentyPerson = vi
+      .fn()
+      .mockResolvedValue({ personId: "person_123" });
+    const sendMetaLead = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("temporary Meta outage"))
+      .mockResolvedValueOnce({ eventsReceived: 1 });
+
+    const result = await processFunnelEvent(event, {
+      upsertTwentyPerson,
+      sendMetaLead,
+      executeAdapter: retryImmediately(3),
+      log: { info: vi.fn() },
+    });
+
+    expect(result).toMatchObject({ ok: true, personId: "person_123" });
+    expect(upsertTwentyPerson).toHaveBeenCalledOnce();
+    expect(sendMetaLead).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries a delayed booking prerequisite without repeating Person upsert", async () => {
+    const upsertTwentyPerson = vi
+      .fn()
+      .mockResolvedValue({ personId: "person_123" });
+    const recordTwentyBooking = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("Opportunity is not available yet"))
+      .mockResolvedValueOnce({
+        activityId: "booking_activity_123",
+        opportunityId: "opportunity_123",
+      });
+    const sendMetaSchedule = vi.fn().mockResolvedValue({ eventsReceived: 1 });
+
+    const result = await processFunnelEvent(bookingEvent, {
+      upsertTwentyPerson,
+      recordTwentyBooking,
+      sendMetaSchedule,
+      sendMetaLead: vi.fn(),
+      executeAdapter: retryImmediately(3),
+      log: { info: vi.fn() },
+    });
+
+    expect(result).toMatchObject({
+      activityId: "booking_activity_123",
+      opportunityId: "opportunity_123",
+    });
+    expect(upsertTwentyPerson).toHaveBeenCalledOnce();
+    expect(recordTwentyBooking).toHaveBeenCalledTimes(2);
+    expect(sendMetaSchedule).toHaveBeenCalledOnce();
+  });
+
+  it("alerts Slack with redacted run identifiers after Twenty retry exhaustion", async () => {
+    const slackBodies: Array<Record<string, unknown>> = [];
+    let slackAttempts = 0;
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = String(input);
+      if (url === "https://hooks.slack.test/twenty-failures") {
+        slackAttempts += 1;
+        if (slackAttempts === 1) {
+          return new Response("temporary Slack outage", { status: 503 });
+        }
+        slackBodies.push(JSON.parse(String(init?.body)));
+        return new Response(null, { status: 200 });
+      }
+      return new Response("temporary Twenty outage", { status: 503 });
+    });
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      {
+        fetch: fetchMock,
+        log: { info: vi.fn() },
+        executeAdapter: retryImmediately(3),
+        run: {
+          id: "run_01recovery",
+          url: "https://cloud.trigger.dev/projects/v3/proj_test/dev/runs/run_01recovery",
+        },
+      },
+    );
+
+    await expect(processFunnelEvent(event, dependencies)).rejects.toThrow(
+      "Twenty person lookup failed",
+    );
+
+    expect(slackBodies).toHaveLength(1);
+    expect(slackAttempts).toBe(2);
+    const alert = JSON.stringify(slackBodies[0]);
+    expect(alert).toContain("upsert_person");
+    expect(alert).toContain(event.submissionId);
+    expect(alert).toContain(event.eventId);
+    expect(alert).toContain("run_01recovery");
+    expect(alert).toContain("preview");
+    expect(alert).not.toContain(event.payload.email);
+    expect(alert).not.toContain(event.payload.phone);
+    expect(alert).not.toContain(event.payload.firstName);
+  });
+
+  it("replays contact delivery without duplicating the Person or Meta identity", async () => {
+    let personId: string | undefined;
+    let personCreates = 0;
+    const metaEventIds: string[] = [];
+    const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+      const url = String(input);
+      if (url === "https://twenty.sandbox.example/graphql") {
+        return Response.json({
+          data: {
+            people: {
+              edges: personId ? [{ node: { id: personId } }] : [],
+            },
+          },
+        });
+      }
+      if (url === "https://twenty.sandbox.example/rest/people") {
+        personCreates += 1;
+        personId = "person_replay_safe";
+        return Response.json({ data: { createPerson: { id: personId } } });
+      }
+      if (url.endsWith("/rest/people/person_replay_safe")) {
+        return Response.json({ data: { updatePerson: { id: personId } } });
+      }
+      if (url.includes("graph.facebook.com")) {
+        const body = JSON.parse(String(init?.body)) as {
+          data: Array<{ event_id: string }>;
+        };
+        metaEventIds.push(body.data[0]!.event_id);
+        return Response.json({ events_received: 1 });
+      }
+      throw new Error(`Unexpected request: ${url}`);
+    });
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const first = await processFunnelEvent(event, dependencies);
+    const replay = await processFunnelEvent(event, dependencies);
+
+    expect(first.personId).toBe("person_replay_safe");
+    expect(replay.personId).toBe("person_replay_safe");
+    expect(personCreates).toBe(1);
+    expect(metaEventIds).toEqual([event.eventId, event.eventId]);
+  });
+
+  it("replays an application after Meta recovery without duplicating Twenty records", async () => {
+    let personId: string | undefined;
+    let activityId: string | undefined;
+    let opportunityId: string | undefined;
+    let personCreates = 0;
+    let activityCreates = 0;
+    let opportunityCreates = 0;
+    const upsertTwentyPerson = vi.fn(async () => {
+      if (!personId) {
+        personCreates += 1;
+        personId = "person_recovered";
+      }
+      return { personId };
+    });
+    const recordTwentyApplication = vi.fn(async () => {
+      if (!activityId) {
+        activityCreates += 1;
+        activityId = qualifiedApplicationEvent.submissionId;
+      }
+      if (!opportunityId) {
+        opportunityCreates += 1;
+        opportunityId = "opportunity_recovered";
+      }
+      return { activityId, opportunityId };
+    });
+    const metaEventIds: string[] = [];
+    const sendMetaApplication = vi.fn(async (deliveredEvent) => {
+      metaEventIds.push(deliveredEvent.eventId);
+      if (metaEventIds.length === 1) {
+        throw new Error("Meta unavailable");
+      }
+      return { eventsReceived: 1 };
+    });
+    const dependencies = {
+      upsertTwentyPerson,
+      recordTwentyApplication,
+      sendMetaApplication,
+      sendMetaLead: vi.fn(),
+      executeAdapter: retryImmediately(1),
+      log: { info: vi.fn() },
+    };
+
+    await expect(
+      processFunnelEvent(qualifiedApplicationEvent, dependencies),
+    ).rejects.toThrow("Meta unavailable");
+    const recovered = await processFunnelEvent(
+      qualifiedApplicationEvent,
+      dependencies,
+    );
+
+    expect(recovered).toMatchObject({
+      personId: "person_recovered",
+      activityId: qualifiedApplicationEvent.submissionId,
+      opportunityId: "opportunity_recovered",
+      metaEventId: qualifiedApplicationEvent.eventId,
+    });
+    expect(upsertTwentyPerson).toHaveBeenCalledTimes(2);
+    expect(recordTwentyApplication).toHaveBeenCalledTimes(2);
+    expect(personCreates).toBe(1);
+    expect(activityCreates).toBe(1);
+    expect(opportunityCreates).toBe(1);
+    expect(metaEventIds).toEqual([
+      qualifiedApplicationEvent.eventId,
+      qualifiedApplicationEvent.eventId,
+    ]);
+  });
+
+  it("advances the matching Opportunity and emits Schedule for a verified booking", async () => {
+    const upsertTwentyPerson = vi
+      .fn()
+      .mockResolvedValue({ personId: "person_123" });
+    const recordTwentyBooking = vi.fn().mockResolvedValue({
+      activityId: bookingEvent.payload.booking.uid,
+      opportunityId: "opportunity_123",
+    });
+    const sendMetaSchedule = vi.fn().mockResolvedValue({ eventsReceived: 1 });
+
+    const result = await processFunnelEvent(bookingEvent, {
+      upsertTwentyPerson,
+      recordTwentyBooking,
+      sendMetaSchedule,
+      sendMetaLead: vi.fn(),
+      log: { info: vi.fn() },
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      personId: "person_123",
+      activityId: "cal_booking_123",
+      opportunityId: "opportunity_123",
+      metaEventId: "booking_completed:cal_booking_123",
+    });
+    expect(recordTwentyBooking).toHaveBeenCalledWith(
+      bookingEvent,
+      "person_123",
+    );
+    expect(sendMetaSchedule).toHaveBeenCalledWith(bookingEvent);
+  });
+
+  it("writes a stable booking activity, advances Call Booked, and sends the matching CAPI event", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunities: {
+              edges: [
+                {
+                  node: {
+                    id: "opportunity_qualified",
+                    stage: "QUALIFIED_AWAITING_BOOKING",
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_CALL_BOOKED_STAGE_VALUE: "CALL_BOOKED",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_TEST_EVENT_CODE: "LAWYER_TEST",
+        META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(bookingEvent, dependencies);
+
+    expect(result).toMatchObject({
+      activityId: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
+      opportunityId: "opportunity_qualified",
+      metaEventId: bookingEvent.eventId,
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
+      id: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
+      title: "Booking cal_booking_123",
+      bodyV2: {
+        markdown: expect.stringContaining(
+          "Creative Multiplier Sprint Fit Call",
+        ),
+      },
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
+      id: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
+      noteId: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
+      targetPersonId: "person_existing",
+    });
+    expect(fetchMock.mock.calls[5]?.[1]?.method).toBe("PATCH");
+    expect(JSON.parse(String(fetchMock.mock.calls[5]?.[1]?.body))).toEqual({
+      stage: "CALL_BOOKED",
+    });
+    const metaBody = JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body));
+    expect(metaBody.data).toEqual([
+      expect.objectContaining({
+        event_name: "Schedule",
+        event_id: bookingEvent.eventId,
+      }),
+    ]);
+    expect(metaBody.test_event_code).toBe("LAWYER_TEST");
+  });
+
+  it("replays a booking without duplicating its activity or Meta identity", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunities: {
+              edges: [
+                {
+                  node: {
+                    id: "opportunity_qualified",
+                    stage: "QUALIFIED_AWAITING_BOOKING",
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_CALL_BOOKED_STAGE_VALUE: "CALL_BOOKED",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(bookingEvent, dependencies);
+
+    expect(result).toMatchObject({
+      activityId: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
+      opportunityId: "opportunity_qualified",
+      metaEventId: bookingEvent.eventId,
+    });
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body)),
+    ).toMatchObject({ id: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80" });
+    expect(JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)).data).toEqual(
+      [expect.objectContaining({ event_id: bookingEvent.eventId })],
+    );
+  });
+
+  it("accepts an application before contact by upserting its Person prerequisite", async () => {
+    const upsertTwentyPerson = vi
+      .fn()
+      .mockResolvedValue({ personId: "person_123" });
+    const recordTwentyApplication = vi.fn().mockResolvedValue({
+      activityId: applicationEvent.submissionId,
+    });
+    const sendMetaApplication = vi
+      .fn()
+      .mockResolvedValue({ eventsReceived: 1 });
+
+    const result = await processFunnelEvent(applicationEvent, {
+      upsertTwentyPerson,
+      recordTwentyApplication,
+      sendMetaApplication,
+      sendMetaLead: vi.fn(),
+      log: { info: vi.fn() },
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      personId: "person_123",
+      activityId: applicationEvent.submissionId,
+      metaEventId: applicationEvent.eventId,
+    });
+    expect(recordTwentyApplication).toHaveBeenCalledWith(
+      applicationEvent,
+      "person_123",
+    );
+    expect(sendMetaApplication).toHaveBeenCalledOnce();
+    expect(sendMetaApplication).toHaveBeenCalledWith(applicationEvent);
+  });
+
+  it("persists an unqualified application without creating an Opportunity", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ data: { updatePerson: { id: "person_existing" } } }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            companies: { edges: [{ node: { id: "company_brand" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { createNote: { id: applicationEvent.submissionId } },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { createNoteTarget: { id: applicationEvent.submissionId } },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(applicationEvent, dependencies);
+
+    expect(result).toMatchObject({
+      activityId: applicationEvent.submissionId,
+      personId: "person_existing",
+    });
+    expect(result).not.toHaveProperty("opportunityId");
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+    const requests = fetchMock.mock.calls.map(([url, init]) => ({
+      url: String(url),
+      method: init?.method,
+      body: init?.body ? JSON.parse(String(init.body)) : undefined,
+    }));
+    expect(requests).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("opportunities"),
+        }),
+      ]),
+    );
+    expect(requests).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("/rest/companies"),
+          method: "POST",
+        }),
+      ]),
+    );
+    expect(requests[2]?.body).toMatchObject({
+      variables: { domainUrl: "https://brand.com" },
+    });
+    expect(requests[3]?.body).toMatchObject({
+      id: applicationEvent.submissionId,
+      title: `Application ${applicationEvent.submissionId}`,
+      bodyV2: {
+        markdown: expect.stringContaining(
+          '"paidSocialSpend": "Less than $20k/month"',
+        ),
+      },
+    });
+    expect(requests[4]?.body).toEqual({
+      id: applicationEvent.submissionId,
+      noteId: applicationEvent.submissionId,
+      targetPersonId: "person_existing",
+    });
+    expect(requests[5]?.body.data).toEqual([
+      expect.objectContaining({
+        event_name: "SubmitApplication",
+        event_id: applicationEvent.eventId,
+        custom_data: { qualification_status: "unqualified" },
+      }),
+    ]);
+    expect(JSON.stringify(requests[5]?.body)).not.toContain(
+      applicationEvent.payload.application.paidSocialSpend,
+    );
+  });
+
+  it("creates an awaiting-booking Opportunity for a qualified application", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ data: { updatePerson: { id: "person_existing" } } }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            companies: { edges: [{ node: { id: "company_brand" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: { createNote: {} } }))
+      .mockResolvedValueOnce(Response.json({ data: { createNoteTarget: {} } }))
+      .mockResolvedValueOnce(
+        Response.json({ data: { opportunities: { edges: [] } } }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { createOpportunity: { id: "opportunity_new" } },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_QUALIFIED_STAGE_VALUE: "QUALIFIED_AWAITING_BOOKING",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(
+      qualifiedApplicationEvent,
+      dependencies,
+    );
+
+    expect(result).toMatchObject({ opportunityId: "opportunity_new" });
+    const opportunityLookup = JSON.parse(
+      String(fetchMock.mock.calls[5]?.[1]?.body),
+    );
+    expect(opportunityLookup).toMatchObject({
+      variables: { personId: "person_existing" },
+    });
+    const [createUrl, createInit] = fetchMock.mock.calls[6]!;
+    expect(String(createUrl)).toBe(
+      "https://twenty.sandbox.example/rest/opportunities",
+    );
+    expect(createInit?.method).toBe("POST");
+    expect(JSON.parse(String(createInit?.body))).toEqual({
+      id: "400953f0-8304-58d1-a36e-afe0e2282e9d",
+      name: "Creative Multiplier Sprint – brand.com",
+      stage: "QUALIFIED_AWAITING_BOOKING",
+      pointOfContactId: "person_existing",
+      companyId: "company_brand",
+      brandUrl: {
+        primaryLinkUrl: "https://www.brand.com/products",
+        primaryLinkLabel: "www.brand.com",
+        secondaryLinks: null,
+      },
+      paidSocialSpend: "FROM_50K_TO_150K_MONTH",
+      winnerStatus: "SEVERAL_WINNERS",
+      platforms: ["META", "TIKTOK"],
+      deliveryTimeline: "NEXT_2_WEEKS",
+    });
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
+    ).toMatchObject({ id: "400953f0-8304-58d1-a36e-afe0e2282e9d" });
+  });
+
+  it("updates the existing open Opportunity for a repeat qualified application", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            companies: { edges: [{ node: { id: "company_brand" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json(
+          { messages: ["A duplicate entry was detected"] },
+          { status: 400 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        Response.json(
+          { messages: ["A duplicate entry was detected"] },
+          { status: 400 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunities: {
+              edges: [
+                {
+                  node: {
+                    id: "opportunity_open",
+                    stage: "CALL_BOOKED",
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_QUALIFIED_STAGE_VALUE: "QUALIFIED_AWAITING_BOOKING",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(
+      qualifiedApplicationEvent,
+      dependencies,
+    );
+
+    expect(result).toMatchObject({ opportunityId: "opportunity_open" });
+    const [updateUrl, updateInit] = fetchMock.mock.calls[6]!;
+    expect(String(updateUrl)).toBe(
+      "https://twenty.sandbox.example/rest/opportunities/opportunity_open",
+    );
+    expect(updateInit?.method).toBe("PATCH");
+    expect(JSON.parse(String(updateInit?.body))).not.toHaveProperty("stage");
+  });
+
+  it("creates a new Opportunity when all prior Opportunities are closed", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(
+        Response.json({ data: { companies: { edges: [] } } }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunities: {
+              edges: [{ node: { id: "opportunity_won", stage: "WON" } }],
+              pageInfo: { hasNextPage: true, endCursor: "page_2" },
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunities: {
+              edges: [{ node: { id: "opportunity_lost", stage: "LOST" } }],
+              pageInfo: { hasNextPage: false },
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { createOpportunity: { id: "opportunity_new_attempt" } },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_QUALIFIED_STAGE_VALUE: "QUALIFIED_AWAITING_BOOKING",
+        TWENTY_CLOSED_STAGE_VALUES: "WON,LOST",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(
+      qualifiedApplicationEvent,
+      dependencies,
+    );
+
+    expect(result).toMatchObject({
+      opportunityId: "opportunity_new_attempt",
+    });
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
+    ).toMatchObject({ variables: { after: "page_2" } });
+    expect(fetchMock.mock.calls[7]?.[1]?.method).toBe("POST");
+  });
+
   it("upserts one Twenty person and sends the matching Meta Lead event", async () => {
     const upsertTwentyPerson = vi
       .fn()
@@ -86,6 +946,7 @@ describe("process-funnel-event", () => {
         META_PIXEL_ID: "pixel_123",
         META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
         META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
         PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
       },
       { fetch: fetchMock, log },
@@ -148,6 +1009,7 @@ describe("process-funnel-event", () => {
         META_PIXEL_ID: "pixel_123",
         META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
         META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
         PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
       },
       { fetch: fetchMock, log: { info: vi.fn() } },

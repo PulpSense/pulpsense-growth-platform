@@ -1,0 +1,18 @@
+export type FunnelRateLimitService = {
+  fetch(input: string, init?: RequestInit): Promise<Response>;
+};
+
+export type FunnelEnv = {
+  FUNNEL_RATE_LIMIT_SERVICE?: FunnelRateLimitService;
+  TURNSTILE_SECRET_KEY?: string;
+  SUBMISSION_SIGNING_SECRET?: string;
+  PULPSENSE_ENVIRONMENT?: "local" | "preview" | "production";
+  MILLION_VERIFIER_API_KEY?: string;
+  PULPSENSE_TRIGGER_API_ORIGIN?: string;
+  PULPSENSE_TRIGGER_SECRET_KEY?: string;
+  CAL_WEBHOOK_SECRET?: string;
+  CREATIVE_MULTIPLIER_SPRINT_CONTACT_TASK_ID?: string;
+  CREATIVE_MULTIPLIER_SPRINT_APPLICATION_TASK_ID?: string;
+  META_PIXEL_ID?: string;
+  META_CAPI_ACCESS_TOKEN?: string;
+};

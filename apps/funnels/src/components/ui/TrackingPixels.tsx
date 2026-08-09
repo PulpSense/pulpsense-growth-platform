@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
 type FacebookEvent = {
   name: string;
-  type?: 'standard' | 'custom';
+  type?: "standard" | "custom";
 };
 
 type PixelConfig = {
@@ -19,14 +19,18 @@ type PixelConfig = {
 
 type TrackingPixelsProps = {
   pixels: PixelConfig;
+  interactionReady?: boolean;
 };
 
-const interactionEvents = ['pointerdown', 'keydown', 'scroll', 'touchstart'];
+const interactionEvents = ["pointerdown", "keydown", "scroll", "touchstart"];
 
-const TrackingPixels = ({ pixels }: TrackingPixelsProps) => {
+const TrackingPixels = ({
+  pixels,
+  interactionReady = false,
+}: TrackingPixelsProps) => {
   const {
     facebookPixelId,
-    facebookEvents = [{ name: 'PageView', type: 'standard' }],
+    facebookEvents = [{ name: "PageView", type: "standard" }],
     googleAnalyticsId,
     googleEvents = [],
     tiktokPixelId,
@@ -45,13 +49,13 @@ const TrackingPixels = ({ pixels }: TrackingPixelsProps) => {
         fbq('init', ${JSON.stringify(facebookPixelId)});
         ${facebookEvents
           .map((event) =>
-            event.type === 'custom'
+            event.type === "custom"
               ? `fbq('trackCustom', ${JSON.stringify(event.name)});`
               : `fbq('track', ${JSON.stringify(event.name)});`,
           )
-          .join('\n')}
+          .join("\n")}
       `
-      : '',
+      : "",
     googleAnalyticsId
       ? `
         const gtagScript = document.createElement('script');
@@ -62,9 +66,9 @@ const TrackingPixels = ({ pixels }: TrackingPixelsProps) => {
         function gtag(){dataLayer.push(arguments)}
         gtag('js', new Date());
         gtag('config', ${JSON.stringify(googleAnalyticsId)});
-        ${googleEvents.map((event) => `gtag('event', ${JSON.stringify(event)});`).join('\n')}
+        ${googleEvents.map((event) => `gtag('event', ${JSON.stringify(event)});`).join("\n")}
       `
-      : '',
+      : "",
     tiktokPixelId
       ? `
         !function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];
@@ -75,10 +79,10 @@ const TrackingPixels = ({ pixels }: TrackingPixelsProps) => {
         ttq._i=ttq._i||{};ttq._i[e]=[];var s=d.createElement('script');s.async=!0;s.src=n+'?sdkid='+e+'&lib='+t;
         var a=d.getElementsByTagName('script')[0];a.parentNode.insertBefore(s,a)};
         ttq.load(${JSON.stringify(tiktokPixelId)});ttq.page();
-        ${tiktokEvents.map((event) => `ttq.track(${JSON.stringify(event)});`).join('\n')}
+        ${tiktokEvents.map((event) => `ttq.track(${JSON.stringify(event)});`).join("\n")}
         }(window,document,'ttq');
       `
-      : '',
+      : "",
     linkedinPartnerId
       ? `
         window._linkedin_partner_id = ${JSON.stringify(linkedinPartnerId)};
@@ -91,19 +95,33 @@ const TrackingPixels = ({ pixels }: TrackingPixelsProps) => {
         linkedInScript.src = 'https://snap.licdn.com/li.lms-analytics/insight.min.js';
         document.head.appendChild(linkedInScript);
       `
-      : '',
-  ].join('\n');
+      : "",
+  ].join("\n");
 
   useEffect(() => {
     if (!vendorCode.trim()) return;
 
     let loaded = false;
+    let idleCallbackId: number | undefined;
+    let timeoutId: number | undefined;
+    const cancelScheduledLoad = () => {
+      if (idleCallbackId !== undefined) {
+        window.cancelIdleCallback(idleCallbackId);
+        idleCallbackId = undefined;
+      }
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+        timeoutId = undefined;
+      }
+    };
     const load = () => {
       if (loaded) return;
       loaded = true;
+      cancelScheduledLoad();
 
-      const script = document.createElement('script');
+      const script = document.createElement("script");
       script.text = vendorCode;
+      script.dataset.pulpsenseTracking = "true";
       document.head.appendChild(script);
 
       for (const eventName of interactionEvents) {
@@ -111,30 +129,39 @@ const TrackingPixels = ({ pixels }: TrackingPixelsProps) => {
       }
     };
 
+    if (interactionReady) {
+      load();
+      return cancelScheduledLoad;
+    }
+
     for (const eventName of interactionEvents) {
       window.addEventListener(eventName, load, { once: true, passive: true });
     }
+    if (window.requestIdleCallback) {
+      idleCallbackId = window.requestIdleCallback(load, { timeout: 2_000 });
+    } else {
+      timeoutId = window.setTimeout(load, 2_000);
+    }
 
     return () => {
+      cancelScheduledLoad();
       for (const eventName of interactionEvents) {
         window.removeEventListener(eventName, load);
       }
     };
-  }, [vendorCode]);
+  }, [interactionReady, vendorCode]);
 
-  return (
-    facebookPixelId ? (
-      <noscript>
-        <img
-          height="1"
-          width="1"
-          style={{ display: 'none' }}
-          src={`https://www.facebook.com/tr?id=${facebookPixelId}&ev=${facebookEvents[0]?.name ?? 'PageView'}&noscript=1`}
-          alt=""
-        />
-      </noscript>
-    ) : null
-  );
+  return facebookPixelId ? (
+    <noscript>
+      <img
+        height="1"
+        width="1"
+        style={{ display: "none" }}
+        src={`https://www.facebook.com/tr?id=${facebookPixelId}&ev=${facebookEvents[0]?.name ?? "PageView"}&noscript=1`}
+        alt=""
+      />
+    </noscript>
+  ) : null;
 };
 
 export { TrackingPixels };

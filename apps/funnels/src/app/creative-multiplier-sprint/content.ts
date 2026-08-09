@@ -1,4 +1,5 @@
 import type { MultiStepFormConfig } from '@/components/ui/MultiStepForm';
+import type { DeploymentEnvironment } from './preview-config';
 
 export const cta = {
   href: '#apply',
@@ -10,14 +11,10 @@ export const secondaryCta = {
   text: 'Watch examples',
 };
 
-export const formConfig: MultiStepFormConfig = {
+const baseFormConfig: MultiStepFormConfig = {
   funnelId: 'creative-multiplier-sprint',
   qualifiedRedirect: '/creative-multiplier-sprint/thank-you',
   unqualifiedRedirect: '/creative-multiplier-sprint/unqualified',
-  qualificationRules: [
-    { field: 'paidSocialSpend', disqualifyValues: ['Less than $20k/month'] },
-    { field: 'winnerStatus', disqualifyValues: ['No proven winner yet'] },
-  ],
   steps: [
     {
       type: 'contact',
@@ -111,6 +108,40 @@ export const formConfig: MultiStepFormConfig = {
     },
   ],
 };
+
+export function createFormConfig({
+  environment = 'local',
+  calLink,
+  calNamespace,
+}: {
+  environment?: DeploymentEnvironment;
+  calLink?: string;
+  calNamespace?: string;
+} = {}): MultiStepFormConfig {
+  const configuredCalLink = calLink?.trim();
+  if (environment === 'preview' && !configuredCalLink) {
+    throw new Error(
+      'PUBLIC_CAL_LINK is required for preview builds so booking cannot fall back to the production destination.',
+    );
+  }
+  if (!configuredCalLink) return baseFormConfig;
+
+  return {
+    ...baseFormConfig,
+    steps: baseFormConfig.steps.map((step) =>
+      step.type === 'cal'
+        ? {
+            ...step,
+            calLink: configuredCalLink,
+            namespace:
+              calNamespace?.trim() || configuredCalLink.split('/').at(-1),
+          }
+        : step,
+    ),
+  };
+}
+
+export const formConfig = createFormConfig();
 
 export const creativeMultiplierContent = {
   banner: 'Founder-led sprint capacity is limited. Price discussed on the fit call.',

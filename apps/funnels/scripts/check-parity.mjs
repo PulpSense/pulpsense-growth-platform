@@ -26,7 +26,9 @@ const configuredPort = process.env.PARITY_CHECK_PORT
   : undefined;
 if (
   configuredPort !== undefined &&
-  (!Number.isInteger(configuredPort) || configuredPort < 1 || configuredPort > 65535)
+  (!Number.isInteger(configuredPort) ||
+    configuredPort < 1 ||
+    configuredPort > 65535)
 ) {
   throw new Error("PARITY_CHECK_PORT must be an integer from 1 to 65535");
 }
@@ -58,7 +60,7 @@ let landerHtml = "";
 async function postJson(path, body) {
   return fetch(`${origin}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Origin: origin },
     body: JSON.stringify(body),
   });
 }
@@ -72,6 +74,10 @@ const server = externalOrigin
         "pages",
         "dev",
         "dist",
+        "-c",
+        "wrangler.toml",
+        "-c",
+        "../rate-limiter/wrangler.toml",
         "--ip",
         host,
         "--port",
@@ -102,7 +108,9 @@ async function waitUntilReady() {
 
   while (Date.now() < deadline) {
     if (server && server.exitCode !== null) {
-      throw new Error(`Cloudflare Pages exited before becoming ready.\n${serverOutput}`);
+      throw new Error(
+        `Cloudflare Pages exited before becoming ready.\n${serverOutput}`,
+      );
     }
 
     try {
@@ -189,6 +197,7 @@ try {
     assert.equal(personalEmailResponse.status, 200);
     assert.deepEqual(await personalEmailResponse.json(), {
       valid: false,
+      status: "invalid",
       result: "non_business_email",
     });
 
@@ -198,7 +207,8 @@ try {
     assert.equal(sandboxEmailResponse.status, 200);
     assert.deepEqual(await sandboxEmailResponse.json(), {
       valid: true,
-      result: "skipped",
+      status: "unverified",
+      result: "provider_error",
     });
 
     const unknownEventResponse = await postJson("/api/form-submit", {

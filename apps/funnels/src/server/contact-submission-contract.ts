@@ -9,7 +9,7 @@ import { z } from "zod";
 const retryIdentitySchema = z
   .object({
     submissionId: z.uuid(),
-    token: z.string().min(1).max(512),
+    token: z.string().min(1).max(4096),
   })
   .strict();
 
@@ -27,6 +27,7 @@ export const contactSubmissionRequestSchema = z
     referrer: z.url().max(2048).optional(),
     fbp: z.string().max(255).optional(),
     fbc: z.string().max(255).optional(),
+    analyticsId: z.uuid().optional(),
   })
   .strict();
 

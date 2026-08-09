@@ -71,25 +71,28 @@ For every route above, confirm:
   - winning-ad status is `No proven winner yet`.
 - Advancing sends `application_submitted` with `qualified` and `qualificationStatus`, then emits Meta `SubmitApplication` once per mounted form.
 - An unqualified applicant is redirected immediately to `/creative-multiplier-sprint/unqualified` and never sees the booking step.
-- A qualified applicant advances to the Cal.com step.
+- Only a server-qualified applicant with a verified business email receives the signed identity required to advance to the Cal.com step.
 
 ### Step 3 — qualified booking
 
 - The embedded event is `santileoni/growth-mapping-funnel`, namespaced `growth-mapping-funnel`, using the dark month view.
 - Contact and qualification answers prefill the booking widget where Cal.com accepts them.
-- A `bookingSuccessful` event sends `booking_completed` with booking UID/date/title and the captured form data.
-- A qualified booking emits Meta `Schedule` once and redirects to `/creative-multiplier-sprint/thank-you`.
+- A `bookingSuccessful` browser event redirects to `/creative-multiplier-sprint/thank-you` for immediate UX only.
+- Cal's signed `BOOKING_CREATED` webhook is the sole source of `booking_completed`, Twenty stage advancement, and Meta `Schedule`.
+- The booking UID determines the durable event ID and the idempotent Twenty booking activity identity.
 - The Back control returns to qualification without clearing the mounted form state.
 
 ## Attribution and tracking behavior
 
-- `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, and `utm_term` are captured from the initial URL and appended to lifecycle payloads.
-- Meta Pixel `828948073514575` loads after interaction and emits `PageView` on the lander.
-- Browser Pixel and `/api/meta-capi` use the same generated event ID for `Lead`, `SubmitApplication`, and `Schedule` deduplication.
+- First-touch and last-touch attribution retain campaign parameters, supported ad click IDs, query-free landing URLs, and query-free referrers across contact, application, and verified booking events.
+- Meta Pixel `828948073514575` loads after the first interaction or a two-second idle fallback and emits `PageView` on the lander.
+- Browser Pixel and durable CAPI use the same generated event ID for `Lead` and `SubmitApplication`; verified `Schedule` is server-only and uses `booking_completed:{calBookingUid}`.
 - Meta CAPI hashes email and phone, includes request IP/user agent plus `_fbc`/`_fbp` when available, and forwards custom event data.
 - As of this checkpoint, `SubmitApplication` custom data includes `qualification_status`, `paid_social_spend`, and `winner_status`. This is a parity fact, not an endorsement of the later target design.
-- `/api/form-submit` accepts only `contact_submitted`, `application_submitted`, and `booking_completed`, selects the task ID by funnel ID and event, and forwards the current payload shape to Trigger.dev.
-- Form lifecycle delivery and Meta CAPI delivery are currently best-effort in the browser. A failed request does not block the visitor's next step or redirect.
+- `/api/funnel-events` accepts contact and application events. `/api/form-submit` rejects browser-submitted `booking_completed`, and `/api/meta-capi` rejects browser-originated `Schedule`.
+- `/api/webhooks/cal` verifies `x-cal-signature-256`, the signed qualified submission identity, environment, and attendee email before enqueueing a booking event.
+- PostHog receives allowlisted funnel-view, step, validation, qualification-outcome, CTA, media, and booking-interaction events after visitor interaction; lifecycle processing separately emits redacted contact, application, and verified-booking events under the same anonymous analytics ID.
+- PostHog payloads never include email, phone, names, free text, brand URLs, or raw application answers. Browser delivery failures raise `pulpsense:analytics-failure`; automation delivery failures produce redacted run logs without interrupting the journey.
 
 ## Manual parity sign-off
 
@@ -102,7 +105,7 @@ For every route above, confirm:
 - [ ] Missing winning-ad proof redirects to the unqualified page.
 - [ ] Successful booking reaches the qualified thank-you page.
 - [ ] Lifecycle payloads retain form fields, country-coded phone, timestamps, funnel ID, and captured UTM values.
-- [ ] PageView, Lead, SubmitApplication, and Schedule fire at the same journey points and preserve shared Pixel/CAPI event IDs.
+- [ ] PageView, Lead, and SubmitApplication fire at the same journey points; Schedule fires only after the authenticated Cal webhook with a booking-UID-derived event ID.
 - [ ] All three public pages and `robots.txt` retain crawler blocking.
 - [ ] No copy, qualification rule, redirect, booking link, media, or responsive interaction changed during the monorepo move.
 
@@ -113,7 +116,7 @@ For every route above, confirm:
 - Executable production HTTP parity check: passed for all three public pages and `robots.txt`.
 - Automation TypeScript: passed.
 - Production response checks: all three public funnel routes returned 200 with the expected robots metadata and `X-Robots-Tag`; `/robots.txt` returned the disallow-all policy.
-- Trigger.dev local worker: registered `health-check` in version `20260808.1` on the `default` dev branch.
+- Trigger.dev Development worker: registered `health-check` in version `20260808.1`.
 - Harmless run `run_06fu42eqjmsg2p255dnedj4t01`: completed successfully in 5 ms with `ok: true` and message `Issue #80 checkpoint`.
 
 ## Astro preview verification — 2026-08-08
@@ -126,4 +129,4 @@ For every route above, confirm:
 - Browser console checks returned no errors or warnings.
 - The executable parity check passed against the public preview for all three routes, six narrow React island exports, three sandbox API fallbacks, and `robots.txt`.
 - The preview response includes `X-Robots-Tag: noindex, nofollow, noarchive, noimageindex`; each page includes noindex metadata; `robots.txt` disallows all crawling.
-- The deployment has no production Pixel ID or runtime credentials. Browser Meta tracking is absent unless a non-production `PUBLIC_META_PIXEL_ID` is supplied at build time.
+- The historical deployment had no production Pixel ID or runtime credentials. Current preview builds instead require an explicit non-production `PUBLIC_META_PIXEL_ID` and `PUBLIC_CAL_LINK`, reject the known production Pixel ID, and exercise passive `PageView` loading through the idle fallback.

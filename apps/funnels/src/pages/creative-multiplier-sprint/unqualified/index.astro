@@ -1,5 +1,6 @@
 ---
 import { SprintThankYouPage } from "@/app/creative-multiplier-sprint/_components/SprintThankYouPage";
+import { FunnelAnalytics } from "@/components/ui";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 ---
 
@@ -7,5 +8,12 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
   title="Application Received | Creative Multiplier Sprint"
   description="Your Creative Multiplier Sprint application has been received."
 >
+  <FunnelAnalytics
+    client:interaction
+    apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
+    host={import.meta.env.PUBLIC_POSTHOG_HOST}
+    funnelId="creative-multiplier-sprint"
+    page="unqualified"
+  />
   <SprintThankYouPage qualified={false} />
 </BaseLayout>

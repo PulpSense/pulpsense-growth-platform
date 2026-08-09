@@ -18,7 +18,8 @@ pnpm format              # Format the funnel app and workspace JSON/YAML
 ```text
 apps/
 ├── funnels/       # Request-time funnel application and public assets
-└── automations/   # Durable Trigger.dev workflows
+├── automations/   # Durable Trigger.dev workflows
+└── rate-limiter/  # Private Worker exposing Cloudflare's native limiter
 packages/
 └── contracts/     # Shared validated event schemas once both apps consume them
 ```
@@ -26,6 +27,7 @@ packages/
 Keep the deployment seam explicit:
 
 - The funnel host owns synchronous validation, qualification, redirects, request-scoped attribution, and durable-task enqueue confirmation.
+- The rate-limiter Worker owns native Cloudflare request limits and is reachable only through a Pages service binding.
 - Trigger.dev owns lead processing, downstream delivery, retries, enrichment, follow-ups, waits, and human-in-the-loop work.
 - Never trigger private tasks directly from untrusted browser code with a secret.
 
