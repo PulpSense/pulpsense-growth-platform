@@ -88,6 +88,7 @@ export function createPostHogLifecycleCapture(
           ...touchProperties("first", event.attribution.firstTouch),
           ...touchProperties("last", event.attribution.lastTouch),
           $process_person_profile: false,
+          $geoip_disable: true,
         },
       }),
     });

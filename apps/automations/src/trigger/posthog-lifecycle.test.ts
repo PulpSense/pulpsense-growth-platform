@@ -89,6 +89,7 @@ describe("createPostHogLifecycleCapture", () => {
         first_referrer_host: "partner.example",
         last_utm_source: "newsletter",
         $process_person_profile: false,
+        $geoip_disable: true,
       },
     });
     const serialized = JSON.stringify(body);

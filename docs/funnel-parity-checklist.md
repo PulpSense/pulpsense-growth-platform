@@ -92,7 +92,7 @@ For every route above, confirm:
 - `/api/funnel-events` accepts contact and application events. `/api/form-submit` rejects browser-submitted `booking_completed`, and `/api/meta-capi` rejects browser-originated `Schedule`.
 - `/api/webhooks/cal` verifies `x-cal-signature-256`, the signed qualified submission identity, environment, and attendee email before enqueueing a booking event.
 - PostHog receives allowlisted funnel-view, step, validation, qualification-outcome, CTA, media, and booking-interaction events after visitor interaction; lifecycle processing separately emits redacted contact, application, and verified-booking events under the same anonymous analytics ID.
-- PostHog payloads never include email, phone, names, free text, brand URLs, or raw application answers. Browser delivery failures raise `pulpsense:analytics-failure`; automation delivery failures produce redacted run logs without interrupting the journey.
+- PostHog payloads never include email, phone, names, free text, brand URLs, raw application answers, or GeoIP enrichment. Browser delivery failures raise `pulpsense:analytics-failure`; automation delivery failures produce redacted run logs without interrupting the journey.
 
 ## Manual parity sign-off
 
