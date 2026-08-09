@@ -39,7 +39,7 @@ A push to `master` reruns verification and then enters the GitHub `Production` e
 - the project owner as a required reviewer; and
 - prevention of self-review when a second authorized reviewer is available.
 
-The job cannot read its Cloudflare token or deploy until the environment is approved. Leave the Production environment variables and secret unset until the release qualification in #87 authorizes a production Pages project and destination credentials.
+The job cannot read its Cloudflare or Trigger.dev tokens or deploy until the environment is approved. A push to `master` verifies the candidate but does not create a production deployment. After release qualification and SHA-specific owner approval, dispatch the workflow from `master` with `deploy_production` enabled. The job validates the required Pages secret and Trigger.dev Production variable names without displaying their values, builds with production public configuration, and deploys through `wrangler.production.toml` so the production Pages project cannot bind the preview rate limiter.
 
 Once approved for launch, configure the same secret and public variables as Preview, plus:
 
@@ -48,7 +48,7 @@ Once approved for launch, configure the same secret and public variables as Prev
 | Variable | `CLOUDFLARE_PAGES_BRANCH`  | Production branch configured on the selected Pages project |
 | Variable | `CLOUDFLARE_PAGES_PROJECT` | Production Pages project name                              |
 
-Production can also be retried from **Actions → Cloudflare Pages → Run workflow** on `master` with `deploy_production` enabled. The protected environment approval still applies.
+Production is started from **Actions → Cloudflare Pages → Run workflow** on `master` with `deploy_production` enabled. The protected environment approval still applies. Follow [`release-runbook.md`](./release-runbook.md) for qualification, the exact approval statement, live checks, and the 30-minute rollback window.
 
 ## Required repository check
 

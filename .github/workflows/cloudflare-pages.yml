@@ -54,7 +54,7 @@ jobs:
       - name: Build Astro
         env:
           PUBLIC_PULPSENSE_ENVIRONMENT: preview
-          PUBLIC_META_PIXEL_ID: ci-preview-pixel
+          PUBLIC_META_PIXEL_ID: "123456789012345"
           PUBLIC_POSTHOG_KEY: phc_ci-preview
           PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
           PUBLIC_CAL_LINK: ci/preview
@@ -142,8 +142,9 @@ jobs:
     name: Deploy production
     needs: verify
     if: >-
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && inputs.deploy_production)
+      github.ref == 'refs/heads/master' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.deploy_production
     runs-on: ubuntu-latest
     environment:
       name: Production
@@ -185,6 +186,32 @@ jobs:
           test -n "$PUBLIC_POSTHOG_KEY" || { echo "Production PUBLIC_POSTHOG_KEY is not configured"; exit 1; }
           test -n "$PUBLIC_TURNSTILE_SITE_KEY" || { echo "Production PUBLIC_TURNSTILE_SITE_KEY is not configured"; exit 1; }
 
+      - name: Validate Production Pages secrets
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          configured_secrets="$(pnpm --filter @pulpsense/funnels exec wrangler pages secret list --project-name "$CLOUDFLARE_PAGES_PROJECT")"
+          for secret_name in CAL_WEBHOOK_SECRET MILLION_VERIFIER_API_KEY PULPSENSE_ENVIRONMENT PULPSENSE_TRIGGER_SECRET_KEY SUBMISSION_SIGNING_SECRET TURNSTILE_SECRET_KEY; do
+            if ! grep -q -- "- $secret_name:" <<<"$configured_secrets"; then
+              echo "Production Pages secret $secret_name is not configured"
+              exit 1
+            fi
+          done
+
+      - name: Validate Production automation variables
+        env:
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+        run: |
+          configured_variables="$(pnpm --filter @pulpsense/automations exec trigger env list --env prod --skip-telemetry)"
+          for variable_name in META_CAPI_ACCESS_TOKEN_AI_SEO_L META_GRAPH_API_VERSION META_PIXEL_ID_AI_SEO_L POSTHOG_HOST POSTHOG_PROJECT_KEY PULPSENSE_AUTOMATION_ENVIRONMENT SLACK_FAILURE_WEBHOOK_URL TWENTY_API_KEY TWENTY_API_ORIGIN TWENTY_CALL_BOOKED_STAGE_VALUE TWENTY_CLOSED_STAGE_VALUES TWENTY_QUALIFIED_STAGE_VALUE; do
+            if ! grep -q -- "$variable_name" <<<"$configured_variables"; then
+              echo "Trigger.dev Production variable $variable_name is not configured"
+              exit 1
+            fi
+          done
+
       - name: Build Production
         env:
           PUBLIC_PULPSENSE_ENVIRONMENT: production
@@ -206,7 +233,7 @@ jobs:
           packageManager: pnpm
           workingDirectory: apps/funnels
           wranglerVersion: "4.120.0"
-          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=${{ vars.CLOUDFLARE_PAGES_BRANCH }}
+          command: pages deploy dist --config=wrangler.production.toml --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=${{ vars.CLOUDFLARE_PAGES_BRANCH }}
 
       - name: Publish Production URL
         env:

@@ -40,7 +40,7 @@ PUBLIC_CAL_NAMESPACE=<preview-embed-namespace> \
 pnpm --filter @pulpsense/funnels deploy:preview
 ```
 
-`PUBLIC_META_PIXEL_ID`, `PUBLIC_POSTHOG_KEY`, and `PUBLIC_CAL_LINK` are mandatory in the GitHub preview deployment. The build rejects the known production Meta dataset, and the required Cal link prevents the preview from silently booking into the committed production destination. `PUBLIC_POSTHOG_HOST` defaults to the US ingestion host, and `PUBLIC_CAL_NAMESPACE` is optional when the preview event intentionally shares the default embed namespace.
+`PUBLIC_META_PIXEL_ID`, `PUBLIC_POSTHOG_KEY`, and `PUBLIC_CAL_LINK` are mandatory in the GitHub preview deployment. The build requires a numeric Pixel ID and rejects the known production Meta dataset; the required Cal link prevents the preview from silently booking into the committed production destination. `PUBLIC_POSTHOG_HOST` defaults to the US ingestion host, and `PUBLIC_CAL_NAMESPACE` is optional when the preview event intentionally shares the default embed namespace.
 
 The command targets project `pulpsense-funnels-preview` and branch `issue-81`. Do not attach a custom production domain or add production credentials to that project. Configure Pages Function secrets separately in the Pages preview environment; the public build values above are not secrets.
 

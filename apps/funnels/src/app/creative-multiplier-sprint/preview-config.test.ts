@@ -18,14 +18,23 @@ describe("createBrowserTrackingConfig", () => {
     ).toThrow("production Meta dataset");
   });
 
+  it("rejects a nonnumeric Meta Pixel ID", () => {
+    expect(() =>
+      createBrowserTrackingConfig({
+        environment: "preview",
+        metaPixelId: "cmslrzhox005fn90jxbpp5wgz",
+      }),
+    ).toThrow("valid numeric Meta Pixel ID");
+  });
+
   it("configures PageView against a sandbox dataset", () => {
     expect(
       createBrowserTrackingConfig({
         environment: "preview",
-        metaPixelId: "sandbox-pixel",
+        metaPixelId: "111111111111111",
       }),
     ).toEqual({
-      facebookPixelId: "sandbox-pixel",
+      facebookPixelId: "111111111111111",
       facebookEvents: [{ name: "PageView", type: "standard" }],
     });
   });
