@@ -5,9 +5,39 @@ import {
   type ContactSubmittedEvent,
   type FunnelEvent,
 } from "@pulpsense/contracts";
-import { logger, schemaTask } from "@trigger.dev/sdk";
+import { logger, retry, schemaTask } from "@trigger.dev/sdk";
 
 import { createPostHogLifecycleCapture } from "./posthog-lifecycle.js";
+
+type AdapterDestination = "twenty" | "meta" | "slack";
+
+type AdapterOperation =
+  | "upsert_person"
+  | "record_application"
+  | "record_booking"
+  | "deliver_lead"
+  | "deliver_application"
+  | "deliver_schedule"
+  | "alert_twenty_failure";
+
+type AdapterExecutionContext = {
+  destination: AdapterDestination;
+  operation: AdapterOperation;
+};
+
+export type AdapterExecutor = <Result>(
+  context: AdapterExecutionContext,
+  operation: () => Promise<Result>,
+) => Promise<Result>;
+
+type TwentyFailureContext = {
+  submissionId: string;
+  eventId: string;
+  eventType: FunnelEvent["eventType"];
+  funnelId: FunnelEvent["funnelId"];
+  environment: FunnelEvent["environment"];
+  operation: AdapterOperation;
+};
 
 type ProcessorDependencies = {
   assertEnvironment?(environment: FunnelEvent["environment"]): void;
@@ -30,9 +60,54 @@ type ProcessorDependencies = {
     event: BookingCompletedEvent,
   ): Promise<{ eventsReceived: number }>;
   capturePostHogLifecycle?(event: FunnelEvent): Promise<void>;
+  executeAdapter?: AdapterExecutor;
+  alertTwentyFailure?(context: TwentyFailureContext): Promise<void>;
   log: {
     info(message: string, data?: Record<string, unknown>): void;
   };
+};
+
+const executeAdapter = <Result>(
+  dependencies: ProcessorDependencies,
+  context: AdapterExecutionContext,
+  operation: () => Promise<Result>,
+) =>
+  dependencies.executeAdapter
+    ? dependencies.executeAdapter(context, operation)
+    : operation();
+
+const executeTwenty = async <Result>(
+  event: FunnelEvent,
+  dependencies: ProcessorDependencies,
+  operationName: AdapterOperation,
+  operation: () => Promise<Result>,
+) => {
+  try {
+    return await executeAdapter(
+      dependencies,
+      { destination: "twenty", operation: operationName },
+      operation,
+    );
+  } catch (error) {
+    try {
+      await dependencies.alertTwentyFailure?.({
+        submissionId: event.submissionId,
+        eventId: event.eventId,
+        eventType: event.eventType,
+        funnelId: event.funnelId,
+        environment: event.environment,
+        operation: operationName,
+      });
+    } catch {
+      dependencies.log.info("Twenty failure alert delivery failed", {
+        submissionId: event.submissionId,
+        eventId: event.eventId,
+        eventType: event.eventType,
+        operation: operationName,
+      });
+    }
+    throw error;
+  }
 };
 
 const capturePostHogSafely = async (
@@ -69,9 +144,23 @@ export async function processFunnelEvent(
       environment: event.environment,
     });
 
-    const { personId } = await dependencies.upsertTwentyPerson(event);
-    const booking = await dependencies.recordTwentyBooking(event, personId);
-    const { eventsReceived } = await dependencies.sendMetaSchedule(event);
+    const { personId } = await executeTwenty(
+      event,
+      dependencies,
+      "upsert_person",
+      () => dependencies.upsertTwentyPerson(event),
+    );
+    const booking = await executeTwenty(
+      event,
+      dependencies,
+      "record_booking",
+      () => dependencies.recordTwentyBooking!(event, personId),
+    );
+    const { eventsReceived } = await executeAdapter(
+      dependencies,
+      { destination: "meta", operation: "deliver_schedule" },
+      () => dependencies.sendMetaSchedule!(event),
+    );
     await capturePostHogSafely(event, dependencies);
 
     dependencies.log.info("Processed verified funnel booking", {
@@ -108,12 +197,23 @@ export async function processFunnelEvent(
       qualificationStatus: event.qualificationStatus,
     });
 
-    const { personId } = await dependencies.upsertTwentyPerson(event);
-    const application = await dependencies.recordTwentyApplication(
+    const { personId } = await executeTwenty(
       event,
-      personId,
+      dependencies,
+      "upsert_person",
+      () => dependencies.upsertTwentyPerson(event),
     );
-    const { eventsReceived } = await dependencies.sendMetaApplication(event);
+    const application = await executeTwenty(
+      event,
+      dependencies,
+      "record_application",
+      () => dependencies.recordTwentyApplication!(event, personId),
+    );
+    const { eventsReceived } = await executeAdapter(
+      dependencies,
+      { destination: "meta", operation: "deliver_application" },
+      () => dependencies.sendMetaApplication!(event),
+    );
     await capturePostHogSafely(event, dependencies);
 
     dependencies.log.info("Processed funnel application", {
@@ -146,8 +246,17 @@ export async function processFunnelEvent(
     emailVerificationStatus: event.payload.emailVerification.status,
   });
 
-  const { personId } = await dependencies.upsertTwentyPerson(event);
-  const { eventsReceived } = await dependencies.sendMetaLead(event);
+  const { personId } = await executeTwenty(
+    event,
+    dependencies,
+    "upsert_person",
+    () => dependencies.upsertTwentyPerson(event),
+  );
+  const { eventsReceived } = await executeAdapter(
+    dependencies,
+    { destination: "meta", operation: "deliver_lead" },
+    () => dependencies.sendMetaLead(event),
+  );
   await capturePostHogSafely(event, dependencies);
 
   dependencies.log.info("Processed funnel contact", {
@@ -176,6 +285,7 @@ type ProcessorEnvironment = {
   META_GRAPH_API_VERSION?: string;
   POSTHOG_PROJECT_KEY?: string;
   POSTHOG_HOST?: string;
+  SLACK_FAILURE_WEBHOOK_URL?: string;
   PULPSENSE_AUTOMATION_ENVIRONMENT?: FunnelEvent["environment"];
 };
 
@@ -528,6 +638,13 @@ const writeTwentyOpportunity = async (
       body: JSON.stringify(input),
     },
   );
+  if (
+    response.status === 409 &&
+    !opportunityId &&
+    typeof input.id === "string"
+  ) {
+    return input.id;
+  }
   if (!response.ok) {
     throw new Error(`Twenty opportunity write failed (${response.status})`);
   }
@@ -539,7 +656,9 @@ const writeTwentyOpportunity = async (
     };
   };
   const createdId =
-    result.data?.createOpportunity?.id ?? result.data?.opportunity?.id;
+    result.data?.createOpportunity?.id ??
+    result.data?.opportunity?.id ??
+    (typeof input.id === "string" ? input.id : undefined);
   if (!createdId) throw new Error("Twenty opportunity create omitted ID");
   return createdId;
 };
@@ -575,9 +694,13 @@ const recordTwentyApplication = async (
     personId,
     closedStageValues,
   );
+  const attemptOpportunityId = openOpportunity
+    ? undefined
+    : await deterministicUuid(`funnel-opportunity:${event.submissionId}`);
   const opportunityId = await writeTwentyOpportunity(
     client,
     {
+      ...(attemptOpportunityId ? { id: attemptOpportunityId } : {}),
       name: `Creative Multiplier Sprint – ${event.companyDomain}`,
       ...(openOpportunity ? {} : { stage }),
       pointOfContactId: personId,
@@ -752,7 +875,12 @@ const sendMetaSchedule = async (
 
 export function createProcessorDependencies(
   environment: ProcessorEnvironment,
-  runtime: { fetch: typeof fetch; log: ProcessorDependencies["log"] },
+  runtime: {
+    fetch: typeof fetch;
+    log: ProcessorDependencies["log"];
+    executeAdapter?: AdapterExecutor;
+    run?: { id: string; url: string };
+  },
 ): ProcessorDependencies {
   const twentyApiKey = required(environment.TWENTY_API_KEY, "TWENTY_API_KEY");
   const twentyOrigin = normalizeOrigin(
@@ -772,6 +900,10 @@ export function createProcessorDependencies(
     environment.PULPSENSE_AUTOMATION_ENVIRONMENT,
     "PULPSENSE_AUTOMATION_ENVIRONMENT",
   ) as ContactSubmittedEvent["environment"];
+  const slackFailureWebhookUrl = required(
+    environment.SLACK_FAILURE_WEBHOOK_URL,
+    "SLACK_FAILURE_WEBHOOK_URL",
+  );
   const twentyClient: TwentyClient = {
     fetch: runtime.fetch,
     origin: twentyOrigin,
@@ -792,6 +924,55 @@ export function createProcessorDependencies(
         { fetch: runtime.fetch },
       )
     : undefined;
+  const executeWithRetry: AdapterExecutor =
+    runtime.executeAdapter ??
+    ((context, operation) =>
+      retry.onThrow(
+        async ({ attempt }) => {
+          runtime.log.info("Running funnel destination adapter", {
+            destination: context.destination,
+            operation: context.operation,
+            attempt,
+          });
+          return operation();
+        },
+        {
+          maxAttempts: context.destination === "slack" ? 3 : 5,
+          factor: 2,
+          minTimeoutInMs: 1_000,
+          maxTimeoutInMs: 30_000,
+          randomize: true,
+        },
+      ));
+  const alertTwentyFailure = async (context: TwentyFailureContext) => {
+    const runReference = runtime.run
+      ? `<${runtime.run.url}|${runtime.run.id}>`
+      : "unavailable";
+    await executeWithRetry(
+      { destination: "slack", operation: "alert_twenty_failure" },
+      async () => {
+        const response = await runtime.fetch(slackFailureWebhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: [
+              ":rotating_light: Twenty delivery exhausted retries",
+              `Environment: ${context.environment}`,
+              `Funnel: ${context.funnelId}`,
+              `Event type: ${context.eventType}`,
+              `Submission: ${context.submissionId}`,
+              `Event: ${context.eventId}`,
+              `Operation: ${context.operation}`,
+              `Trigger.dev run: ${runReference}`,
+            ].join("\n"),
+          }),
+        });
+        if (!response.ok) {
+          throw new Error(`Slack alert delivery failed (${response.status})`);
+        }
+      },
+    );
+  };
 
   return {
     assertEnvironment: (eventEnvironment) => {
@@ -843,6 +1024,8 @@ export function createProcessorDependencies(
         metaToken,
         metaTestEventCode,
       ),
+    executeAdapter: executeWithRetry,
+    alertTwentyFailure,
     ...(capturePostHogLifecycle ? { capturePostHogLifecycle } : {}),
     log: runtime.log,
   };
@@ -855,13 +1038,11 @@ export const processFunnelEventTask = schemaTask({
   // Opportunity invariant. Revisit with a per-Person queue if volume requires.
   queue: { concurrencyLimit: 1 },
   retry: {
-    maxAttempts: 5,
-    factor: 2,
-    minTimeoutInMs: 1_000,
-    maxTimeoutInMs: 30_000,
-    randomize: true,
+    // Destination adapters retry independently inside the run. Keeping the
+    // outer task single-attempt avoids repeating an adapter that already won.
+    maxAttempts: 1,
   },
-  run: async (event) =>
+  run: async (event, { ctx }) =>
     processFunnelEvent(
       event,
       createProcessorDependencies(
@@ -877,12 +1058,20 @@ export const processFunnelEventTask = schemaTask({
           META_GRAPH_API_VERSION: process.env.META_GRAPH_API_VERSION,
           POSTHOG_PROJECT_KEY: process.env.POSTHOG_PROJECT_KEY,
           POSTHOG_HOST: process.env.POSTHOG_HOST,
+          SLACK_FAILURE_WEBHOOK_URL: process.env.SLACK_FAILURE_WEBHOOK_URL,
           PULPSENSE_AUTOMATION_ENVIRONMENT: process.env
             .PULPSENSE_AUTOMATION_ENVIRONMENT as
             | FunnelEvent["environment"]
             | undefined,
         },
-        { fetch, log: logger },
+        {
+          fetch,
+          log: logger,
+          run: {
+            id: ctx.run.id,
+            url: `https://cloud.trigger.dev/projects/v3/${encodeURIComponent(ctx.project.ref)}/${encodeURIComponent(ctx.environment.slug)}/runs/${encodeURIComponent(ctx.run.id)}`,
+          },
+        },
       ),
     ),
 });

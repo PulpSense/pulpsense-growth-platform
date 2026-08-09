@@ -15,6 +15,8 @@ The shared home for PulpSense background jobs, scheduled workflows, and durable 
 
 The starter task is `health-check`. The public funnel task is `process-funnel-event`; it validates the shared versioned contact/application/booking contract, upserts the Person in Twenty, records each completed application and verified Cal booking as an immutable Person Note, maintains the qualified Opportunity lifecycle, and delivers the matching Meta event.
 
+Twenty and Meta operations retry independently inside that one public task. Successful destination work is not re-run merely because the other destination has a transient failure; manual replays remain safe because People, activities, Opportunities, bookings, and Meta conversions use their natural stable identities. Configure `SLACK_FAILURE_WEBHOOK_URL` for redacted exhausted-Twenty alerts. The operator procedure and preview proof checklist are in [`docs/funnel-event-recovery.md`](../../docs/funnel-event-recovery.md).
+
 Preview deployments must set `PULPSENSE_AUTOMATION_ENVIRONMENT=preview` and use only sandbox Twenty and Meta credentials. The task rejects an event whose environment does not match its configured destinations.
 
 The current lawyer dataset uses `META_PIXEL_ID_AI_SEO_L`, `META_CAPI_ACCESS_TOKEN_AI_SEO_L`, and `META_TEST_EVENT_CODE_AI_SEO_L`. These scoped values take precedence over the legacy unsuffixed names, which remain supported as compatibility fallbacks. Set the scoped test event code only while validating against Meta Events Manager's Test Events view; leave it unset for ordinary dataset delivery.
