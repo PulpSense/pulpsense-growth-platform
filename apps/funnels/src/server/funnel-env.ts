@@ -1,7 +1,9 @@
+export type FunnelRateLimitService = {
+  fetch(input: string, init?: RequestInit): Promise<Response>;
+};
+
 export type FunnelEnv = {
-  FUNNEL_RATE_LIMITER?: {
-    limit(input: { key: string }): Promise<{ success: boolean }>;
-  };
+  FUNNEL_RATE_LIMIT_SERVICE?: FunnelRateLimitService;
   TURNSTILE_SECRET_KEY?: string;
   SUBMISSION_SIGNING_SECRET?: string;
   PULPSENSE_ENVIRONMENT?: "local" | "preview" | "production";

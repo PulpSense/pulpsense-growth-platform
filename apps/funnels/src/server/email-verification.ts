@@ -2,6 +2,7 @@ import { isBusinessEmail } from "@/utils/businessEmail";
 
 import type { FunnelEnv } from "./funnel-env";
 import { getClientIp, json, parseJson, rejectCrossOrigin } from "./http";
+import { consumeRateLimit } from "./rate-limit";
 
 export type EmailVerification = {
   status: "verified" | "unverified";
@@ -53,13 +54,14 @@ export async function handleVerifyEmail(request: Request, env: FunnelEnv) {
   const originError = rejectCrossOrigin(request);
   if (originError) return originError;
 
-  if (!env.FUNNEL_RATE_LIMITER) {
+  const rateLimit = await consumeRateLimit(
+    env.FUNNEL_RATE_LIMIT_SERVICE,
+    `verify-email:${getClientIp(request)}`,
+  );
+  if (rateLimit === "unavailable") {
     return json({ error: "rate_limiter_unavailable" }, 503);
   }
-  const rateLimit = await env.FUNNEL_RATE_LIMITER.limit({
-    key: `verify-email:${getClientIp(request)}`,
-  });
-  if (!rateLimit.success) {
+  if (rateLimit === "limited") {
     return json({ error: "rate_limited" }, 429);
   }
 

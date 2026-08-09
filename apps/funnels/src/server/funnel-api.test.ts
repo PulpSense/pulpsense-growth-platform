@@ -45,8 +45,8 @@ const requestWithBody = (body: unknown) =>
   });
 
 const allowingRateLimit = {
-  FUNNEL_RATE_LIMITER: {
-    limit: async () => ({ success: true }),
+  FUNNEL_RATE_LIMIT_SERVICE: {
+    fetch: async () => new Response(null, { status: 204 }),
   },
 };
 
@@ -98,8 +98,8 @@ describe("POST /api/funnel-events", () => {
         sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
       }),
       {
-        FUNNEL_RATE_LIMITER: {
-          limit: async () => ({ success: false }),
+        FUNNEL_RATE_LIMIT_SERVICE: {
+          fetch: async () => new Response(null, { status: 429 }),
         },
       },
     );
@@ -133,9 +133,7 @@ describe("POST /api/funnel-events", () => {
         sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
       }),
       {
-        FUNNEL_RATE_LIMITER: {
-          limit: async () => ({ success: true }),
-        },
+        ...allowingRateLimit,
         TURNSTILE_SECRET_KEY: "turnstile-secret",
       },
     );
@@ -177,9 +175,7 @@ describe("POST /api/funnel-events", () => {
         sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
       }),
       {
-        FUNNEL_RATE_LIMITER: {
-          limit: async () => ({ success: true }),
-        },
+        ...allowingRateLimit,
         TURNSTILE_SECRET_KEY: "turnstile-secret",
         MILLION_VERIFIER_API_KEY: "million-verifier-key",
       },
@@ -227,9 +223,7 @@ describe("POST /api/funnel-events", () => {
         fbp: "fb.1.123.456",
       }),
       {
-        FUNNEL_RATE_LIMITER: {
-          limit: async () => ({ success: true }),
-        },
+        ...allowingRateLimit,
         TURNSTILE_SECRET_KEY: "turnstile-secret",
         MILLION_VERIFIER_API_KEY: "million-verifier-key",
         SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
@@ -309,9 +303,7 @@ describe("POST /api/funnel-events", () => {
       .mockResolvedValueOnce(new Response("upstream error", { status: 500 }));
     vi.stubGlobal("fetch", fetchMock);
     const env = {
-      FUNNEL_RATE_LIMITER: {
-        limit: async () => ({ success: true }),
-      },
+      ...allowingRateLimit,
       TURNSTILE_SECRET_KEY: "turnstile-secret",
       MILLION_VERIFIER_API_KEY: "million-verifier-key",
       SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
@@ -394,9 +386,7 @@ describe("POST /api/funnel-events", () => {
       .mockResolvedValueOnce(Response.json({ id: "run_after_retry" }));
     vi.stubGlobal("fetch", fetchMock);
     const env = {
-      FUNNEL_RATE_LIMITER: {
-        limit: async () => ({ success: true }),
-      },
+      ...allowingRateLimit,
       TURNSTILE_SECRET_KEY: "turnstile-secret",
       MILLION_VERIFIER_API_KEY: "million-verifier-key",
       SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
@@ -451,9 +441,7 @@ describe("POST /api/funnel-events", () => {
       .mockResolvedValueOnce(Response.json({ id: "run_changed" }));
     vi.stubGlobal("fetch", fetchMock);
     const env = {
-      FUNNEL_RATE_LIMITER: {
-        limit: async () => ({ success: true }),
-      },
+      ...allowingRateLimit,
       TURNSTILE_SECRET_KEY: "turnstile-secret",
       MILLION_VERIFIER_API_KEY: "million-verifier-key",
       SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
@@ -495,9 +483,7 @@ describe("POST /api/funnel-events", () => {
     const response = await handleFunnelEvent(
       contactRequest("https://preview.pulpsense.com"),
       {
-        FUNNEL_RATE_LIMITER: {
-          limit: async () => ({ success: true }),
-        },
+        ...allowingRateLimit,
         TURNSTILE_SECRET_KEY: "turnstile-secret",
       },
     );
@@ -524,9 +510,7 @@ describe("POST /api/funnel-events", () => {
     const response = await handleFunnelEvent(
       contactRequest("https://preview.pulpsense.com"),
       {
-        FUNNEL_RATE_LIMITER: {
-          limit: async () => ({ success: true }),
-        },
+        ...allowingRateLimit,
         TURNSTILE_SECRET_KEY: "turnstile-secret",
         MILLION_VERIFIER_API_KEY: "million-verifier-key",
       },
@@ -578,8 +562,8 @@ describe("POST /api/verify-email", () => {
     );
 
     const response = await handleVerifyEmail(request, {
-      FUNNEL_RATE_LIMITER: {
-        limit: async () => ({ success: false }),
+      FUNNEL_RATE_LIMIT_SERVICE: {
+        fetch: async () => new Response(null, { status: 429 }),
       },
     });
 
@@ -607,9 +591,7 @@ describe("POST /api/verify-email", () => {
     );
 
     const response = await handleVerifyEmail(request, {
-      FUNNEL_RATE_LIMITER: {
-        limit: async () => ({ success: true }),
-      },
+      ...allowingRateLimit,
       MILLION_VERIFIER_API_KEY: "million-verifier-key",
     });
 

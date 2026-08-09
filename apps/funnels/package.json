@@ -12,7 +12,7 @@
     "build": "astro build",
     "build:next": "next build",
     "deploy:preview": "cross-env PUBLIC_PULPSENSE_ENVIRONMENT=preview pnpm build && wrangler pages deploy dist --project-name pulpsense-funnels-preview --branch issue-81",
-    "start": "cross-env CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler pages dev dist",
+    "start": "cross-env CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler pages dev -c wrangler.toml -c ../rate-limiter/wrangler.toml",
     "start:next": "next start",
     "build-prod": "run-s clean build",
     "check-parity": "node scripts/check-parity.mjs",

@@ -27,7 +27,9 @@ Hero and proof video sources are attached only when their active players approac
 
 ## Preview deployment
 
-Build and deploy to the dedicated non-production Pages project and branch:
+Pull requests targeting `master` are verified and deployed automatically by `.github/workflows/cloudflare-pages.yml`. The workflow uses the GitHub `Preview` environment, deploys branch `pr-<number>` to the dedicated non-production Pages project, and exposes the resulting Pages alias as a GitHub deployment.
+
+The existing command remains a manual fallback for the issue #81 branch:
 
 ```bash
 PUBLIC_META_PIXEL_ID=<preview-dataset-id> \
@@ -45,6 +47,8 @@ The issue #81 preview is available at:
 - <https://issue-81.pulpsense-funnels-preview.pages.dev/creative-multiplier-sprint/>
 
 The Pages project's production branch is `never-production`, so the `issue-81` deployment remains a Preview deployment. No custom domain or production credentials are attached.
+
+See [`cloudflare-pages-delivery.md`](./cloudflare-pages-delivery.md) for GitHub environment configuration, fork behavior, the gated `master` path, manual recovery, and rollback.
 
 ## Rollback reference
 

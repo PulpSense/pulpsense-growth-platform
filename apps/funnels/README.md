@@ -23,17 +23,17 @@ Open <http://localhost:4321/creative-multiplier-sprint/>.
 
 ## Scripts
 
-| Command               | Description                                                         |
-| --------------------- | ------------------------------------------------------------------- |
-| `pnpm dev`            | Start Astro development                                             |
-| `pnpm build`          | Produce static output in `dist/`                                    |
-| `pnpm start`          | Serve `dist/` with Pages Functions through Wrangler                 |
-| `pnpm check-parity`   | Check routes, crawler controls, API fallbacks, and trailing slashes |
-| `pnpm check-types`    | Check Astro and TypeScript                                          |
-| `pnpm lint`           | Lint source and function files                                      |
-| `pnpm deploy:preview` | Deploy the `issue-81` branch to the non-production Pages project    |
-| `pnpm dev:next`       | Start the transitional Next.js rollback reference                   |
-| `pnpm build:next`     | Build the transitional Next.js rollback reference                   |
+| Command               | Description                                                                     |
+| --------------------- | ------------------------------------------------------------------------------- |
+| `pnpm dev`            | Start Astro development                                                         |
+| `pnpm build`          | Produce static output in `dist/`                                                |
+| `pnpm start`          | Serve `dist/` with Pages Functions through Wrangler                             |
+| `pnpm check-parity`   | Check routes, crawler controls, API fallbacks, and trailing slashes             |
+| `pnpm check-types`    | Check Astro and TypeScript                                                      |
+| `pnpm lint`           | Lint source and function files                                                  |
+| `pnpm deploy:preview` | Manually deploy the `issue-81` fallback preview; PR previews use GitHub Actions |
+| `pnpm dev:next`       | Start the transitional Next.js rollback reference                               |
+| `pnpm build:next`     | Build the transitional Next.js rollback reference                               |
 
 ## Project structure
 
@@ -55,6 +55,8 @@ Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` co
 Browser-facing `PUBLIC_*` values must be present in the Astro build environment. Pages Function secrets belong in the Cloudflare preview environment instead. `PUBLIC_CAL_NAMESPACE` may be set when the sandbox event uses a distinct embed namespace.
 
 Form lifecycle events are accepted through `/api/form-submit` and forwarded by the Pages Function only when a Trigger.dev preview secret and matching task ID are configured. Email verification and Meta CAPI use the same Pages Function boundary.
+
+Contact and email-verification requests call the private `FUNNEL_RATE_LIMIT_SERVICE` binding with a hashed IP key. The bound Worker owns Cloudflare's native Rate Limiting binding and has no public `workers.dev` route. `pnpm start` launches both configurations locally. This repository currently targets the isolated preview Pages project and preview rate-limiter service; production must receive a separate configuration during #87.
 
 See [`../../docs/astro-cloudflare-preview.md`](../../docs/astro-cloudflare-preview.md) for deployment and rollback details.
 
