@@ -1,6 +1,12 @@
-import { contactSubmittedEventSchema } from "@pulpsense/contracts";
+import {
+  applicationSubmittedEventSchema,
+  contactSubmittedEventSchema,
+  type ContactSubmittedEvent,
+  type FunnelEvent,
+} from "@pulpsense/contracts";
 import { isBusinessEmail } from "@/utils/businessEmail";
 
+import { applicationSubmissionRequestSchema } from "./application-submission-contract";
 import {
   contactSubmissionRequestSchema,
   type ContactSubmissionRequest,
@@ -62,6 +68,8 @@ type RetryClaims = {
   submissionId: string;
   requestDigest: string;
   emailVerification: EmailVerification;
+  contact: ContactSubmittedEvent["payload"];
+  attribution: ContactSubmittedEvent["attribution"];
 };
 
 const createRetryToken = async (claims: RetryClaims, secret: string) => {
@@ -126,7 +134,12 @@ const readRetryToken = async (
         claims.emailVerification?.status !== "unverified") ||
       !["business", "catch_all", "provider_error"].includes(
         claims.emailVerification.result,
-      )
+      ) ||
+      !contactSubmittedEventSchema.shape.payload.safeParse(claims.contact)
+        .success ||
+      !contactSubmittedEventSchema.shape.attribution.safeParse(
+        claims.attribution,
+      ).success
     ) {
       return undefined;
     }
@@ -137,11 +150,144 @@ const readRetryToken = async (
   }
 };
 
+const enqueueFunnelEvent = async (event: FunnelEvent, env: FunnelEnv) => {
+  const triggerSecret = env.PULPSENSE_TRIGGER_SECRET_KEY;
+  if (!triggerSecret) throw new Error("Trigger is not configured");
+
+  const response = await fetch(
+    `${env.PULPSENSE_TRIGGER_API_ORIGIN ?? "https://api.trigger.dev"}/api/v1/tasks/process-funnel-event/trigger`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${triggerSecret}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        payload: event,
+        context: { environment: event.environment },
+        options: { idempotencyKey: event.eventId },
+      }),
+    },
+  );
+  if (!response.ok) throw new Error("Trigger rejected event");
+
+  const result = (await response.json()) as { id?: string };
+  if (!result.id) throw new Error("Trigger response omitted run ID");
+  return result.id;
+};
+
 export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
   const originError = rejectCrossOrigin(request);
   if (originError) return originError;
 
   const body = await parseJson<unknown>(request);
+  if (
+    body &&
+    typeof body === "object" &&
+    "eventType" in body &&
+    body.eventType === "application_submitted"
+  ) {
+    const parsedApplication =
+      applicationSubmissionRequestSchema.safeParse(body);
+    if (!parsedApplication.success) {
+      return json({ error: "invalid_request" }, 400);
+    }
+
+    const clientIp = getClientIp(request);
+    const rateLimit = await consumeRateLimit(
+      env.FUNNEL_RATE_LIMIT_SERVICE,
+      `application:${clientIp}`,
+    );
+    if (rateLimit === "unavailable") {
+      return json({ error: "rate_limiter_unavailable" }, 503);
+    }
+    if (rateLimit === "limited") {
+      return json({ error: "rate_limited" }, 429);
+    }
+    if (!env.SUBMISSION_SIGNING_SECRET || !env.PULPSENSE_TRIGGER_SECRET_KEY) {
+      return json({ error: "handoff_unavailable" }, 503);
+    }
+
+    const identity = await readRetryToken(
+      parsedApplication.data.identity.token,
+      env.SUBMISSION_SIGNING_SECRET,
+    );
+    if (
+      !identity ||
+      identity.submissionId !== parsedApplication.data.identity.submissionId
+    ) {
+      return json({ error: "invalid_submission_identity" }, 400);
+    }
+
+    const qualificationStatus =
+      parsedApplication.data.payload.paidSocialSpend ===
+        "Less than $20k/month" ||
+      parsedApplication.data.payload.winnerStatus === "No proven winner yet"
+        ? "unqualified"
+        : "qualified";
+    const submissionId = identity.submissionId;
+    const eventId = `application_submitted:${submissionId}`;
+    const emailDomain = identity.contact.email.split("@").at(-1);
+    if (!emailDomain) {
+      return json({ error: "invalid_submission_identity" }, 400);
+    }
+
+    const event = applicationSubmittedEventSchema.parse({
+      schemaVersion: 1,
+      eventType: "application_submitted",
+      funnelId: parsedApplication.data.funnelId,
+      submissionId,
+      eventId,
+      occurredAt: new Date().toISOString(),
+      payload: {
+        ...identity.contact,
+        application: parsedApplication.data.payload,
+      },
+      qualificationStatus,
+      companyDomain: emailDomain.trim().toLowerCase().replace(/\.$/u, ""),
+      attribution: identity.attribution,
+      requestContext: {
+        clientIp,
+        userAgent: request.headers.get("user-agent") ?? "",
+        sourceUrl: parsedApplication.data.sourceUrl,
+        ...(parsedApplication.data.referrer
+          ? { referrer: parsedApplication.data.referrer }
+          : {}),
+        ...(parsedApplication.data.fbp
+          ? { fbp: parsedApplication.data.fbp }
+          : {}),
+        ...(parsedApplication.data.fbc
+          ? { fbc: parsedApplication.data.fbc }
+          : {}),
+      },
+      environment: env.PULPSENSE_ENVIRONMENT ?? "local",
+    });
+
+    try {
+      const runId = await enqueueFunnelEvent(event, env);
+      return json({
+        accepted: true,
+        submissionId,
+        eventId,
+        qualificationStatus,
+        nextStep:
+          qualificationStatus === "qualified" ? "booking" : "unqualified",
+        runId,
+      });
+    } catch {
+      return json(
+        {
+          accepted: false,
+          error: "handoff_failed",
+          submissionId,
+          eventId,
+          qualificationStatus,
+        },
+        502,
+      );
+    }
+  }
+
   const parsed = contactSubmissionRequestSchema.safeParse(body);
   if (!parsed.success) {
     return json({ error: "invalid_request" }, 400);
@@ -235,8 +381,18 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
       requestDigest,
       env.SUBMISSION_SIGNING_SECRET,
     );
+    const contact = contactSubmittedEventSchema.shape.payload.parse({
+      ...parsed.data.payload,
+      emailVerification,
+    });
     retryToken = await createRetryToken(
-      { submissionId, requestDigest, emailVerification },
+      {
+        submissionId,
+        requestDigest,
+        emailVerification,
+        contact,
+        attribution: parsed.data.attribution,
+      },
       env.SUBMISSION_SIGNING_SECRET,
     );
   }
@@ -263,31 +419,13 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
   });
 
   try {
-    const triggerResponse = await fetch(
-      `${env.PULPSENSE_TRIGGER_API_ORIGIN ?? "https://api.trigger.dev"}/api/v1/tasks/process-funnel-event/trigger`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${env.PULPSENSE_TRIGGER_SECRET_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          payload: event,
-          context: { environment: event.environment },
-          options: { idempotencyKey: eventId },
-        }),
-      },
-    );
-    if (!triggerResponse.ok) throw new Error("Trigger rejected event");
-
-    const triggerResult = (await triggerResponse.json()) as { id?: string };
-    if (!triggerResult.id) throw new Error("Trigger response omitted run ID");
+    const runId = await enqueueFunnelEvent(event, env);
 
     return json({
       accepted: true,
       submissionId,
       eventId,
-      runId: triggerResult.id,
+      runId,
       retry: { submissionId, token: retryToken },
     });
   } catch {

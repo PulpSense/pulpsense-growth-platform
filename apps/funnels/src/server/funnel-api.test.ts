@@ -274,6 +274,186 @@ describe("POST /api/funnel-events", () => {
     expect(triggerBody.options.idempotencyKey).toBe(result.eventId);
   });
 
+  it("calculates an unqualified application on the server before allowing navigation", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ result: "ok" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_application" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const env = {
+      ...allowingRateLimit,
+      TURNSTILE_SECRET_KEY: "turnstile-secret",
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+      PULPSENSE_ENVIRONMENT: "preview" as const,
+    };
+
+    const contactResponse = await handleFunnelEvent(
+      contactRequest("https://preview.pulpsense.com"),
+      env,
+    );
+    const contact = (await contactResponse.json()) as {
+      submissionId: string;
+      retry: { submissionId: string; token: string };
+    };
+    const response = await handleFunnelEvent(
+      requestWithBody({
+        schemaVersion: 1,
+        eventType: "application_submitted",
+        funnelId: "creative-multiplier-sprint",
+        identity: contact.retry,
+        payload: {
+          brandUrl: "https://www.brand.com/products",
+          paidSocialSpend: "Less than $20k/month",
+          winnerStatus: "Yes, several winners",
+          platforms: ["Meta", "TikTok"],
+          deliveryTimeline: "Next 2 weeks",
+        },
+        sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      accepted: true,
+      submissionId: contact.submissionId,
+      eventId: `application_submitted:${contact.submissionId}`,
+      qualificationStatus: "unqualified",
+      nextStep: "unqualified",
+      runId: "run_application",
+    });
+
+    const applicationTriggerBody = JSON.parse(
+      String(fetchMock.mock.calls[3]?.[1]?.body),
+    ) as {
+      payload: {
+        eventType: string;
+        submissionId: string;
+        qualificationStatus: string;
+      };
+      options: { idempotencyKey: string };
+    };
+    expect(applicationTriggerBody).toMatchObject({
+      payload: {
+        eventType: "application_submitted",
+        submissionId: contact.submissionId,
+        qualificationStatus: "unqualified",
+      },
+      options: {
+        idempotencyKey: `application_submitted:${contact.submissionId}`,
+      },
+    });
+  });
+
+  it("rejects a client-supplied qualification result", async () => {
+    const response = await handleFunnelEvent(
+      requestWithBody({
+        schemaVersion: 1,
+        eventType: "application_submitted",
+        funnelId: "creative-multiplier-sprint",
+        identity: {
+          submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+          token: "client-token",
+        },
+        payload: {
+          brandUrl: "https://brand.com",
+          paidSocialSpend: "Less than $20k/month",
+          winnerStatus: "No proven winner yet",
+          platforms: ["Meta"],
+          deliveryTimeline: "This week",
+          qualificationStatus: "qualified",
+        },
+        sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      }),
+      allowingRateLimit,
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "invalid_request",
+    });
+  });
+
+  it("reuses the application event identity when durable handoff is retried", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ result: "ok" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
+      .mockResolvedValueOnce(new Response("upstream error", { status: 500 }))
+      .mockResolvedValueOnce(Response.json({ id: "run_application_retry" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const env = {
+      ...allowingRateLimit,
+      TURNSTILE_SECRET_KEY: "turnstile-secret",
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+      PULPSENSE_ENVIRONMENT: "preview" as const,
+    };
+    const contactResponse = await handleFunnelEvent(
+      contactRequest("https://preview.pulpsense.com"),
+      env,
+    );
+    const contact = (await contactResponse.json()) as {
+      retry: { submissionId: string; token: string };
+    };
+    const applicationBody = {
+      schemaVersion: 1,
+      eventType: "application_submitted",
+      funnelId: "creative-multiplier-sprint",
+      identity: contact.retry,
+      payload: {
+        brandUrl: "https://brand.com",
+        paidSocialSpend: "$20k - $50k/month",
+        winnerStatus: "Yes, one clear winner",
+        platforms: ["Meta"],
+        deliveryTimeline: "This week",
+      },
+      sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+    };
+
+    const failedResponse = await handleFunnelEvent(
+      requestWithBody(applicationBody),
+      env,
+    );
+    const failed = (await failedResponse.json()) as { eventId: string };
+    expect(failedResponse.status).toBe(502);
+
+    const retriedResponse = await handleFunnelEvent(
+      requestWithBody(applicationBody),
+      env,
+    );
+    expect(retriedResponse.status).toBe(200);
+    await expect(retriedResponse.json()).resolves.toMatchObject({
+      accepted: true,
+      eventId: failed.eventId,
+      runId: "run_application_retry",
+    });
+    for (const callIndex of [3, 4]) {
+      const triggerBody = JSON.parse(
+        String(fetchMock.mock.calls[callIndex]?.[1]?.body),
+      );
+      expect(triggerBody.options.idempotencyKey).toBe(failed.eventId);
+    }
+  });
+
   it("reuses the signed server identity when a failed handoff is retried", async () => {
     const body = {
       schemaVersion: 1,
@@ -325,13 +505,18 @@ describe("POST /api/funnel-events", () => {
       env,
     );
 
-    expect(retriedResponse.status).toBe(200);
-    await expect(retriedResponse.json()).resolves.toMatchObject({
-      accepted: true,
-      submissionId: failed.submissionId,
-      eventId: failed.eventId,
-      runId: "run_retry",
-    });
+    const retriedBody = await retriedResponse.json();
+    expect({ status: retriedResponse.status, body: retriedBody }).toMatchObject(
+      {
+        status: 200,
+        body: {
+          accepted: true,
+          submissionId: failed.submissionId,
+          eventId: failed.eventId,
+          runId: "run_retry",
+        },
+      },
+    );
     expect(fetchMock).toHaveBeenCalledTimes(4);
     const retryTriggerBody = JSON.parse(
       String(fetchMock.mock.calls[3]?.[1]?.body),
@@ -466,6 +651,64 @@ describe("POST /api/funnel-events", () => {
     expect(originalResponse.status).toBe(200);
     expect(changedResponse.status).toBe(200);
     expect(changed.eventId).not.toBe(original.eventId);
+  });
+
+  it("issues a new submission identity for an intentional later attempt", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    for (const runId of ["run_first", "run_later"]) {
+      fetchMock
+        .mockResolvedValueOnce(
+          Response.json({
+            success: true,
+            action: "contact_submit",
+            hostname: "preview.pulpsense.com",
+          }),
+        )
+        .mockResolvedValueOnce(Response.json({ result: "ok" }))
+        .mockResolvedValueOnce(Response.json({ id: runId }));
+    }
+    vi.stubGlobal("fetch", fetchMock);
+    const env = {
+      ...allowingRateLimit,
+      TURNSTILE_SECRET_KEY: "turnstile-secret",
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+      PULPSENSE_ENVIRONMENT: "preview" as const,
+    };
+    const requestBody = {
+      schemaVersion: 1,
+      eventType: "contact_submitted",
+      funnelId: "creative-multiplier-sprint",
+      turnstileToken: "turnstile-token",
+      payload: {
+        firstName: "Maya",
+        lastName: "Chen",
+        email: "maya@brand.com",
+        phone: "+1 555 123 4567",
+      },
+      attribution: { firstTouch: {}, lastTouch: {} },
+      sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+    };
+
+    const firstResponse = await handleFunnelEvent(
+      requestWithBody({
+        ...requestBody,
+        attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
+      }),
+      env,
+    );
+    const first = (await firstResponse.json()) as { submissionId: string };
+    const laterResponse = await handleFunnelEvent(
+      requestWithBody({
+        ...requestBody,
+        attemptId: "b85d1114-e037-426d-ace4-d90093b7c31f",
+      }),
+      env,
+    );
+    const later = (await laterResponse.json()) as { submissionId: string };
+
+    expect(first.submissionId).not.toBe(later.submissionId);
   });
 
   it("rejects a Turnstile token minted for another hostname", async () => {

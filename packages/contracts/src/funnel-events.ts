@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const FUNNEL_EVENT_SCHEMA_VERSION = 1 as const;
 export const CONTACT_SUBMITTED_EVENT = "contact_submitted" as const;
+export const APPLICATION_SUBMITTED_EVENT = "application_submitted" as const;
 
 const attributionTouchSchema = z
   .object({
@@ -29,6 +30,28 @@ export const contactPayloadSchema = z
   })
   .strict();
 
+const emailVerificationSchema = z
+  .object({
+    status: z.enum(["verified", "unverified"]),
+    result: z.enum(["business", "catch_all", "provider_error"]),
+  })
+  .strict();
+
+const verifiedContactPayloadSchema = contactPayloadSchema.extend({
+  emailVerification: emailVerificationSchema,
+});
+
+const requestContextSchema = z
+  .object({
+    clientIp: z.string().min(1).max(100),
+    userAgent: z.string().max(1024),
+    sourceUrl: z.string().url().max(2048),
+    referrer: z.string().url().max(2048).optional(),
+    fbp: z.string().max(255).optional(),
+    fbc: z.string().max(255).optional(),
+  })
+  .strict();
+
 export const contactSubmittedEventSchema = z
   .object({
     schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
@@ -37,27 +60,77 @@ export const contactSubmittedEventSchema = z
     submissionId: z.string().uuid(),
     eventId: z.string().min(1).max(200),
     occurredAt: z.string().datetime({ offset: true }),
-    payload: contactPayloadSchema.extend({
-      emailVerification: z
-        .object({
-          status: z.enum(["verified", "unverified"]),
-          result: z.enum(["business", "catch_all", "provider_error"]),
-        })
-        .strict(),
-    }),
+    payload: verifiedContactPayloadSchema,
     attribution: funnelAttributionSchema,
-    requestContext: z
-      .object({
-        clientIp: z.string().min(1).max(100),
-        userAgent: z.string().max(1024),
-        sourceUrl: z.string().url().max(2048),
-        referrer: z.string().url().max(2048).optional(),
-        fbp: z.string().max(255).optional(),
-        fbc: z.string().max(255).optional(),
-      })
-      .strict(),
+    requestContext: requestContextSchema,
     environment: z.enum(["local", "preview", "production"]),
   })
   .strict();
 
 export type ContactSubmittedEvent = z.infer<typeof contactSubmittedEventSchema>;
+
+export const applicationAnswersSchema = z
+  .object({
+    brandUrl: z.url().max(2048),
+    paidSocialSpend: z.enum([
+      "Less than $20k/month",
+      "$20k - $50k/month",
+      "$50k - $150k/month",
+      "$150k+/month",
+    ]),
+    winnerStatus: z.enum([
+      "Yes, one clear winner",
+      "Yes, several winners",
+      "Promising ad, not fully proven",
+      "No proven winner yet",
+    ]),
+    platforms: z
+      .array(
+        z.enum([
+          "Meta",
+          "TikTok",
+          "Reels",
+          "Shorts",
+          "TikTok Shop",
+          "Other paid social",
+        ]),
+      )
+      .min(1),
+    deliveryTimeline: z.enum([
+      "This week",
+      "Next 2 weeks",
+      "This month",
+      "Just researching",
+    ]),
+  })
+  .strict();
+
+export const applicationSubmittedEventSchema = z
+  .object({
+    schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
+    eventType: z.literal(APPLICATION_SUBMITTED_EVENT),
+    funnelId: z.literal("creative-multiplier-sprint"),
+    submissionId: z.string().uuid(),
+    eventId: z.string().min(1).max(200),
+    occurredAt: z.string().datetime({ offset: true }),
+    payload: verifiedContactPayloadSchema.extend({
+      application: applicationAnswersSchema,
+    }),
+    qualificationStatus: z.enum(["qualified", "unqualified"]),
+    companyDomain: z.string().min(1).max(253),
+    attribution: funnelAttributionSchema,
+    requestContext: requestContextSchema,
+    environment: z.enum(["local", "preview", "production"]),
+  })
+  .strict();
+
+export const funnelEventSchema = z.discriminatedUnion("eventType", [
+  contactSubmittedEventSchema,
+  applicationSubmittedEventSchema,
+]);
+
+export type ApplicationAnswers = z.infer<typeof applicationAnswersSchema>;
+export type ApplicationSubmittedEvent = z.infer<
+  typeof applicationSubmittedEventSchema
+>;
+export type FunnelEvent = z.infer<typeof funnelEventSchema>;

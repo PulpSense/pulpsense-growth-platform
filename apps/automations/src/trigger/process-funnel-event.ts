@@ -1,16 +1,23 @@
 import {
-  contactSubmittedEventSchema,
+  funnelEventSchema,
+  type ApplicationSubmittedEvent,
   type ContactSubmittedEvent,
+  type FunnelEvent,
 } from "@pulpsense/contracts";
 import { logger, schemaTask } from "@trigger.dev/sdk";
 
 type ProcessorDependencies = {
-  assertEnvironment?(environment: ContactSubmittedEvent["environment"]): void;
-  upsertTwentyPerson(
-    event: ContactSubmittedEvent,
-  ): Promise<{ personId: string }>;
+  assertEnvironment?(environment: FunnelEvent["environment"]): void;
+  upsertTwentyPerson(event: FunnelEvent): Promise<{ personId: string }>;
   sendMetaLead(
     event: ContactSubmittedEvent,
+  ): Promise<{ eventsReceived: number }>;
+  recordTwentyApplication?(
+    event: ApplicationSubmittedEvent,
+    personId: string,
+  ): Promise<{ activityId: string; opportunityId?: string }>;
+  sendMetaApplication?(
+    event: ApplicationSubmittedEvent,
   ): Promise<{ eventsReceived: number }>;
   log: {
     info(message: string, data?: Record<string, unknown>): void;
@@ -18,10 +25,54 @@ type ProcessorDependencies = {
 };
 
 export async function processFunnelEvent(
-  event: ContactSubmittedEvent,
+  event: FunnelEvent,
   dependencies: ProcessorDependencies,
 ) {
   dependencies.assertEnvironment?.(event.environment);
+  if (event.eventType === "application_submitted") {
+    if (
+      !dependencies.recordTwentyApplication ||
+      !dependencies.sendMetaApplication
+    ) {
+      throw new Error("Application processing is not configured");
+    }
+    dependencies.log.info("Processing funnel application", {
+      submissionId: event.submissionId,
+      eventId: event.eventId,
+      funnelId: event.funnelId,
+      environment: event.environment,
+      qualificationStatus: event.qualificationStatus,
+    });
+
+    const { personId } = await dependencies.upsertTwentyPerson(event);
+    const application = await dependencies.recordTwentyApplication(
+      event,
+      personId,
+    );
+    const { eventsReceived } = await dependencies.sendMetaApplication(event);
+
+    dependencies.log.info("Processed funnel application", {
+      submissionId: event.submissionId,
+      eventId: event.eventId,
+      personId,
+      activityId: application.activityId,
+      ...(application.opportunityId
+        ? { opportunityId: application.opportunityId }
+        : {}),
+      metaEventsReceived: eventsReceived,
+    });
+
+    return {
+      ok: true as const,
+      personId,
+      activityId: application.activityId,
+      ...(application.opportunityId
+        ? { opportunityId: application.opportunityId }
+        : {}),
+      metaEventId: event.eventId,
+    };
+  }
+
   dependencies.log.info("Processing funnel contact", {
     submissionId: event.submissionId,
     eventId: event.eventId,
@@ -50,10 +101,12 @@ export async function processFunnelEvent(
 type ProcessorEnvironment = {
   TWENTY_API_KEY?: string;
   TWENTY_API_ORIGIN?: string;
+  TWENTY_QUALIFIED_STAGE_VALUE?: string;
+  TWENTY_CLOSED_STAGE_VALUES?: string;
   META_PIXEL_ID?: string;
   META_CAPI_ACCESS_TOKEN?: string;
   META_GRAPH_API_VERSION?: string;
-  PULPSENSE_AUTOMATION_ENVIRONMENT?: ContactSubmittedEvent["environment"];
+  PULPSENSE_AUTOMATION_ENVIRONMENT?: FunnelEvent["environment"];
 };
 
 const required = (value: string | undefined, name: string) => {
@@ -104,7 +157,7 @@ const findTwentyPersonId = async (client: TwentyClient, email: string) => {
   return result.data?.people?.edges?.[0]?.node?.id;
 };
 
-const personInput = (event: ContactSubmittedEvent) => ({
+const personInput = (event: FunnelEvent) => ({
   name: {
     firstName: event.payload.firstName,
     lastName: event.payload.lastName,
@@ -118,10 +171,7 @@ const personInput = (event: ContactSubmittedEvent) => ({
   },
 });
 
-const upsertTwentyPerson = async (
-  event: ContactSubmittedEvent,
-  client: TwentyClient,
-) => {
+const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
   const normalizedEmail = event.payload.email.trim().toLowerCase();
   const existingId = await findTwentyPersonId(client, normalizedEmail);
   const endpoint = existingId
@@ -177,6 +227,210 @@ const upsertTwentyPerson = async (
   return { personId };
 };
 
+const findTwentyCompanyId = async (
+  client: TwentyClient,
+  companyDomain: string,
+) => {
+  const domainUrl = `https://${companyDomain}`;
+  const response = await client.fetch(`${client.origin}/graphql`, {
+    method: "POST",
+    headers: twentyHeaders(client.apiKey),
+    body: JSON.stringify({
+      query: `
+        query FindCompanyByDomain($domainUrl: String!) {
+          companies(
+            filter: { domainName: { primaryLinkUrl: { eq: $domainUrl } } }
+            first: 1
+          ) {
+            edges { node { id } }
+          }
+        }
+      `,
+      variables: { domainUrl },
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Twenty company lookup failed (${response.status})`);
+  }
+  const result = (await response.json()) as {
+    data?: { companies?: { edges?: Array<{ node?: { id?: string } }> } };
+    errors?: unknown[];
+  };
+  if (result.errors?.length) throw new Error("Twenty company lookup failed");
+  return result.data?.companies?.edges?.[0]?.node?.id;
+};
+
+const createTwentyRecordOnce = async (
+  client: TwentyClient,
+  objectNamePlural: string,
+  input: Record<string, unknown>,
+) => {
+  const response = await client.fetch(
+    `${client.origin}/rest/${objectNamePlural}`,
+    {
+      method: "POST",
+      headers: twentyHeaders(client.apiKey),
+      body: JSON.stringify(input),
+    },
+  );
+  if (response.status === 409) return;
+  if (!response.ok) {
+    throw new Error(
+      `Twenty ${objectNamePlural} create failed (${response.status})`,
+    );
+  }
+};
+
+const applicationMarkdown = (event: ApplicationSubmittedEvent) =>
+  [
+    `# Application ${event.submissionId}`,
+    "",
+    `Qualification: ${event.qualificationStatus}`,
+    `Submitted: ${event.occurredAt}`,
+    "",
+    "```json",
+    JSON.stringify(event.payload.application, null, 2),
+    "```",
+  ].join("\n");
+
+const findOpenTwentyOpportunity = async (
+  client: TwentyClient,
+  personId: string,
+  closedStageValues: ReadonlySet<string>,
+) => {
+  let after: string | undefined;
+  do {
+    const response = await client.fetch(`${client.origin}/graphql`, {
+      method: "POST",
+      headers: twentyHeaders(client.apiKey),
+      body: JSON.stringify({
+        query: `
+        query FindOpportunitiesByPerson($personId: UUID!, $after: String) {
+          opportunities(
+            filter: { pointOfContactId: { eq: $personId } }
+            first: 50
+            after: $after
+          ) {
+            edges { node { id stage } }
+            pageInfo { hasNextPage endCursor }
+          }
+        }
+      `,
+        variables: { personId, ...(after ? { after } : {}) },
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Twenty opportunity lookup failed (${response.status})`);
+    }
+    const result = (await response.json()) as {
+      data?: {
+        opportunities?: {
+          edges?: Array<{ node?: { id?: string; stage?: string } }>;
+          pageInfo?: { hasNextPage?: boolean; endCursor?: string };
+        };
+      };
+      errors?: unknown[];
+    };
+    if (result.errors?.length) {
+      throw new Error("Twenty opportunity lookup failed");
+    }
+    const opportunity = result.data?.opportunities?.edges
+      ?.map(({ node }) => node)
+      .find(
+        (opportunity) =>
+          opportunity?.id &&
+          opportunity.stage &&
+          !closedStageValues.has(opportunity.stage),
+      );
+    if (opportunity) return opportunity;
+    const pageInfo = result.data?.opportunities?.pageInfo;
+    after = pageInfo?.hasNextPage ? pageInfo.endCursor : undefined;
+  } while (after);
+
+  return undefined;
+};
+
+const writeTwentyOpportunity = async (
+  client: TwentyClient,
+  input: Record<string, unknown>,
+  opportunityId?: string,
+) => {
+  const response = await client.fetch(
+    opportunityId
+      ? `${client.origin}/rest/opportunities/${encodeURIComponent(opportunityId)}`
+      : `${client.origin}/rest/opportunities`,
+    {
+      method: opportunityId ? "PATCH" : "POST",
+      headers: twentyHeaders(client.apiKey),
+      body: JSON.stringify(input),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(`Twenty opportunity write failed (${response.status})`);
+  }
+  if (opportunityId) return opportunityId;
+  const result = (await response.json()) as {
+    data?: {
+      createOpportunity?: { id?: string };
+      opportunity?: { id?: string };
+    };
+  };
+  const createdId =
+    result.data?.createOpportunity?.id ?? result.data?.opportunity?.id;
+  if (!createdId) throw new Error("Twenty opportunity create omitted ID");
+  return createdId;
+};
+
+const recordTwentyApplication = async (
+  event: ApplicationSubmittedEvent,
+  personId: string,
+  client: TwentyClient,
+  qualifiedStageValue: string | undefined,
+  closedStageValues: ReadonlySet<string>,
+) => {
+  // Twenty's workspace automation is the sole Company creator. Trigger.dev
+  // only matches the normalized email domain so both systems cannot race.
+  const companyId = await findTwentyCompanyId(client, event.companyDomain);
+  await createTwentyRecordOnce(client, "notes", {
+    id: event.submissionId,
+    title: `Application ${event.submissionId}`,
+    bodyV2: { markdown: applicationMarkdown(event) },
+  });
+  await createTwentyRecordOnce(client, "noteTargets", {
+    id: event.submissionId,
+    noteId: event.submissionId,
+    targetPersonId: personId,
+  });
+
+  if (event.qualificationStatus === "unqualified") {
+    return { activityId: event.submissionId };
+  }
+
+  const stage = required(qualifiedStageValue, "TWENTY_QUALIFIED_STAGE_VALUE");
+  const openOpportunity = await findOpenTwentyOpportunity(
+    client,
+    personId,
+    closedStageValues,
+  );
+  const opportunityId = await writeTwentyOpportunity(
+    client,
+    {
+      name: `Creative Multiplier Sprint – ${event.companyDomain}`,
+      ...(openOpportunity ? {} : { stage }),
+      pointOfContactId: personId,
+      ...(companyId ? { companyId } : {}),
+      brandUrl: event.payload.application.brandUrl,
+      paidSocialSpend: event.payload.application.paidSocialSpend,
+      winnerStatus: event.payload.application.winnerStatus,
+      platforms: event.payload.application.platforms,
+      deliveryTimeline: event.payload.application.deliveryTimeline,
+    },
+    openOpportunity?.id,
+  );
+
+  return { activityId: event.submissionId, opportunityId };
+};
+
 const sha256 = async (value: string) => {
   const digest = await crypto.subtle.digest(
     "SHA-256",
@@ -187,8 +441,10 @@ const sha256 = async (value: string) => {
   ).join("");
 };
 
-const sendMetaLead = async (
-  event: ContactSubmittedEvent,
+const sendMetaEvent = async (
+  event: FunnelEvent,
+  eventName: "Lead" | "SubmitApplication",
+  customData: Record<string, unknown>,
   fetcher: typeof fetch,
   graphApiVersion: string,
   pixelId: string,
@@ -213,13 +469,13 @@ const sendMetaLead = async (
       body: JSON.stringify({
         data: [
           {
-            event_name: "Lead",
+            event_name: eventName,
             event_time: Math.floor(new Date(event.occurredAt).getTime() / 1000),
             event_id: event.eventId,
             action_source: "website",
             event_source_url: event.requestContext.sourceUrl,
             user_data: userData,
-            custom_data: { funnel_id: event.funnelId },
+            custom_data: customData,
           },
         ],
       }),
@@ -227,16 +483,50 @@ const sendMetaLead = async (
   );
 
   if (!response.ok) {
-    throw new Error(`Meta Lead delivery failed (${response.status})`);
+    throw new Error(`Meta ${eventName} delivery failed (${response.status})`);
   }
 
   const result = (await response.json()) as { events_received?: number };
   if (result.events_received !== 1) {
-    throw new Error("Meta Lead delivery was not acknowledged");
+    throw new Error(`Meta ${eventName} delivery was not acknowledged`);
   }
 
   return { eventsReceived: result.events_received };
 };
+
+const sendMetaLead = async (
+  event: ContactSubmittedEvent,
+  fetcher: typeof fetch,
+  graphApiVersion: string,
+  pixelId: string,
+  accessToken: string,
+) =>
+  sendMetaEvent(
+    event,
+    "Lead",
+    { funnel_id: event.funnelId },
+    fetcher,
+    graphApiVersion,
+    pixelId,
+    accessToken,
+  );
+
+const sendMetaApplication = async (
+  event: ApplicationSubmittedEvent,
+  fetcher: typeof fetch,
+  graphApiVersion: string,
+  pixelId: string,
+  accessToken: string,
+) =>
+  sendMetaEvent(
+    event,
+    "SubmitApplication",
+    { qualification_status: event.qualificationStatus },
+    fetcher,
+    graphApiVersion,
+    pixelId,
+    accessToken,
+  );
 
 export function createProcessorDependencies(
   environment: ProcessorEnvironment,
@@ -264,6 +554,12 @@ export function createProcessorDependencies(
     origin: twentyOrigin,
     apiKey: twentyApiKey,
   };
+  const closedStageValues = new Set(
+    (environment.TWENTY_CLOSED_STAGE_VALUES ?? "WON,LOST,CLOSED")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
 
   return {
     assertEnvironment: (eventEnvironment) => {
@@ -272,15 +568,34 @@ export function createProcessorDependencies(
       }
     },
     upsertTwentyPerson: (event) => upsertTwentyPerson(event, twentyClient),
+    recordTwentyApplication: (event, personId) =>
+      recordTwentyApplication(
+        event,
+        personId,
+        twentyClient,
+        environment.TWENTY_QUALIFIED_STAGE_VALUE,
+        closedStageValues,
+      ),
     sendMetaLead: (event) =>
       sendMetaLead(event, runtime.fetch, graphVersion, pixelId, metaToken),
+    sendMetaApplication: (event) =>
+      sendMetaApplication(
+        event,
+        runtime.fetch,
+        graphVersion,
+        pixelId,
+        metaToken,
+      ),
     log: runtime.log,
   };
 }
 
 export const processFunnelEventTask = schemaTask({
   id: "process-funnel-event",
-  schema: contactSubmittedEventSchema,
+  schema: funnelEventSchema,
+  // Serial execution closes the read-then-create race for the single open
+  // Opportunity invariant. Revisit with a per-Person queue if volume requires.
+  queue: { concurrencyLimit: 1 },
   retry: {
     maxAttempts: 5,
     factor: 2,
@@ -295,12 +610,15 @@ export const processFunnelEventTask = schemaTask({
         {
           TWENTY_API_KEY: process.env.TWENTY_API_KEY,
           TWENTY_API_ORIGIN: process.env.TWENTY_API_ORIGIN,
+          TWENTY_QUALIFIED_STAGE_VALUE:
+            process.env.TWENTY_QUALIFIED_STAGE_VALUE,
+          TWENTY_CLOSED_STAGE_VALUES: process.env.TWENTY_CLOSED_STAGE_VALUES,
           META_PIXEL_ID: process.env.META_PIXEL_ID,
           META_CAPI_ACCESS_TOKEN: process.env.META_CAPI_ACCESS_TOKEN,
           META_GRAPH_API_VERSION: process.env.META_GRAPH_API_VERSION,
           PULPSENSE_AUTOMATION_ENVIRONMENT: process.env
             .PULPSENSE_AUTOMATION_ENVIRONMENT as
-            | ContactSubmittedEvent["environment"]
+            | FunnelEvent["environment"]
             | undefined,
         },
         { fetch, log: logger },

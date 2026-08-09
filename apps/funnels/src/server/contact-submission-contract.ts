@@ -9,7 +9,7 @@ import { z } from "zod";
 const retryIdentitySchema = z
   .object({
     submissionId: z.uuid(),
-    token: z.string().min(1).max(512),
+    token: z.string().min(1).max(4096),
   })
   .strict();
 

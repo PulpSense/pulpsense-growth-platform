@@ -1,4 +1,7 @@
-import type { ContactSubmittedEvent } from "@pulpsense/contracts";
+import type {
+  ApplicationSubmittedEvent,
+  ContactSubmittedEvent,
+} from "@pulpsense/contracts";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -33,7 +36,385 @@ const event: ContactSubmittedEvent = {
   environment: "preview",
 };
 
+const applicationEvent: ApplicationSubmittedEvent = {
+  schemaVersion: 1,
+  eventType: "application_submitted",
+  funnelId: "creative-multiplier-sprint",
+  submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+  eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+  occurredAt: "2026-08-08T12:05:00.000Z",
+  payload: {
+    ...event.payload,
+    application: {
+      brandUrl: "https://www.brand.com/products",
+      paidSocialSpend: "Less than $20k/month",
+      winnerStatus: "Yes, several winners",
+      platforms: ["Meta", "TikTok"],
+      deliveryTimeline: "Next 2 weeks",
+    },
+  },
+  qualificationStatus: "unqualified",
+  companyDomain: "brand.com",
+  attribution: event.attribution,
+  requestContext: event.requestContext,
+  environment: "preview",
+};
+
+const qualifiedApplicationEvent: ApplicationSubmittedEvent = {
+  ...applicationEvent,
+  payload: {
+    ...applicationEvent.payload,
+    application: {
+      ...applicationEvent.payload.application,
+      paidSocialSpend: "$50k - $150k/month",
+    },
+  },
+  qualificationStatus: "qualified",
+};
+
 describe("process-funnel-event", () => {
+  it("records every unqualified application on the Person and sends one SubmitApplication event", async () => {
+    const upsertTwentyPerson = vi
+      .fn()
+      .mockResolvedValue({ personId: "person_123" });
+    const recordTwentyApplication = vi.fn().mockResolvedValue({
+      activityId: applicationEvent.submissionId,
+    });
+    const sendMetaApplication = vi
+      .fn()
+      .mockResolvedValue({ eventsReceived: 1 });
+
+    const result = await processFunnelEvent(applicationEvent, {
+      upsertTwentyPerson,
+      recordTwentyApplication,
+      sendMetaApplication,
+      sendMetaLead: vi.fn(),
+      log: { info: vi.fn() },
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      personId: "person_123",
+      activityId: applicationEvent.submissionId,
+      metaEventId: applicationEvent.eventId,
+    });
+    expect(recordTwentyApplication).toHaveBeenCalledWith(
+      applicationEvent,
+      "person_123",
+    );
+    expect(sendMetaApplication).toHaveBeenCalledOnce();
+    expect(sendMetaApplication).toHaveBeenCalledWith(applicationEvent);
+  });
+
+  it("persists an unqualified application without creating an Opportunity", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ data: { updatePerson: { id: "person_existing" } } }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            companies: { edges: [{ node: { id: "company_brand" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { createNote: { id: applicationEvent.submissionId } },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { createNoteTarget: { id: applicationEvent.submissionId } },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(applicationEvent, dependencies);
+
+    expect(result).toMatchObject({
+      activityId: applicationEvent.submissionId,
+      personId: "person_existing",
+    });
+    expect(result).not.toHaveProperty("opportunityId");
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+    const requests = fetchMock.mock.calls.map(([url, init]) => ({
+      url: String(url),
+      method: init?.method,
+      body: init?.body ? JSON.parse(String(init.body)) : undefined,
+    }));
+    expect(requests).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("opportunities"),
+        }),
+      ]),
+    );
+    expect(requests).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          url: expect.stringContaining("/rest/companies"),
+          method: "POST",
+        }),
+      ]),
+    );
+    expect(requests[2]?.body).toMatchObject({
+      variables: { domainUrl: "https://brand.com" },
+    });
+    expect(requests[3]?.body).toMatchObject({
+      id: applicationEvent.submissionId,
+      title: `Application ${applicationEvent.submissionId}`,
+      bodyV2: {
+        markdown: expect.stringContaining(
+          '"paidSocialSpend": "Less than $20k/month"',
+        ),
+      },
+    });
+    expect(requests[4]?.body).toEqual({
+      id: applicationEvent.submissionId,
+      noteId: applicationEvent.submissionId,
+      targetPersonId: "person_existing",
+    });
+    expect(requests[5]?.body.data).toEqual([
+      expect.objectContaining({
+        event_name: "SubmitApplication",
+        event_id: applicationEvent.eventId,
+        custom_data: { qualification_status: "unqualified" },
+      }),
+    ]);
+    expect(JSON.stringify(requests[5]?.body)).not.toContain(
+      applicationEvent.payload.application.paidSocialSpend,
+    );
+  });
+
+  it("creates an awaiting-booking Opportunity for a qualified application", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ data: { updatePerson: { id: "person_existing" } } }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            companies: { edges: [{ node: { id: "company_brand" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: { createNote: {} } }))
+      .mockResolvedValueOnce(Response.json({ data: { createNoteTarget: {} } }))
+      .mockResolvedValueOnce(
+        Response.json({ data: { opportunities: { edges: [] } } }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { createOpportunity: { id: "opportunity_new" } },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_QUALIFIED_STAGE_VALUE: "QUALIFIED_AWAITING_BOOKING",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(
+      qualifiedApplicationEvent,
+      dependencies,
+    );
+
+    expect(result).toMatchObject({ opportunityId: "opportunity_new" });
+    const opportunityLookup = JSON.parse(
+      String(fetchMock.mock.calls[5]?.[1]?.body),
+    );
+    expect(opportunityLookup).toMatchObject({
+      variables: { personId: "person_existing" },
+    });
+    const [createUrl, createInit] = fetchMock.mock.calls[6]!;
+    expect(String(createUrl)).toBe(
+      "https://twenty.sandbox.example/rest/opportunities",
+    );
+    expect(createInit?.method).toBe("POST");
+    expect(JSON.parse(String(createInit?.body))).toEqual({
+      name: "Creative Multiplier Sprint – brand.com",
+      stage: "QUALIFIED_AWAITING_BOOKING",
+      pointOfContactId: "person_existing",
+      companyId: "company_brand",
+      brandUrl: "https://www.brand.com/products",
+      paidSocialSpend: "$50k - $150k/month",
+      winnerStatus: "Yes, several winners",
+      platforms: ["Meta", "TikTok"],
+      deliveryTimeline: "Next 2 weeks",
+    });
+  });
+
+  it("updates the existing open Opportunity for a repeat qualified application", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            companies: { edges: [{ node: { id: "company_brand" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunities: {
+              edges: [
+                {
+                  node: {
+                    id: "opportunity_open",
+                    stage: "CALL_BOOKED",
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_QUALIFIED_STAGE_VALUE: "QUALIFIED_AWAITING_BOOKING",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(
+      qualifiedApplicationEvent,
+      dependencies,
+    );
+
+    expect(result).toMatchObject({ opportunityId: "opportunity_open" });
+    const [updateUrl, updateInit] = fetchMock.mock.calls[6]!;
+    expect(String(updateUrl)).toBe(
+      "https://twenty.sandbox.example/rest/opportunities/opportunity_open",
+    );
+    expect(updateInit?.method).toBe("PATCH");
+    expect(JSON.parse(String(updateInit?.body))).not.toHaveProperty("stage");
+  });
+
+  it("creates a new Opportunity when all prior Opportunities are closed", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(
+        Response.json({ data: { companies: { edges: [] } } }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunities: {
+              edges: [{ node: { id: "opportunity_won", stage: "WON" } }],
+              pageInfo: { hasNextPage: true, endCursor: "page_2" },
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunities: {
+              edges: [{ node: { id: "opportunity_lost", stage: "LOST" } }],
+              pageInfo: { hasNextPage: false },
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { createOpportunity: { id: "opportunity_new_attempt" } },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_QUALIFIED_STAGE_VALUE: "QUALIFIED_AWAITING_BOOKING",
+        TWENTY_CLOSED_STAGE_VALUES: "WON,LOST",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(
+      qualifiedApplicationEvent,
+      dependencies,
+    );
+
+    expect(result).toMatchObject({
+      opportunityId: "opportunity_new_attempt",
+    });
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
+    ).toMatchObject({ variables: { after: "page_2" } });
+    expect(fetchMock.mock.calls[7]?.[1]?.method).toBe("POST");
+  });
+
   it("upserts one Twenty person and sends the matching Meta Lead event", async () => {
     const upsertTwentyPerson = vi
       .fn()

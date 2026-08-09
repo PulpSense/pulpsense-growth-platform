@@ -4,6 +4,8 @@ import { useCallback, useRef } from "react";
 
 import { MultiStepForm } from "@/components/ui/MultiStepForm";
 import type {
+  ApplicationSubmissionInput,
+  ApplicationSubmissionResult,
   ContactSubmissionError,
   ContactSubmissionInput,
   ContactSubmissionResult,
@@ -104,6 +106,56 @@ export function ApplicationFormIsland({
     return hadRetryIdentity;
   }, []);
 
+  const submitApplication = useCallback(
+    async (
+      input: ApplicationSubmissionInput,
+    ): Promise<ApplicationSubmissionResult> => {
+      if (!retryRef.current) {
+        return { accepted: false, error: "invalid_submission_identity" };
+      }
+
+      const response = await fetch("/api/funnel-events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          schemaVersion: 1,
+          eventType: "application_submitted",
+          funnelId: "creative-multiplier-sprint",
+          identity: retryRef.current,
+          payload: {
+            brandUrl: input.data.brandUrl,
+            paidSocialSpend: input.data.paidSocialSpend,
+            winnerStatus: input.data.winnerStatus,
+            platforms: input.data.platforms,
+            deliveryTimeline: input.data.deliveryTimeline,
+          },
+          sourceUrl: input.sourceUrl,
+          ...(input.referrer ? { referrer: input.referrer } : {}),
+          ...(input.fbp ? { fbp: input.fbp } : {}),
+          ...(input.fbc ? { fbc: input.fbc } : {}),
+        }),
+      });
+      const result = (await response.json()) as {
+        accepted?: boolean;
+        eventId?: string;
+        qualificationStatus?: "qualified" | "unqualified";
+        nextStep?: "booking" | "unqualified";
+        error?: string;
+      };
+
+      return {
+        accepted: response.ok && result.accepted === true,
+        ...(result.eventId ? { eventId: result.eventId } : {}),
+        ...(result.qualificationStatus
+          ? { qualificationStatus: result.qualificationStatus }
+          : {}),
+        ...(result.nextStep ? { nextStep: result.nextStep } : {}),
+        ...(result.error ? { error: result.error } : {}),
+      };
+    },
+    [],
+  );
+
   return (
     <div className={s.formEmbed}>
       <MultiStepForm
@@ -112,6 +164,7 @@ export function ApplicationFormIsland({
           ...(turnstileSiteKey ? { turnstileSiteKey } : {}),
         }}
         onContactSubmit={submitContact}
+        onApplicationSubmit={submitApplication}
         onContactInputChanged={resetContactIdentity}
       />
     </div>
