@@ -32,22 +32,22 @@ An application can arrive before its contact event because it carries enough ver
    - Meta Events Manager shows the expected event ID once after deduplication.
 4. Record the original run ID, replay run ID, event ID, failure cause, correction, and verification result in the incident record. Do not include raw contact data or application answers.
 
-## Controlled preview recovery exercise
+## Controlled non-production recovery exercise
 
-Run this before production promotion using only the Trigger.dev preview environment, sandbox Twenty workspace, Meta Test Events dataset, and preview Slack channel.
+Run this before production promotion using an isolated Trigger.dev Development, staging, or preview environment, a sandbox Twenty workspace, Meta Test Events dataset, and a non-production Slack channel. Development is acceptable when the local worker loads only sandbox destination credentials and the evidence records the Trigger.dev environment and worker version. Never run the exercise against production destinations.
 
 ### Twenty failure
 
-1. Submit a complete preview event and retain its submission ID and event ID.
-2. Temporarily replace the preview Twenty API key with a deliberately invalid sandbox value, replay the event, and confirm that the Twenty operation exhausts its retries and emits one redacted Slack alert with a working run link.
+1. Submit a complete non-production event and retain its submission ID and event ID.
+2. Temporarily replace the isolated environment's Twenty API key with a deliberately invalid sandbox value, replay the event, and confirm that the Twenty operation exhausts its retries and emits one redacted Slack alert with a working run link.
 3. Restore the sandbox key and replay the failed run without changing its payload.
 4. Verify one Person, one activity for the natural event identity, the expected Opportunity/booking outcome, and one Meta conversion identity.
 
 ### Meta failure after Twenty success
 
-1. Temporarily replace the preview Meta access token with a deliberately invalid sandbox value.
-2. Submit or replay a preview event. Confirm from the run that Twenty succeeds once while only the Meta operation retries and then fails.
+1. Temporarily replace the isolated environment's Meta access token with a deliberately invalid sandbox value.
+2. Submit or replay a non-production event. Confirm from the run that Twenty succeeds once while only the Meta operation retries and then fails.
 3. Restore the sandbox Meta token and replay the failed run with the identical payload.
 4. Verify that Twenty still has no duplicate Person, activity, Company, Opportunity, or booking, and that Meta Test Events receives the original event ID.
 
-Restore every preview secret immediately after its exercise. Save only run IDs, stable event/submission identifiers, counts, and redacted screenshots as evidence. The automated processor tests are the local preflight for duplicate delivery, delayed prerequisites, partial adapter failure, exhausted retry alerting, and replay after recovery; they do not replace this sandbox exercise.
+Restore every sandbox secret immediately after its exercise. Save only run IDs, stable event/submission identifiers, counts, and redacted screenshots as evidence. The automated processor tests are the local preflight for duplicate delivery, delayed prerequisites, partial adapter failure, exhausted retry alerting, and replay after recovery; they do not replace this sandbox exercise.
