@@ -17,6 +17,8 @@ The starter task is `health-check`. The public funnel task is `process-funnel-ev
 
 Preview deployments must set `PULPSENSE_AUTOMATION_ENVIRONMENT=preview` and use only sandbox Twenty and Meta credentials. The task rejects an event whose environment does not match its configured destinations.
 
+Set `POSTHOG_PROJECT_KEY` and the region-appropriate `POSTHOG_HOST` to emit the redacted `funnel_contact_submitted`, `funnel_application_submitted`, and authoritative `funnel_booking_completed` lifecycle. The adapter uses the anonymous browser analytics ID when available, excludes contact and application-answer payloads, and logs a redacted delivery failure without failing the lifecycle run.
+
 Set `TWENTY_QUALIFIED_STAGE_VALUE` to the API value for the Twenty stage labelled **Qualified – Awaiting Booking**. Set `TWENTY_CLOSED_STAGE_VALUES` to the comma-separated API values that represent won, lost, or otherwise closed Opportunities in that workspace.
 
 Set `TWENTY_CALL_BOOKED_STAGE_VALUE` to the API value for the Twenty stage labelled **Call Booked**. A verified `booking_completed` event records an idempotent booking activity derived from the Cal UID, advances the matching open Opportunity, and sends Meta `Schedule` with the same deterministic event ID.

@@ -3,6 +3,8 @@
 import Cal, { getCalApi } from "@calcom/embed-react";
 import { useEffect } from "react";
 
+import { trackFunnelEvent } from "@/utils/funnelAnalytics";
+
 import type { CalStep } from "./MultiStepForm";
 
 type CalBookingStepProps = {
@@ -21,6 +23,7 @@ export function CalBookingStep({
   const namespace = step.namespace ?? "default";
 
   useEffect(() => {
+    trackFunnelEvent("booking_interaction", { action: "widget_viewed" });
     void (async () => {
       const cal = await getCalApi({ namespace });
       cal("ui", {

@@ -12,7 +12,7 @@ import {
   createBrowserTrackingConfig,
   type DeploymentEnvironment,
 } from "@/app/creative-multiplier-sprint/preview-config";
-import { TrackingPixels } from "@/components/ui";
+import { FunnelAnalytics, TrackingPixels } from "@/components/ui";
 import type { PixelConfig } from "@/components/ui";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
@@ -40,9 +40,16 @@ const formConfig = createFormConfig({
   openGraphTitle="Creative Multiplier Sprint | PulpSense"
   openGraphDescription="Same winning ad. 10 new AI avatar videos. Delivered ready to test in 2 business days."
 >
+  <FunnelAnalytics
+    client:interaction
+    apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
+    host={import.meta.env.PUBLIC_POSTHOG_HOST}
+    funnelId="creative-multiplier-sprint"
+    page="landing"
+  />
   <CreativeMultiplierPage>
-    <TrackingPixels slot="tracking" pixels={previewPixels} client:load />
-    <DslCarousel slot="carousel" client:load />
+    <TrackingPixels slot="tracking" pixels={previewPixels} client:interaction />
+    <DslCarousel slot="carousel" client:interaction />
     <VideoExamplesSection slot="proof" client:visible />
     <ApplicationFormIsland
       slot="form"
@@ -50,20 +57,22 @@ const formConfig = createFormConfig({
       turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}
       client:visible
     />
-    <MobileStickyCta slot="sticky-cta" client:load />
+    <MobileStickyCta slot="sticky-cta" client:interaction />
     <DeferredLoopVideo
       slot="desktop-avatar-video"
-      client:visible
+      client:interaction
+      interactionReady
       src="/creative-multiplier-sprint/videos/ugc-example-01-loop.mp4"
-      poster="/creative-multiplier-sprint/images/ugc-example-01.jpg"
+      poster="/creative-multiplier-sprint/images/ugc-example-01.webp"
       label="Authority-led hook"
       className="absolute inset-0 h-full w-full object-cover"
     />
     <DeferredLoopVideo
       slot="mobile-avatar-video"
-      client:visible
+      client:interaction
+      interactionReady
       src="/creative-multiplier-sprint/videos/ugc-example-01-loop.mp4"
-      poster="/creative-multiplier-sprint/images/ugc-example-01.jpg"
+      poster="/creative-multiplier-sprint/images/ugc-example-01.webp"
       label="Authority-led hook"
       className="absolute inset-0 h-full w-full object-cover"
     />

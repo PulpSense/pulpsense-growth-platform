@@ -57,6 +57,7 @@ const digestRetryRequest = async (request: ContactSubmissionRequest) => {
         referrer: request.referrer ?? null,
         fbp: request.fbp ?? null,
         fbc: request.fbc ?? null,
+        analyticsId: request.analyticsId ?? null,
       }),
     ),
   );
@@ -345,6 +346,9 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
       ...(parsedApplication.data.fbc
         ? { fbc: parsedApplication.data.fbc }
         : {}),
+      ...(parsedApplication.data.analyticsId
+        ? { analyticsId: parsedApplication.data.analyticsId }
+        : {}),
     };
     const event = applicationSubmittedEventSchema.parse({
       schemaVersion: 1,
@@ -542,6 +546,9 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
       ...(parsed.data.referrer ? { referrer: parsed.data.referrer } : {}),
       ...(parsed.data.fbp ? { fbp: parsed.data.fbp } : {}),
       ...(parsed.data.fbc ? { fbc: parsed.data.fbc } : {}),
+      ...(parsed.data.analyticsId
+        ? { analyticsId: parsed.data.analyticsId }
+        : {}),
     },
     environment: env.PULPSENSE_ENVIRONMENT ?? "local",
   });

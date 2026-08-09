@@ -12,6 +12,13 @@ const attributionTouchSchema = z
     utmCampaign: z.string().trim().max(200).optional(),
     utmContent: z.string().trim().max(200).optional(),
     utmTerm: z.string().trim().max(200).optional(),
+    gclid: z.string().trim().max(500).optional(),
+    fbclid: z.string().trim().max(500).optional(),
+    msclkid: z.string().trim().max(500).optional(),
+    ttclid: z.string().trim().max(500).optional(),
+    liFatId: z.string().trim().max(500).optional(),
+    landingPage: z.url().max(2048).optional(),
+    referrer: z.url().max(2048).optional(),
   })
   .strict();
 
@@ -50,6 +57,7 @@ const requestContextSchema = z
     referrer: z.string().url().max(2048).optional(),
     fbp: z.string().max(255).optional(),
     fbc: z.string().max(255).optional(),
+    analyticsId: z.uuid().optional(),
   })
   .strict();
 

@@ -1,14 +1,22 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
+
+import { trackFunnelEvent } from "@/utils/funnelAnalytics";
 
 type ProofVideoPlayerProps = {
+  mediaId: string;
   src: string;
   poster: string;
   label: string;
 };
 
-export function ProofVideoPlayer({ src, poster, label }: ProofVideoPlayerProps) {
+export function ProofVideoPlayer({
+  mediaId,
+  src,
+  poster,
+  label,
+}: ProofVideoPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const wantsPlayRef = useRef(false);
@@ -21,7 +29,7 @@ export function ProofVideoPlayer({ src, poster, label }: ProofVideoPlayerProps) 
     const container = containerRef.current;
     const video = videoRef.current;
 
-    if (!container || !video || !('IntersectionObserver' in window)) {
+    if (!container || !video || !("IntersectionObserver" in window)) {
       return;
     }
 
@@ -50,7 +58,7 @@ export function ProofVideoPlayer({ src, poster, label }: ProofVideoPlayerProps) 
         video.pause();
       },
       {
-        rootMargin: '120px 0px',
+        rootMargin: "120px 0px",
         threshold: 0.45,
       },
     );
@@ -84,6 +92,10 @@ export function ProofVideoPlayer({ src, poster, label }: ProofVideoPlayerProps) 
     if (!shouldLoad) {
       wantsPlayRef.current = true;
       setShouldLoad(true);
+      trackFunnelEvent("media_interaction", {
+        action: "play",
+        media_id: mediaId,
+      });
       return;
     }
 
@@ -91,12 +103,20 @@ export function ProofVideoPlayer({ src, poster, label }: ProofVideoPlayerProps) 
       wantsPlayRef.current = true;
       await video.play();
       setIsPlaying(true);
+      trackFunnelEvent("media_interaction", {
+        action: "play",
+        media_id: mediaId,
+      });
       return;
     }
 
     wantsPlayRef.current = false;
     video.pause();
     setIsPlaying(false);
+    trackFunnelEvent("media_interaction", {
+      action: "pause",
+      media_id: mediaId,
+    });
   };
 
   const toggleMute = () => {
@@ -108,6 +128,10 @@ export function ProofVideoPlayer({ src, poster, label }: ProofVideoPlayerProps) 
 
     video.muted = !video.muted;
     setIsMuted(video.muted);
+    trackFunnelEvent("media_interaction", {
+      action: video.muted ? "mute" : "unmute",
+      media_id: mediaId,
+    });
   };
 
   const updateProgress = () => {
@@ -131,10 +155,17 @@ export function ProofVideoPlayer({ src, poster, label }: ProofVideoPlayerProps) 
     const nextProgress = Number(value);
     video.currentTime = (nextProgress / 100) * video.duration;
     setProgress(nextProgress);
+    trackFunnelEvent("media_interaction", {
+      action: "seek",
+      media_id: mediaId,
+    });
   };
 
   return (
-    <div ref={containerRef} className="group relative h-full w-full overflow-hidden bg-black">
+    <div
+      ref={containerRef}
+      className="group relative h-full w-full overflow-hidden bg-black"
+    >
       <video
         ref={videoRef}
         src={shouldLoad ? src : undefined}
@@ -160,7 +191,7 @@ export function ProofVideoPlayer({ src, poster, label }: ProofVideoPlayerProps) 
           type="button"
           aria-label={`Play ${label}`}
           onClick={togglePlay}
-          className="absolute left-1/2 top-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur transition hover:bg-black/75"
+          className="absolute top-1/2 left-1/2 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/30 bg-black/60 shadow-[0_18px_40px_rgba(0,0,0,0.35)] backdrop-blur transition hover:bg-black/75"
         >
           <span className="ml-1 h-0 w-0 border-y-[10px] border-l-[16px] border-y-transparent border-l-white" />
         </button>
@@ -171,7 +202,7 @@ export function ProofVideoPlayer({ src, poster, label }: ProofVideoPlayerProps) 
           type="button"
           aria-label={`Unmute ${label}`}
           onClick={toggleMute}
-          className="absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/55 text-white shadow-[0_18px_44px_rgba(0,0,0,0.38)] backdrop-blur transition hover:scale-105 hover:bg-black/70"
+          className="absolute top-1/2 left-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/35 bg-black/55 text-white shadow-[0_18px_44px_rgba(0,0,0,0.38)] backdrop-blur transition hover:scale-105 hover:bg-black/70"
         >
           <svg
             aria-hidden="true"
