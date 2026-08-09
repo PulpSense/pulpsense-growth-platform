@@ -9,14 +9,22 @@ const interactionEvents = [
   "touchstart",
 ] as const;
 
-const interactionDirective: ClientDirective = (load) => {
+const interactionDirective: ClientDirective = (load, options) => {
   let hydration: Promise<void> | undefined;
   let hydrated = false;
+  let idleCallbackId: number | undefined;
+  let timeoutId: number | undefined;
   const cleanup = () => {
     for (const eventName of interactionEvents) {
       window.removeEventListener(eventName, startHydration);
     }
     window.removeEventListener("click", interceptClick, true);
+    if (idleCallbackId !== undefined) {
+      window.cancelIdleCallback(idleCallbackId);
+    }
+    if (timeoutId !== undefined) {
+      window.clearTimeout(timeoutId);
+    }
   };
   const startHydration = () => {
     hydration ??= (async () => {
@@ -49,6 +57,16 @@ const interactionDirective: ClientDirective = (load) => {
   window.addEventListener("click", interceptClick, {
     capture: true,
   });
+
+  if (options.value === "idle") {
+    if (window.requestIdleCallback) {
+      idleCallbackId = window.requestIdleCallback(startHydration, {
+        timeout: 2_000,
+      });
+    } else {
+      timeoutId = window.setTimeout(startHydration, 2_000);
+    }
+  }
 };
 
 export default interactionDirective;

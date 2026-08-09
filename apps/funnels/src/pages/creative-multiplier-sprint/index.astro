@@ -41,14 +41,19 @@ const formConfig = createFormConfig({
   openGraphDescription="Same winning ad. 10 new AI avatar videos. Delivered ready to test in 2 business days."
 >
   <FunnelAnalytics
-    client:interaction
+    client:interaction="idle"
     apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
     host={import.meta.env.PUBLIC_POSTHOG_HOST}
     funnelId="creative-multiplier-sprint"
     page="landing"
   />
   <CreativeMultiplierPage>
-    <TrackingPixels slot="tracking" pixels={previewPixels} client:interaction />
+    <TrackingPixels
+      slot="tracking"
+      pixels={previewPixels}
+      interactionReady
+      client:interaction="idle"
+    />
     <DslCarousel slot="carousel" client:interaction />
     <VideoExamplesSection slot="proof" client:visible />
     <ApplicationFormIsland

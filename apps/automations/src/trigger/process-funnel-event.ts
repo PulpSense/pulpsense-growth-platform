@@ -172,6 +172,7 @@ type ProcessorEnvironment = {
   TWENTY_CLOSED_STAGE_VALUES?: string;
   META_PIXEL_ID?: string;
   META_CAPI_ACCESS_TOKEN?: string;
+  META_TEST_EVENT_CODE?: string;
   META_GRAPH_API_VERSION?: string;
   POSTHOG_PROJECT_KEY?: string;
   POSTHOG_HOST?: string;
@@ -645,6 +646,7 @@ const sendMetaEvent = async (
   graphApiVersion: string,
   pixelId: string,
   accessToken: string,
+  testEventCode?: string,
 ) => {
   const userData: Record<string, unknown> = {
     em: [await sha256(event.payload.email.trim().toLowerCase())],
@@ -674,6 +676,7 @@ const sendMetaEvent = async (
             custom_data: customData,
           },
         ],
+        ...(testEventCode ? { test_event_code: testEventCode } : {}),
       }),
     },
   );
@@ -696,6 +699,7 @@ const sendMetaLead = async (
   graphApiVersion: string,
   pixelId: string,
   accessToken: string,
+  testEventCode?: string,
 ) =>
   sendMetaEvent(
     event,
@@ -705,6 +709,7 @@ const sendMetaLead = async (
     graphApiVersion,
     pixelId,
     accessToken,
+    testEventCode,
   );
 
 const sendMetaApplication = async (
@@ -713,6 +718,7 @@ const sendMetaApplication = async (
   graphApiVersion: string,
   pixelId: string,
   accessToken: string,
+  testEventCode?: string,
 ) =>
   sendMetaEvent(
     event,
@@ -722,6 +728,7 @@ const sendMetaApplication = async (
     graphApiVersion,
     pixelId,
     accessToken,
+    testEventCode,
   );
 
 const sendMetaSchedule = async (
@@ -730,6 +737,7 @@ const sendMetaSchedule = async (
   graphApiVersion: string,
   pixelId: string,
   accessToken: string,
+  testEventCode?: string,
 ) =>
   sendMetaEvent(
     event,
@@ -739,6 +747,7 @@ const sendMetaSchedule = async (
     graphApiVersion,
     pixelId,
     accessToken,
+    testEventCode,
   );
 
 export function createProcessorDependencies(
@@ -754,6 +763,7 @@ export function createProcessorDependencies(
     environment.META_CAPI_ACCESS_TOKEN,
     "META_CAPI_ACCESS_TOKEN",
   );
+  const metaTestEventCode = environment.META_TEST_EVENT_CODE;
   const graphVersion = required(
     environment.META_GRAPH_API_VERSION,
     "META_GRAPH_API_VERSION",
@@ -807,7 +817,14 @@ export function createProcessorDependencies(
         closedStageValues,
       ),
     sendMetaLead: (event) =>
-      sendMetaLead(event, runtime.fetch, graphVersion, pixelId, metaToken),
+      sendMetaLead(
+        event,
+        runtime.fetch,
+        graphVersion,
+        pixelId,
+        metaToken,
+        metaTestEventCode,
+      ),
     sendMetaApplication: (event) =>
       sendMetaApplication(
         event,
@@ -815,9 +832,17 @@ export function createProcessorDependencies(
         graphVersion,
         pixelId,
         metaToken,
+        metaTestEventCode,
       ),
     sendMetaSchedule: (event) =>
-      sendMetaSchedule(event, runtime.fetch, graphVersion, pixelId, metaToken),
+      sendMetaSchedule(
+        event,
+        runtime.fetch,
+        graphVersion,
+        pixelId,
+        metaToken,
+        metaTestEventCode,
+      ),
     ...(capturePostHogLifecycle ? { capturePostHogLifecycle } : {}),
     log: runtime.log,
   };
