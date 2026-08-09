@@ -34,7 +34,7 @@ An application can arrive before its contact event because it carries enough ver
 
 ## Controlled non-production recovery exercise
 
-Run this before production promotion using an isolated Trigger.dev Development, staging, or preview environment, a sandbox Twenty workspace, Meta Test Events dataset, and a non-production Slack channel. Development is acceptable when the local worker loads only sandbox destination credentials and the evidence records the Trigger.dev environment and worker version. Never run the exercise against production destinations.
+Run this before production promotion using the Trigger.dev Development environment, a sandbox Twenty workspace, Meta Test Events dataset, and a non-production Slack channel. The Development worker must load only sandbox destination credentials, and the evidence must record the Trigger.dev environment and worker version. Never run the exercise against production destinations.
 
 ### Twenty failure
 

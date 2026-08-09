@@ -214,7 +214,7 @@ describe("process-funnel-event", () => {
         executeAdapter: retryImmediately(3),
         run: {
           id: "run_01recovery",
-          url: "https://cloud.trigger.dev/projects/v3/proj_test/preview/runs/run_01recovery",
+          url: "https://cloud.trigger.dev/projects/v3/proj_test/dev/runs/run_01recovery",
         },
       },
     );

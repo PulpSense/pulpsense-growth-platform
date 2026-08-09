@@ -116,7 +116,7 @@ For every route above, confirm:
 - Executable production HTTP parity check: passed for all three public pages and `robots.txt`.
 - Automation TypeScript: passed.
 - Production response checks: all three public funnel routes returned 200 with the expected robots metadata and `X-Robots-Tag`; `/robots.txt` returned the disallow-all policy.
-- Trigger.dev local worker: registered `health-check` in version `20260808.1` on the `default` dev branch.
+- Trigger.dev Development worker: registered `health-check` in version `20260808.1`.
 - Harmless run `run_06fu42eqjmsg2p255dnedj4t01`: completed successfully in 5 ms with `ok: true` and message `Issue #80 checkpoint`.
 
 ## Astro preview verification — 2026-08-08
