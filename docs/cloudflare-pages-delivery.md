@@ -27,7 +27,7 @@ Configure the `Preview` GitHub environment with:
 
 Pages Function credentials such as Trigger.dev, MillionVerifier, Turnstile, and webhook secrets stay in the Cloudflare Pages environment. They are not copied into GitHub because Direct Upload preserves the project's runtime configuration. The checked-in Wrangler configuration binds preview deployments to the private `pulpsense-funnel-rate-limiter-preview` Worker. Deploy that Worker from `apps/rate-limiter` before the Pages project; #87 must provide a separate production service before launch.
 
-The Turnstile widget's Hostname Management must authorize the Pages project hostname and the stable branch alias used for acceptance testing. For PR #94 those are `pulpsense-funnels-preview.pages.dev` and `pr-94.pulpsense-funnels-preview.pages.dev`. A correct site key still fails client-side with Turnstile error `110200` when the current preview hostname is absent.
+The Turnstile widget's Hostname Management must authorize `pulpsense-funnels-preview.pages.dev`. Cloudflare applies that authorization to the project hostname and all branch aliases beneath it, so do not add per-PR hostnames. A correct site key still fails client-side with Turnstile error `110200` when the Pages project hostname is absent.
 
 ## Production gate
 
