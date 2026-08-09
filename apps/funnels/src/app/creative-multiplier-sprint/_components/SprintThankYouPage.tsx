@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { FunnelCta, FunnelLegalFooter } from '@/components/funnel';
 import { creativeMultiplierContent } from '../content';
 
@@ -6,6 +8,7 @@ import { ProofVideoPlayer } from './ProofVideoPlayer';
 
 type SprintThankYouPageProps = {
   qualified: boolean;
+  proof?: ReactNode;
 };
 
 const thankYouProofVideos = [
@@ -26,7 +29,29 @@ const thankYouProofVideos = [
   },
 ];
 
-export function SprintThankYouPage({ qualified }: SprintThankYouPageProps) {
+export function SprintThankYouVideos() {
+  return (
+    <>
+      {thankYouProofVideos.map((video) => (
+        <article key={video.id} className={s.thankYouProofCard}>
+          <div className={s.thankYouProofMedia}>
+            <ProofVideoPlayer
+              src={`/creative-multiplier-sprint/videos/${video.id}.mp4`}
+              poster={`/creative-multiplier-sprint/images/${video.id}.jpg`}
+              label={video.title}
+            />
+          </div>
+          <div className={s.thankYouProofMeta}>
+            <h3>{video.title}</h3>
+            <p>{video.tone}</p>
+          </div>
+        </article>
+      ))}
+    </>
+  );
+}
+
+export function SprintThankYouPage({ qualified, proof }: SprintThankYouPageProps) {
   const title = qualified
     ? 'Your Creative Multiplier Sprint call is booked.'
     : 'Thanks for applying.';
@@ -79,21 +104,7 @@ export function SprintThankYouPage({ qualified }: SprintThankYouPageProps) {
           </div>
 
           <div className={s.thankYouProofGrid}>
-            {thankYouProofVideos.map((video) => (
-              <article key={video.id} className={s.thankYouProofCard}>
-                <div className={s.thankYouProofMedia}>
-                  <ProofVideoPlayer
-                    src={`/creative-multiplier-sprint/videos/${video.id}.mp4`}
-                    poster={`/creative-multiplier-sprint/images/${video.id}.jpg`}
-                    label={video.title}
-                  />
-                </div>
-                <div className={s.thankYouProofMeta}>
-                  <h3>{video.title}</h3>
-                  <p>{video.tone}</p>
-                </div>
-              </article>
-            ))}
+            {proof ?? <SprintThankYouVideos />}
           </div>
         </section>
       )}

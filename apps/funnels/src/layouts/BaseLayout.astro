@@ -1,0 +1,39 @@
+---
+import "@/app/globals.css";
+import { AppConfig } from "@/utils/AppConfig";
+
+type Props = {
+  title?: string;
+  description?: string;
+  openGraphTitle?: string;
+  openGraphDescription?: string;
+};
+
+const {
+  title = AppConfig.title,
+  description = AppConfig.description,
+  openGraphTitle = title,
+  openGraphDescription = description,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang={AppConfig.locale}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="googlebot" content="noindex, nofollow, noimageindex" />
+    <meta name="description" content={description} />
+    <meta property="og:title" content={openGraphTitle} />
+    <meta property="og:description" content={openGraphDescription} />
+    <meta property="og:site_name" content={AppConfig.site_name} />
+    <meta property="og:locale" content={AppConfig.locale} />
+    <meta property="og:type" content="website" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>

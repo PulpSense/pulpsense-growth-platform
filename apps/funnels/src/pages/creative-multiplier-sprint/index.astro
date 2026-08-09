@@ -1,0 +1,54 @@
+---
+import {
+  CreativeMultiplierPage,
+  VideoExamplesSection,
+} from "@/app/creative-multiplier-sprint/_components/CreativeMultiplierPage";
+import { ApplicationFormIsland } from "@/app/creative-multiplier-sprint/_components/ApplicationFormIsland";
+import { DslCarousel } from "@/app/creative-multiplier-sprint/_components/DslCarousel";
+import { MobileStickyCta } from "@/app/creative-multiplier-sprint/_components/MobileStickyCta";
+import { DeferredLoopVideo } from "@/app/creative-multiplier-sprint/_components/DeferredLoopVideo";
+import { formConfig } from "@/app/creative-multiplier-sprint/content";
+import { TrackingPixels } from "@/components/ui";
+import type { PixelConfig } from "@/components/ui";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const previewPixels = {
+  ...(import.meta.env.PUBLIC_META_PIXEL_ID
+    ? {
+        facebookPixelId: import.meta.env.PUBLIC_META_PIXEL_ID,
+        facebookEvents: [{ name: "PageView", type: "standard" as const }],
+      }
+    : {}),
+} satisfies PixelConfig;
+---
+
+<BaseLayout
+  title="Creative Multiplier Sprint | 10 AI Avatar Videos in 2 Business Days"
+  description="Turn one proven paid-social ad into 10 ready-to-test AI avatar videos in 2 business days. Built for ecommerce brands with winning creatives."
+  openGraphTitle="Creative Multiplier Sprint | PulpSense"
+  openGraphDescription="Same winning ad. 10 new AI avatar videos. Delivered ready to test in 2 business days."
+>
+  <CreativeMultiplierPage>
+    <TrackingPixels slot="tracking" pixels={previewPixels} client:load />
+    <DslCarousel slot="carousel" client:load />
+    <VideoExamplesSection slot="proof" client:visible />
+    <ApplicationFormIsland slot="form" config={formConfig} client:visible />
+    <MobileStickyCta slot="sticky-cta" client:load />
+    <DeferredLoopVideo
+      slot="desktop-avatar-video"
+      client:visible
+      src="/creative-multiplier-sprint/videos/ugc-example-01-loop.mp4"
+      poster="/creative-multiplier-sprint/images/ugc-example-01.jpg"
+      label="Authority-led hook"
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+    <DeferredLoopVideo
+      slot="mobile-avatar-video"
+      client:visible
+      src="/creative-multiplier-sprint/videos/ugc-example-01-loop.mp4"
+      poster="/creative-multiplier-sprint/images/ugc-example-01.jpg"
+      label="Authority-led hook"
+      className="absolute inset-0 h-full w-full object-cover"
+    />
+  </CreativeMultiplierPage>
+</BaseLayout>
