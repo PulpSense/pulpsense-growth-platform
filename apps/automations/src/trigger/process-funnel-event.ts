@@ -178,6 +178,23 @@ type ProcessorEnvironment = {
   PULPSENSE_AUTOMATION_ENVIRONMENT?: FunnelEvent["environment"];
 };
 
+export const resolveMetaEnvironment = (
+  environment: Readonly<Record<string, string | undefined>>,
+): {
+  META_PIXEL_ID?: string;
+  META_CAPI_ACCESS_TOKEN?: string;
+  META_TEST_EVENT_CODE?: string;
+} => ({
+  META_PIXEL_ID:
+    environment.META_PIXEL_ID_AI_SEO_L || environment.META_PIXEL_ID,
+  META_CAPI_ACCESS_TOKEN:
+    environment.META_CAPI_ACCESS_TOKEN_AI_SEO_L ||
+    environment.META_CAPI_ACCESS_TOKEN,
+  META_TEST_EVENT_CODE:
+    environment.META_TEST_EVENT_CODE_AI_SEO_L ||
+    environment.META_TEST_EVENT_CODE,
+});
+
 const required = (value: string | undefined, name: string) => {
   if (!value) throw new Error(`${name} is not configured`);
   return value;
@@ -831,8 +848,7 @@ export const processFunnelEventTask = schemaTask({
           TWENTY_CALL_BOOKED_STAGE_VALUE:
             process.env.TWENTY_CALL_BOOKED_STAGE_VALUE,
           TWENTY_CLOSED_STAGE_VALUES: process.env.TWENTY_CLOSED_STAGE_VALUES,
-          META_PIXEL_ID: process.env.META_PIXEL_ID,
-          META_CAPI_ACCESS_TOKEN: process.env.META_CAPI_ACCESS_TOKEN,
+          ...resolveMetaEnvironment(process.env),
           META_GRAPH_API_VERSION: process.env.META_GRAPH_API_VERSION,
           POSTHOG_PROJECT_KEY: process.env.POSTHOG_PROJECT_KEY,
           POSTHOG_HOST: process.env.POSTHOG_HOST,
