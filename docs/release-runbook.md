@@ -50,16 +50,16 @@ The gated GitHub workflow checks that the required Pages secrets and Trigger.dev
 
 ## Release qualification
 
-Deploy the exact candidate to the production Pages project without attaching `go.pulpsense.com`. Use its immutable `pages.dev` URL for qualification.
+Deploy the exact candidate SHA to the dedicated `pulpsense-funnels-preview` project with preview-only Cloudflare, Trigger.dev, Twenty, Meta, PostHog, Slack, Turnstile, MillionVerifier, and Cal destinations. Use the immutable preview deployment URL for qualification. Do not qualify by sending test data through production destinations before approval.
 
 Run the automated gate from a clean checkout:
 
 ```bash
-PARITY_CHECK_ORIGIN=https://<immutable-deployment>.pulpsense-funnels.pages.dev \
+PARITY_CHECK_ORIGIN=https://<immutable-deployment>.pulpsense-funnels-preview.pages.dev \
   pnpm qualify:release
 ```
 
-This runs the full test suite, workspace type checks, lint, an Astro production build, public HTTP parity/crawler checks, and three mobile Lighthouse runs. The median Lighthouse navigation uses a 390 × 844 viewport, device scale factor 3, and simulated mobile throttling. Release budgets are LCP ≤ 2,500 ms and CLS ≤ 0.1.
+This runs the full test suite, workspace type checks, lint, an Astro production build, public HTTP parity/crawler checks, and three mobile Lighthouse runs. The median Lighthouse navigation uses a 390 × 844 viewport, device scale factor 3, and simulated mobile throttling. Release budgets are LCP < 2,500 ms and CLS < 0.1.
 
 At desktop 1440 × 900 and mobile 390 × 844, complete and record these journeys with synthetic test identities:
 
@@ -85,12 +85,13 @@ An implementation request, merged pull request, workflow approval from an earlie
 
 ## Cutover and live smoke test
 
-1. Record the current `go.pulpsense.com` DNS/custom-domain state and the approved Pages deployment ID.
+1. Record the current `go.pulpsense.com` DNS/custom-domain state and the approved preview deployment ID.
 2. From `master`, dispatch **Cloudflare Pages** with `deploy_production=true`, approve the protected `Production` job, and confirm it deploys the approved SHA.
-3. Attach `go.pulpsense.com` to `pulpsense-funnels`; do not change the apex or unrelated DNS records.
-4. Start the rollback clock when Cloudflare reports the custom domain active.
-5. At T+0, T+5, T+15, and T+30 minutes, check the three routes, crawler controls, a synthetic contact, a qualified application, an unqualified application, and a verified booking. Confirm the expected Twenty, Meta, PostHog, Trigger.dev, and Slack behavior without exposing lead data.
-6. Record the live deployment ID, DNS state, observations, and owner decision at T+30.
+3. On the production project's immutable `pages.dev` URL, repeat the non-mutating route/crawler checks and confirm the build exposes the approved public Meta, PostHog, Cal, and Turnstile destinations. Stop and roll back if the SHA or configuration differs from the approval record.
+4. Attach `go.pulpsense.com` to `pulpsense-funnels`; do not change the apex or unrelated DNS records.
+5. Start the rollback clock when Cloudflare reports the custom domain active.
+6. At T+0, T+5, T+15, and T+30 minutes, check the three routes, crawler controls, a synthetic contact, a qualified application, an unqualified application, and a verified booking. Confirm the expected Twenty, Meta, PostHog, Trigger.dev, and Slack behavior without exposing lead data.
+7. Record the live deployment ID, DNS state, observations, and owner decision at T+30.
 
 ## Rollback decision window
 

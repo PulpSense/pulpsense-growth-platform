@@ -34,5 +34,21 @@ describe("production deployment isolation", () => {
     expect(gate).toContain("github.ref == 'refs/heads/master'");
     expect(gate).toContain("github.event_name == 'workflow_dispatch'");
     expect(gate).not.toContain("github.event_name == 'push'");
+
+    const validation = productionJob.split(
+      "      - name: Validate Production Pages secrets",
+    )[0];
+    expect(validation).toContain(
+      'test "$CLOUDFLARE_PAGES_PROJECT" = "pulpsense-funnels"',
+    );
+    expect(validation).toContain(
+      'test "$CLOUDFLARE_PAGES_BRANCH" = "master"',
+    );
+    expect(validation).toContain(
+      "PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}",
+    );
+    expect(validation).toContain(
+      "PUBLIC_CAL_NAMESPACE: ${{ vars.PUBLIC_CAL_NAMESPACE }}",
+    );
   });
 });

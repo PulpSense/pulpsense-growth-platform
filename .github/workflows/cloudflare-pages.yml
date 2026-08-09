@@ -174,15 +174,19 @@ jobs:
           CLOUDFLARE_PAGES_BRANCH: ${{ vars.CLOUDFLARE_PAGES_BRANCH }}
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
           PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}
+          PUBLIC_CAL_NAMESPACE: ${{ vars.PUBLIC_CAL_NAMESPACE }}
           PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}
+          PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
           PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
           PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Production CLOUDFLARE_ACCOUNT_ID is not configured"; exit 1; }
-          test -n "$CLOUDFLARE_PAGES_BRANCH" || { echo "Production CLOUDFLARE_PAGES_BRANCH is not configured"; exit 1; }
-          test -n "$CLOUDFLARE_PAGES_PROJECT" || { echo "Production CLOUDFLARE_PAGES_PROJECT is not configured"; exit 1; }
+          test "$CLOUDFLARE_PAGES_BRANCH" = "master" || { echo "Production CLOUDFLARE_PAGES_BRANCH must be master"; exit 1; }
+          test "$CLOUDFLARE_PAGES_PROJECT" = "pulpsense-funnels" || { echo "Production CLOUDFLARE_PAGES_PROJECT must be pulpsense-funnels"; exit 1; }
           test -n "$PUBLIC_CAL_LINK" || { echo "Production PUBLIC_CAL_LINK is not configured"; exit 1; }
+          test -n "$PUBLIC_CAL_NAMESPACE" || { echo "Production PUBLIC_CAL_NAMESPACE is not configured"; exit 1; }
           test -n "$PUBLIC_META_PIXEL_ID" || { echo "Production PUBLIC_META_PIXEL_ID is not configured"; exit 1; }
+          test -n "$PUBLIC_POSTHOG_HOST" || { echo "Production PUBLIC_POSTHOG_HOST is not configured"; exit 1; }
           test -n "$PUBLIC_POSTHOG_KEY" || { echo "Production PUBLIC_POSTHOG_KEY is not configured"; exit 1; }
           test -n "$PUBLIC_TURNSTILE_SITE_KEY" || { echo "Production PUBLIC_TURNSTILE_SITE_KEY is not configured"; exit 1; }
 

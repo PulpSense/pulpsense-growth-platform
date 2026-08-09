@@ -26,13 +26,13 @@ The unapproved production job from run `31337577034` was cancelled after its suc
 
 ## Qualification results
 
-Complete this section against the immutable production-project `pages.dev` deployment described by `docs/release-runbook.md`.
+Complete this section against the immutable, sandbox-integrated preview deployment described by `docs/release-runbook.md`.
 
 | Check                                       | Result                    | Evidence                                                                                                                                                                                                |
 | ------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Full tests, types, lint, and build          | Pass locally              | `pnpm qualify:release`: 19 test files / 80 tests, all workspace type checks, funnel lint, and Astro build passed                                                                                         |
+| Full tests, types, lint, and build          | Pass locally              | `pnpm qualify:release`: 19 test files / 81 tests, all workspace type checks, funnel lint, and Astro build passed                                                                                         |
 | HTTP parity and crawler controls            | Pass on inspected preview | All three routes, six React islands, trailing slashes, `X-Robots-Tag`, metadata, and `robots.txt` passed against `ba7b28b1.pulpsense-funnels-preview.pages.dev`                                         |
-| Mobile LCP ≤ 2.5 s and CLS ≤ 0.1            | Pass on inspected preview | Final three-run mobile median: LCP 1,680 ms; CLS 0                                                                                                                                                      |
+| Mobile LCP < 2.5 s and CLS < 0.1            | Pass on inspected preview | Final three-run mobile median: LCP 1,384 ms; CLS 0                                                                                                                                                      |
 | Desktop 1440 × 900 parity                   | Pass on inspected preview | Desktop headline, hero media, primary CTA, carousel, application panel, and responsive composition rendered; carousel controls and business-email validation responded                                  |
 | Mobile 390 × 844 parity                     | Pass on inspected preview | Mobile headline, compact carousel, media stack, and sticky application CTA rendered at the agreed viewport                                                                                              |
 | Contact journey                             | Partial                   | Synthetic contact advanced to qualification; downstream Twenty, Meta, PostHog, and Trigger run evidence still requires provider-dashboard verification                                                  |
@@ -43,7 +43,7 @@ Complete this section against the immutable production-project `pages.dev` deplo
 | Twenty and Meta recovery exercise           | Pass                      | `docs/evidence/issue-86-dev-recovery.md`                                                                                                                                                                |
 | Production configuration destination review | Pending                   |                                                                                                                                                                                                         |
 
-The inspected preview predates the issue #87 release-control commit. Repeat every passing check against the immutable production-project `pages.dev` candidate after the blocked configuration is supplied.
+The inspected preview predates the issue #87 release-control commit. Repeat every passing check against a new immutable preview deployment after the blocked sandbox configuration is supplied.
 
 ## Approval and cutover record
 

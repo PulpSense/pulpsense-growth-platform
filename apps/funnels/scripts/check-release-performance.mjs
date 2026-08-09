@@ -29,23 +29,21 @@ export function evaluatePerformanceRuns(reports) {
     throw new Error("At least one Lighthouse report is required");
   }
 
-  const lcpMs = Math.round(
-    median(reports.map((report) => metric(report, "largest-contentful-paint"))),
+  const lcpMs = median(
+    reports.map((report) => metric(report, "largest-contentful-paint")),
   );
-  const cls = Number(
-    median(
-      reports.map((report) => metric(report, "cumulative-layout-shift")),
-    ).toFixed(3),
+  const cls = median(
+    reports.map((report) => metric(report, "cumulative-layout-shift")),
   );
 
-  if (lcpMs > releasePerformanceBudgets.lcpMs) {
+  if (lcpMs >= releasePerformanceBudgets.lcpMs) {
     throw new Error(
-      `LCP ${lcpMs}ms exceeds the ${releasePerformanceBudgets.lcpMs}ms release budget`,
+      `LCP ${lcpMs}ms does not meet the <${releasePerformanceBudgets.lcpMs}ms release budget`,
     );
   }
-  if (cls > releasePerformanceBudgets.cls) {
+  if (cls >= releasePerformanceBudgets.cls) {
     throw new Error(
-      `CLS ${cls} exceeds the ${releasePerformanceBudgets.cls} release budget`,
+      `CLS ${cls} does not meet the <${releasePerformanceBudgets.cls} release budget`,
     );
   }
 
