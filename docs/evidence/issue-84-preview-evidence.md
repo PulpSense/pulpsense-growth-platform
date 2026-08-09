@@ -7,7 +7,7 @@ Date: 2026-08-09
 - Pull request: `PulpSense/pulpsense-growth-platform#97`
 - Preview deployment: `https://c7598dcc.pulpsense-funnels-preview.pages.dev`
 - Stable preview alias: `https://pr-97.pulpsense-funnels-preview.pages.dev`
-- Trigger.dev local preview worker: `20260809.15`
+- Trigger.dev Development worker: `20260809.15`
 - Twenty: live workspace with a uniquely identified QA Person, Opportunity, Note,
   and NoteTarget
 - Meta: sandbox dataset using the ignored local preview credential and test event
