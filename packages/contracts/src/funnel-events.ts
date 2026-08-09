@@ -3,6 +3,7 @@ import { z } from "zod";
 export const FUNNEL_EVENT_SCHEMA_VERSION = 1 as const;
 export const CONTACT_SUBMITTED_EVENT = "contact_submitted" as const;
 export const APPLICATION_SUBMITTED_EVENT = "application_submitted" as const;
+export const BOOKING_COMPLETED_EVENT = "booking_completed" as const;
 
 const attributionTouchSchema = z
   .object({
@@ -124,13 +125,51 @@ export const applicationSubmittedEventSchema = z
   })
   .strict();
 
+export const bookingCompletedEventSchema = z
+  .object({
+    schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
+    eventType: z.literal(BOOKING_COMPLETED_EVENT),
+    funnelId: z.literal("creative-multiplier-sprint"),
+    submissionId: z.string().uuid(),
+    eventId: z.string().min(1).max(300),
+    occurredAt: z.string().datetime({ offset: true }),
+    payload: contactPayloadSchema.extend({
+      emailVerification: z
+        .object({
+          status: z.literal("verified"),
+          result: z.literal("business"),
+        })
+        .strict(),
+      booking: z
+        .object({
+          uid: z.string().trim().min(1).max(200),
+          title: z.string().trim().min(1).max(500),
+          startTime: z.string().datetime({ offset: true }),
+          endTime: z.string().datetime({ offset: true }),
+        })
+        .strict(),
+    }),
+    qualificationStatus: z.literal("qualified"),
+    attribution: funnelAttributionSchema,
+    requestContext: requestContextSchema,
+    environment: z.enum(["local", "preview", "production"]),
+  })
+  .strict()
+  .refine(
+    (event) =>
+      event.eventId === `booking_completed:${event.payload.booking.uid}`,
+    { path: ["eventId"], message: "Booking event ID must match the Cal UID" },
+  );
+
 export const funnelEventSchema = z.discriminatedUnion("eventType", [
   contactSubmittedEventSchema,
   applicationSubmittedEventSchema,
+  bookingCompletedEventSchema,
 ]);
 
 export type ApplicationAnswers = z.infer<typeof applicationAnswersSchema>;
 export type ApplicationSubmittedEvent = z.infer<
   typeof applicationSubmittedEventSchema
 >;
+export type BookingCompletedEvent = z.infer<typeof bookingCompletedEventSchema>;
 export type FunnelEvent = z.infer<typeof funnelEventSchema>;

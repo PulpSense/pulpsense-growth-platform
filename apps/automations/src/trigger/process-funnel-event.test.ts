@@ -1,5 +1,6 @@
 import type {
   ApplicationSubmittedEvent,
+  BookingCompletedEvent,
   ContactSubmittedEvent,
 } from "@pulpsense/contracts";
 import { describe, expect, it, vi } from "vitest";
@@ -72,7 +73,143 @@ const qualifiedApplicationEvent: ApplicationSubmittedEvent = {
   qualificationStatus: "qualified",
 };
 
+const bookingEvent: BookingCompletedEvent = {
+  schemaVersion: 1,
+  eventType: "booking_completed",
+  funnelId: "creative-multiplier-sprint",
+  submissionId: applicationEvent.submissionId,
+  eventId: "booking_completed:cal_booking_123",
+  occurredAt: "2026-08-09T12:00:00.000Z",
+  payload: {
+    firstName: event.payload.firstName,
+    lastName: event.payload.lastName,
+    email: event.payload.email,
+    phone: event.payload.phone,
+    emailVerification: { status: "verified", result: "business" },
+    booking: {
+      uid: "cal_booking_123",
+      title: "Creative Multiplier Sprint Fit Call",
+      startTime: "2026-08-10T14:00:00.000Z",
+      endTime: "2026-08-10T14:15:00.000Z",
+    },
+  },
+  qualificationStatus: "qualified",
+  attribution: event.attribution,
+  requestContext: event.requestContext,
+  environment: "preview",
+};
+
 describe("process-funnel-event", () => {
+  it("advances the matching Opportunity and emits Schedule for a verified booking", async () => {
+    const upsertTwentyPerson = vi
+      .fn()
+      .mockResolvedValue({ personId: "person_123" });
+    const recordTwentyBooking = vi.fn().mockResolvedValue({
+      activityId: bookingEvent.payload.booking.uid,
+      opportunityId: "opportunity_123",
+    });
+    const sendMetaSchedule = vi.fn().mockResolvedValue({ eventsReceived: 1 });
+
+    const result = await processFunnelEvent(bookingEvent, {
+      upsertTwentyPerson,
+      recordTwentyBooking,
+      sendMetaSchedule,
+      sendMetaLead: vi.fn(),
+      log: { info: vi.fn() },
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      personId: "person_123",
+      activityId: "cal_booking_123",
+      opportunityId: "opportunity_123",
+      metaEventId: "booking_completed:cal_booking_123",
+    });
+    expect(recordTwentyBooking).toHaveBeenCalledWith(
+      bookingEvent,
+      "person_123",
+    );
+    expect(sendMetaSchedule).toHaveBeenCalledWith(bookingEvent);
+  });
+
+  it("writes a stable booking activity, advances Call Booked, and sends the matching CAPI event", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_existing" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunities: {
+              edges: [
+                {
+                  node: {
+                    id: "opportunity_qualified",
+                    stage: "QUALIFIED_AWAITING_BOOKING",
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_CALL_BOOKED_STAGE_VALUE: "CALL_BOOKED",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(bookingEvent, dependencies);
+
+    expect(result).toMatchObject({
+      activityId: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
+      opportunityId: "opportunity_qualified",
+      metaEventId: bookingEvent.eventId,
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
+      id: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
+      title: "Booking cal_booking_123",
+      bodyV2: {
+        markdown: expect.stringContaining(
+          "Creative Multiplier Sprint Fit Call",
+        ),
+      },
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
+      id: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
+      noteId: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
+      targetPersonId: "person_existing",
+    });
+    expect(fetchMock.mock.calls[5]?.[1]?.method).toBe("PATCH");
+    expect(JSON.parse(String(fetchMock.mock.calls[5]?.[1]?.body))).toEqual({
+      stage: "CALL_BOOKED",
+    });
+    const metaBody = JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body));
+    expect(metaBody.data).toEqual([
+      expect.objectContaining({
+        event_name: "Schedule",
+        event_id: bookingEvent.eventId,
+      }),
+    ]);
+  });
+
   it("records every unqualified application on the Person and sends one SubmitApplication event", async () => {
     const upsertTwentyPerson = vi
       .fn()
@@ -302,8 +439,18 @@ describe("process-funnel-event", () => {
           },
         }),
       )
-      .mockResolvedValueOnce(new Response(null, { status: 409 }))
-      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(
+        Response.json(
+          { messages: ["A duplicate entry was detected"] },
+          { status: 400 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        Response.json(
+          { messages: ["A duplicate entry was detected"] },
+          { status: 400 },
+        ),
+      )
       .mockResolvedValueOnce(
         Response.json({
           data: {

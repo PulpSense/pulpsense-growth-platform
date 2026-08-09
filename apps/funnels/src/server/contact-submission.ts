@@ -72,6 +72,18 @@ type RetryClaims = {
   attribution: ContactSubmittedEvent["attribution"];
 };
 
+export type BookingClaims = {
+  submissionId: string;
+  funnelId: "creative-multiplier-sprint";
+  qualificationStatus: "qualified";
+  contact: ContactSubmittedEvent["payload"] & {
+    emailVerification: { status: "verified"; result: "business" };
+  };
+  attribution: ContactSubmittedEvent["attribution"];
+  requestContext: ContactSubmittedEvent["requestContext"];
+  environment: ContactSubmittedEvent["environment"];
+};
+
 const createRetryToken = async (claims: RetryClaims, secret: string) => {
   const encoder = new TextEncoder();
   const encodedClaims = encodeBase64Url(encoder.encode(JSON.stringify(claims)));
@@ -83,6 +95,36 @@ const createRetryToken = async (claims: RetryClaims, secret: string) => {
   );
 
   return `${encodedClaims}.${encodeBase64Url(new Uint8Array(signature))}`;
+};
+
+const bookingTokenContext = new TextEncoder().encode(
+  "pulpsense-booking-identity:v1",
+);
+
+const importBookingKey = async (secret: string, usages: KeyUsage[]) => {
+  const keyMaterial = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(`booking-token:${secret}`),
+  );
+  return crypto.subtle.importKey(
+    "raw",
+    keyMaterial,
+    { name: "AES-GCM" },
+    false,
+    usages,
+  );
+};
+
+const createBookingToken = async (claims: BookingClaims, secret: string) => {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await importBookingKey(secret, ["encrypt"]);
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv, additionalData: bookingTokenContext },
+    key,
+    new TextEncoder().encode(JSON.stringify(claims)),
+  );
+
+  return `v1.${encodeBase64Url(iv)}.${encodeBase64Url(new Uint8Array(ciphertext))}`;
 };
 
 const deriveSubmissionId = async (
@@ -150,7 +192,64 @@ const readRetryToken = async (
   }
 };
 
-const enqueueFunnelEvent = async (event: FunnelEvent, env: FunnelEnv) => {
+export const readBookingToken = async (
+  token: string,
+  secret: string,
+): Promise<BookingClaims | undefined> => {
+  try {
+    const [version, encodedIv, encodedCiphertext, extra] = token.split(".");
+    if (version !== "v1" || !encodedIv || !encodedCiphertext || extra) {
+      return undefined;
+    }
+
+    const key = await importBookingKey(secret, ["decrypt"]);
+    const plaintext = await crypto.subtle.decrypt(
+      {
+        name: "AES-GCM",
+        iv: decodeBase64Url(encodedIv),
+        additionalData: bookingTokenContext,
+      },
+      key,
+      decodeBase64Url(encodedCiphertext),
+    );
+    const claims = JSON.parse(
+      new TextDecoder().decode(plaintext),
+    ) as BookingClaims;
+    const contact = contactSubmittedEventSchema.shape.payload.safeParse(
+      claims.contact,
+    );
+    if (
+      !contactSubmittedEventSchema.shape.submissionId.safeParse(
+        claims.submissionId,
+      ).success ||
+      claims.funnelId !== "creative-multiplier-sprint" ||
+      claims.qualificationStatus !== "qualified" ||
+      !contact.success ||
+      contact.data.emailVerification.status !== "verified" ||
+      contact.data.emailVerification.result !== "business" ||
+      !contactSubmittedEventSchema.shape.attribution.safeParse(
+        claims.attribution,
+      ).success ||
+      !contactSubmittedEventSchema.shape.requestContext.safeParse(
+        claims.requestContext,
+      ).success ||
+      !contactSubmittedEventSchema.shape.environment.safeParse(
+        claims.environment,
+      ).success
+    ) {
+      return undefined;
+    }
+
+    return claims;
+  } catch {
+    return undefined;
+  }
+};
+
+export const enqueueFunnelEvent = async (
+  event: FunnelEvent,
+  env: FunnelEnv,
+) => {
   const triggerSecret = env.PULPSENSE_TRIGGER_SECRET_KEY;
   if (!triggerSecret) throw new Error("Trigger is not configured");
 
@@ -232,6 +331,21 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
       return json({ error: "invalid_submission_identity" }, 400);
     }
 
+    const environment = env.PULPSENSE_ENVIRONMENT ?? "local";
+    const requestContext = {
+      clientIp,
+      userAgent: request.headers.get("user-agent") ?? "",
+      sourceUrl: parsedApplication.data.sourceUrl,
+      ...(parsedApplication.data.referrer
+        ? { referrer: parsedApplication.data.referrer }
+        : {}),
+      ...(parsedApplication.data.fbp
+        ? { fbp: parsedApplication.data.fbp }
+        : {}),
+      ...(parsedApplication.data.fbc
+        ? { fbc: parsedApplication.data.fbc }
+        : {}),
+    };
     const event = applicationSubmittedEventSchema.parse({
       schemaVersion: 1,
       eventType: "application_submitted",
@@ -246,32 +360,46 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
       qualificationStatus,
       companyDomain: emailDomain.trim().toLowerCase().replace(/\.$/u, ""),
       attribution: identity.attribution,
-      requestContext: {
-        clientIp,
-        userAgent: request.headers.get("user-agent") ?? "",
-        sourceUrl: parsedApplication.data.sourceUrl,
-        ...(parsedApplication.data.referrer
-          ? { referrer: parsedApplication.data.referrer }
-          : {}),
-        ...(parsedApplication.data.fbp
-          ? { fbp: parsedApplication.data.fbp }
-          : {}),
-        ...(parsedApplication.data.fbc
-          ? { fbc: parsedApplication.data.fbc }
-          : {}),
-      },
-      environment: env.PULPSENSE_ENVIRONMENT ?? "local",
+      requestContext,
+      environment,
     });
 
     try {
       const runId = await enqueueFunnelEvent(event, env);
+      const bookingEligible =
+        qualificationStatus === "qualified" &&
+        identity.emailVerification.status === "verified" &&
+        identity.emailVerification.result === "business";
+      const bookingIdentity = bookingEligible
+        ? {
+            submissionId,
+            token: await createBookingToken(
+              {
+                submissionId,
+                funnelId: parsedApplication.data.funnelId,
+                qualificationStatus: "qualified",
+                contact: {
+                  ...identity.contact,
+                  emailVerification: {
+                    status: "verified",
+                    result: "business",
+                  },
+                },
+                attribution: identity.attribution,
+                requestContext,
+                environment,
+              },
+              env.SUBMISSION_SIGNING_SECRET,
+            ),
+          }
+        : undefined;
       return json({
         accepted: true,
         submissionId,
         eventId,
         qualificationStatus,
-        nextStep:
-          qualificationStatus === "qualified" ? "booking" : "unqualified",
+        nextStep: bookingEligible ? "booking" : "unqualified",
+        ...(bookingIdentity ? { bookingIdentity } : {}),
         runId,
       });
     } catch {

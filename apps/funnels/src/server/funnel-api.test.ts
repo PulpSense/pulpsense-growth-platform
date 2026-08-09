@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { handleCalWebhook } from "./booking-webhook";
 import { handleFunnelEvent } from "./contact-submission";
 import { handleVerifyEmail } from "./email-verification";
+import { handleFormSubmit } from "./lifecycle-events";
+import { handleMetaCapi } from "./meta-conversions";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -48,6 +51,42 @@ const allowingRateLimit = {
   FUNNEL_RATE_LIMIT_SERVICE: {
     fetch: async () => new Response(null, { status: 204 }),
   },
+};
+
+const qualifiedApplicationRequest = (identity: {
+  submissionId: string;
+  token: string;
+}) =>
+  requestWithBody({
+    schemaVersion: 1,
+    eventType: "application_submitted",
+    funnelId: "creative-multiplier-sprint",
+    identity,
+    payload: {
+      brandUrl: "https://www.brand.com/products",
+      paidSocialSpend: "$50k - $150k/month",
+      winnerStatus: "Yes, several winners",
+      platforms: ["Meta", "TikTok"],
+      deliveryTimeline: "Next 2 weeks",
+    },
+    sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+  });
+
+const signCalBody = async (body: string, secret: string) => {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = new Uint8Array(
+    await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body)),
+  );
+
+  return Array.from(signature, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
 };
 
 describe("POST /api/funnel-events", () => {
@@ -324,7 +363,11 @@ describe("POST /api/funnel-events", () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    const applicationResult = (await response.json()) as Record<
+      string,
+      unknown
+    >;
+    expect(applicationResult).toMatchObject({
       accepted: true,
       submissionId: contact.submissionId,
       eventId: `application_submitted:${contact.submissionId}`,
@@ -332,6 +375,7 @@ describe("POST /api/funnel-events", () => {
       nextStep: "unqualified",
       runId: "run_application",
     });
+    expect(applicationResult).not.toHaveProperty("bookingIdentity");
 
     const applicationTriggerBody = JSON.parse(
       String(fetchMock.mock.calls[3]?.[1]?.body),
@@ -763,6 +807,313 @@ describe("POST /api/funnel-events", () => {
     await expect(response.json()).resolves.toMatchObject({
       error: "email_invalid",
     });
+  });
+});
+
+describe("POST /api/webhooks/cal", () => {
+  it("rejects a webhook whose Cal signature is invalid", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await handleCalWebhook(
+      new Request("https://preview.pulpsense.com/api/webhooks/cal", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-cal-signature-256": "invalid",
+        },
+        body: JSON.stringify({
+          triggerEvent: "BOOKING_CREATED",
+          createdAt: "2026-08-09T12:00:00.000Z",
+          payload: {},
+        }),
+      }),
+      {
+        CAL_WEBHOOK_SECRET: "cal-webhook-secret",
+        SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      },
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: "invalid_cal_signature",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts a verified booking and reuses its idempotency key for a duplicate webhook", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ result: "ok" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_application" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_booking" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_booking" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const env = {
+      ...allowingRateLimit,
+      TURNSTILE_SECRET_KEY: "turnstile-secret",
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+      PULPSENSE_ENVIRONMENT: "preview" as const,
+      CAL_WEBHOOK_SECRET: "cal-webhook-secret",
+    };
+    const contactResponse = await handleFunnelEvent(
+      contactRequest("https://preview.pulpsense.com"),
+      env,
+    );
+    const contact = (await contactResponse.json()) as {
+      submissionId: string;
+      retry: { submissionId: string; token: string };
+    };
+    const applicationResponse = await handleFunnelEvent(
+      qualifiedApplicationRequest(contact.retry),
+      env,
+    );
+    const application = (await applicationResponse.json()) as {
+      nextStep: string;
+      bookingIdentity?: { submissionId: string; token: string };
+    };
+    expect(application).toMatchObject({
+      nextStep: "booking",
+      bookingIdentity: { submissionId: contact.submissionId },
+    });
+    expect(application.bookingIdentity?.token).toMatch(/^v1\./u);
+    expect(application.bookingIdentity?.token).not.toContain("maya@brand.com");
+
+    const calBody = JSON.stringify({
+      triggerEvent: "BOOKING_CREATED",
+      createdAt: "2026-08-09T12:00:00.000Z",
+      payload: {
+        type: "growth-mapping-funnel",
+        status: "ACCEPTED",
+        uid: "cal_booking_123",
+        title: "Creative Multiplier Sprint Fit Call",
+        startTime: "2026-08-10T14:00:00.000Z",
+        endTime: "2026-08-10T14:15:00.000Z",
+        attendees: [{ email: "maya@brand.com" }],
+        metadata: {
+          pulpsenseSubmissionId: application.bookingIdentity?.submissionId,
+          pulpsenseBookingToken: application.bookingIdentity?.token,
+        },
+      },
+    });
+    const calSignature = await signCalBody(calBody, env.CAL_WEBHOOK_SECRET);
+    const request = () =>
+      new Request("https://preview.pulpsense.com/api/webhooks/cal", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-cal-signature-256": calSignature,
+        },
+        body: calBody,
+      });
+    const response = await handleCalWebhook(request(), env);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      accepted: true,
+      submissionId: contact.submissionId,
+      eventId: "booking_completed:cal_booking_123",
+      runId: "run_booking",
+    });
+    const triggerBody = JSON.parse(String(fetchMock.mock.calls[4]?.[1]?.body));
+    expect(triggerBody).toMatchObject({
+      payload: {
+        eventType: "booking_completed",
+        submissionId: contact.submissionId,
+        eventId: "booking_completed:cal_booking_123",
+        qualificationStatus: "qualified",
+        payload: {
+          email: "maya@brand.com",
+          emailVerification: { status: "verified", result: "business" },
+          booking: { uid: "cal_booking_123" },
+        },
+      },
+      options: { idempotencyKey: "booking_completed:cal_booking_123" },
+    });
+
+    const duplicateResponse = await handleCalWebhook(request(), env);
+    expect(duplicateResponse.status).toBe(200);
+    const duplicateTriggerBody = JSON.parse(
+      String(fetchMock.mock.calls[5]?.[1]?.body),
+    );
+    expect(duplicateTriggerBody.options).toEqual(triggerBody.options);
+    expect(duplicateTriggerBody.payload.eventId).toBe(
+      triggerBody.payload.eventId,
+    );
+  });
+
+  it("withholds booking from a qualified applicant whose email is unverified", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockRejectedValueOnce(new Error("verifier offline"))
+      .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_application" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const env = {
+      ...allowingRateLimit,
+      TURNSTILE_SECRET_KEY: "turnstile-secret",
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+      PULPSENSE_ENVIRONMENT: "preview" as const,
+      CAL_WEBHOOK_SECRET: "cal-webhook-secret",
+    };
+    const contactResponse = await handleFunnelEvent(
+      contactRequest("https://preview.pulpsense.com"),
+      env,
+    );
+    const contact = (await contactResponse.json()) as {
+      retry: { submissionId: string; token: string };
+    };
+    const applicationResponse = await handleFunnelEvent(
+      qualifiedApplicationRequest(contact.retry),
+      env,
+    );
+
+    await expect(applicationResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        accepted: true,
+        qualificationStatus: "qualified",
+        nextStep: "unqualified",
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
+  it("rejects a booking correlated with contact identity instead of qualified booking identity", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ result: "ok" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_contact" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const env = {
+      ...allowingRateLimit,
+      TURNSTILE_SECRET_KEY: "turnstile-secret",
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+      PULPSENSE_ENVIRONMENT: "preview" as const,
+      CAL_WEBHOOK_SECRET: "cal-webhook-secret",
+    };
+    const contactResponse = await handleFunnelEvent(
+      contactRequest("https://preview.pulpsense.com"),
+      env,
+    );
+    const contact = (await contactResponse.json()) as {
+      submissionId: string;
+      retry: { submissionId: string; token: string };
+    };
+    const calBody = JSON.stringify({
+      triggerEvent: "BOOKING_CREATED",
+      createdAt: "2026-08-09T12:00:00.000Z",
+      payload: {
+        type: "growth-mapping-funnel",
+        status: "ACCEPTED",
+        uid: "cal_booking_forged",
+        title: "Creative Multiplier Sprint Fit Call",
+        startTime: "2026-08-10T14:00:00.000Z",
+        endTime: "2026-08-10T14:15:00.000Z",
+        attendees: [{ email: "maya@brand.com" }],
+        metadata: {
+          pulpsenseSubmissionId: contact.submissionId,
+          pulpsenseBookingToken: contact.retry.token,
+        },
+      },
+    });
+    const response = await handleCalWebhook(
+      new Request("https://preview.pulpsense.com/api/webhooks/cal", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-cal-signature-256": await signCalBody(
+            calBody,
+            env.CAL_WEBHOOK_SECRET,
+          ),
+        },
+        body: calBody,
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(422);
+    await expect(response.json()).resolves.toEqual({
+      error: "booking_not_eligible",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("browser booking boundaries", () => {
+  it("rejects booking completion submitted through the legacy browser endpoint", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await handleFormSubmit(
+      new Request("https://preview.pulpsense.com/api/form-submit", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          event: "booking_completed",
+          data: {
+            funnelId: "creative-multiplier-sprint",
+            bookingUid: "cal_booking_forged",
+          },
+        }),
+      }),
+      { PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret" },
+    );
+
+    expect(response.status).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects a browser-originated Meta Schedule CAPI event", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await handleMetaCapi(
+      new Request("https://preview.pulpsense.com/api/meta-capi", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          event_name: "Schedule",
+          event_id: "browser-forged-schedule",
+          event_source_url:
+            "https://preview.pulpsense.com/creative-multiplier-sprint/",
+        }),
+      }),
+      {
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-token",
+      },
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toEqual({
+      error: "authoritative_booking_required",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   applicationSubmittedEventSchema,
+  bookingCompletedEventSchema,
   contactSubmittedEventSchema,
   funnelEventSchema,
 } from "./funnel-events.js";
@@ -68,5 +69,34 @@ describe("funnel event contract", () => {
       applicationEvent,
     );
     expect(funnelEventSchema.parse(applicationEvent)).toEqual(applicationEvent);
+  });
+
+  it("accepts an authoritative verified booking in the shared union", () => {
+    const bookingEvent = {
+      ...acceptedEvent,
+      eventType: "booking_completed",
+      eventId: "booking_completed:cal_booking_123",
+      payload: {
+        ...acceptedEvent.payload,
+        booking: {
+          uid: "cal_booking_123",
+          title: "Creative Multiplier Sprint Fit Call",
+          startTime: "2026-08-10T14:00:00.000Z",
+          endTime: "2026-08-10T14:15:00.000Z",
+        },
+      },
+      qualificationStatus: "qualified",
+    };
+
+    expect(bookingCompletedEventSchema.parse(bookingEvent)).toEqual(
+      bookingEvent,
+    );
+    expect(funnelEventSchema.parse(bookingEvent)).toEqual(bookingEvent);
+    expect(
+      bookingCompletedEventSchema.safeParse({
+        ...bookingEvent,
+        eventId: "booking_completed:different_booking",
+      }).success,
+    ).toBe(false);
   });
 });
