@@ -1,6 +1,7 @@
 import {
   funnelEventSchema,
   type ApplicationSubmittedEvent,
+  type BookingCompletedEvent,
   type ContactSubmittedEvent,
   type FunnelEvent,
 } from "@pulpsense/contracts";
@@ -19,6 +20,13 @@ type ProcessorDependencies = {
   sendMetaApplication?(
     event: ApplicationSubmittedEvent,
   ): Promise<{ eventsReceived: number }>;
+  recordTwentyBooking?(
+    event: BookingCompletedEvent,
+    personId: string,
+  ): Promise<{ activityId: string; opportunityId: string }>;
+  sendMetaSchedule?(
+    event: BookingCompletedEvent,
+  ): Promise<{ eventsReceived: number }>;
   log: {
     info(message: string, data?: Record<string, unknown>): void;
   };
@@ -29,6 +37,41 @@ export async function processFunnelEvent(
   dependencies: ProcessorDependencies,
 ) {
   dependencies.assertEnvironment?.(event.environment);
+  if (event.eventType === "booking_completed") {
+    if (!dependencies.recordTwentyBooking || !dependencies.sendMetaSchedule) {
+      throw new Error("Booking processing is not configured");
+    }
+    dependencies.log.info("Processing verified funnel booking", {
+      submissionId: event.submissionId,
+      eventId: event.eventId,
+      bookingUid: event.payload.booking.uid,
+      funnelId: event.funnelId,
+      environment: event.environment,
+    });
+
+    const { personId } = await dependencies.upsertTwentyPerson(event);
+    const booking = await dependencies.recordTwentyBooking(event, personId);
+    const { eventsReceived } = await dependencies.sendMetaSchedule(event);
+
+    dependencies.log.info("Processed verified funnel booking", {
+      submissionId: event.submissionId,
+      eventId: event.eventId,
+      bookingUid: event.payload.booking.uid,
+      personId,
+      activityId: booking.activityId,
+      opportunityId: booking.opportunityId,
+      metaEventsReceived: eventsReceived,
+    });
+
+    return {
+      ok: true as const,
+      personId,
+      activityId: booking.activityId,
+      opportunityId: booking.opportunityId,
+      metaEventId: event.eventId,
+    };
+  }
+
   if (event.eventType === "application_submitted") {
     if (
       !dependencies.recordTwentyApplication ||
@@ -102,6 +145,7 @@ type ProcessorEnvironment = {
   TWENTY_API_KEY?: string;
   TWENTY_API_ORIGIN?: string;
   TWENTY_QUALIFIED_STAGE_VALUE?: string;
+  TWENTY_CALL_BOOKED_STAGE_VALUE?: string;
   TWENTY_CLOSED_STAGE_VALUES?: string;
   META_PIXEL_ID?: string;
   META_CAPI_ACCESS_TOKEN?: string;
@@ -293,6 +337,29 @@ const applicationMarkdown = (event: ApplicationSubmittedEvent) =>
     "```",
   ].join("\n");
 
+const bookingMarkdown = (event: BookingCompletedEvent) =>
+  [
+    `# Booking ${event.payload.booking.uid}`,
+    "",
+    `Title: ${event.payload.booking.title}`,
+    `Starts: ${event.payload.booking.startTime}`,
+    `Ends: ${event.payload.booking.endTime}`,
+    `Confirmed: ${event.occurredAt}`,
+  ].join("\n");
+
+const deterministicUuid = async (identity: string) => {
+  const bytes = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(identity)),
+  ).slice(0, 16);
+  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+};
+
 type ApplicationAnswers = ApplicationSubmittedEvent["payload"]["application"];
 
 const paidSocialSpendValues = {
@@ -386,7 +453,9 @@ const findOpenTwentyOpportunity = async (
           opportunity.stage &&
           !closedStageValues.has(opportunity.stage),
       );
-    if (opportunity) return opportunity;
+    if (opportunity?.id && opportunity.stage) {
+      return { id: opportunity.id, stage: opportunity.stage };
+    }
     const pageInfo = result.data?.opportunities?.pageInfo;
     after = pageInfo?.hasNextPage ? pageInfo.endCursor : undefined;
   } while (after);
@@ -471,6 +540,44 @@ const recordTwentyApplication = async (
   return { activityId: event.submissionId, opportunityId };
 };
 
+const recordTwentyBooking = async (
+  event: BookingCompletedEvent,
+  personId: string,
+  client: TwentyClient,
+  callBookedStageValue: string | undefined,
+  closedStageValues: ReadonlySet<string>,
+) => {
+  const activityId = await deterministicUuid(
+    `cal-booking:${event.payload.booking.uid}`,
+  );
+  await createTwentyRecordOnce(client, "notes", {
+    id: activityId,
+    title: `Booking ${event.payload.booking.uid}`,
+    bodyV2: { markdown: bookingMarkdown(event) },
+  });
+  await createTwentyRecordOnce(client, "noteTargets", {
+    id: activityId,
+    noteId: activityId,
+    targetPersonId: personId,
+  });
+
+  const opportunity = await findOpenTwentyOpportunity(
+    client,
+    personId,
+    closedStageValues,
+  );
+  if (!opportunity) {
+    throw new Error("Qualified Opportunity is not available for booking");
+  }
+  const stage = required(
+    callBookedStageValue,
+    "TWENTY_CALL_BOOKED_STAGE_VALUE",
+  );
+  await writeTwentyOpportunity(client, { stage }, opportunity.id);
+
+  return { activityId, opportunityId: opportunity.id };
+};
+
 const sha256 = async (value: string) => {
   const digest = await crypto.subtle.digest(
     "SHA-256",
@@ -483,7 +590,7 @@ const sha256 = async (value: string) => {
 
 const sendMetaEvent = async (
   event: FunnelEvent,
-  eventName: "Lead" | "SubmitApplication",
+  eventName: "Lead" | "SubmitApplication" | "Schedule",
   customData: Record<string, unknown>,
   fetcher: typeof fetch,
   graphApiVersion: string,
@@ -568,6 +675,23 @@ const sendMetaApplication = async (
     accessToken,
   );
 
+const sendMetaSchedule = async (
+  event: BookingCompletedEvent,
+  fetcher: typeof fetch,
+  graphApiVersion: string,
+  pixelId: string,
+  accessToken: string,
+) =>
+  sendMetaEvent(
+    event,
+    "Schedule",
+    { funnel_id: event.funnelId },
+    fetcher,
+    graphApiVersion,
+    pixelId,
+    accessToken,
+  );
+
 export function createProcessorDependencies(
   environment: ProcessorEnvironment,
   runtime: { fetch: typeof fetch; log: ProcessorDependencies["log"] },
@@ -616,6 +740,14 @@ export function createProcessorDependencies(
         environment.TWENTY_QUALIFIED_STAGE_VALUE,
         closedStageValues,
       ),
+    recordTwentyBooking: (event, personId) =>
+      recordTwentyBooking(
+        event,
+        personId,
+        twentyClient,
+        environment.TWENTY_CALL_BOOKED_STAGE_VALUE,
+        closedStageValues,
+      ),
     sendMetaLead: (event) =>
       sendMetaLead(event, runtime.fetch, graphVersion, pixelId, metaToken),
     sendMetaApplication: (event) =>
@@ -626,6 +758,8 @@ export function createProcessorDependencies(
         pixelId,
         metaToken,
       ),
+    sendMetaSchedule: (event) =>
+      sendMetaSchedule(event, runtime.fetch, graphVersion, pixelId, metaToken),
     log: runtime.log,
   };
 }
@@ -652,6 +786,8 @@ export const processFunnelEventTask = schemaTask({
           TWENTY_API_ORIGIN: process.env.TWENTY_API_ORIGIN,
           TWENTY_QUALIFIED_STAGE_VALUE:
             process.env.TWENTY_QUALIFIED_STAGE_VALUE,
+          TWENTY_CALL_BOOKED_STAGE_VALUE:
+            process.env.TWENTY_CALL_BOOKED_STAGE_VALUE,
           TWENTY_CLOSED_STAGE_VALUES: process.env.TWENTY_CLOSED_STAGE_VALUES,
           META_PIXEL_ID: process.env.META_PIXEL_ID,
           META_CAPI_ACCESS_TOKEN: process.env.META_CAPI_ACCESS_TOKEN,

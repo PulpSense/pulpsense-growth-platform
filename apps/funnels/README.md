@@ -54,7 +54,9 @@ Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` co
 
 Browser-facing `PUBLIC_*` values must be present in the Astro build environment. Pages Function secrets belong in the Cloudflare preview environment instead. `PUBLIC_CAL_NAMESPACE` may be set when the sandbox event uses a distinct embed namespace.
 
-Form lifecycle events are accepted through `/api/form-submit` and forwarded by the Pages Function only when a Trigger.dev preview secret and matching task ID are configured. Email verification and Meta CAPI use the same Pages Function boundary.
+Contact and application lifecycle events are accepted through `/api/funnel-events`. Email verification remains synchronous at `/api/verify-email`. Cal booking completion is accepted only at the signed `/api/webhooks/cal` boundary; the browser callback redirects to confirmation but cannot advance Twenty or emit Meta `Schedule`.
+
+The Cal embed is loaded as a separate lazy chunk only after the server returns a signed booking identity for a qualified applicant with a verified business email. Configure Cal's `BOOKING_CREATED` webhook with `CAL_WEBHOOK_SECRET` and point it at `/api/webhooks/cal`.
 
 Contact and email-verification requests call the private `FUNNEL_RATE_LIMIT_SERVICE` binding with a hashed IP key. The bound Worker owns Cloudflare's native Rate Limiting binding and has no public `workers.dev` route. `pnpm start` launches both configurations locally. This repository currently targets the isolated preview Pages project and preview rate-limiter service; production must receive a separate configuration during #87.
 

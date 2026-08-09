@@ -1,10 +1,7 @@
 import type { FunnelEnv } from "./funnel-env";
 import { json, parseJson } from "./http";
 
-type FormEvent =
-  | "contact_submitted"
-  | "application_submitted"
-  | "booking_completed";
+type FormEvent = "contact_submitted" | "application_submitted";
 
 type FormSubmitBody = {
   event?: string;
@@ -13,9 +10,7 @@ type FormSubmitBody = {
 };
 
 const isFormEvent = (event: string | undefined): event is FormEvent =>
-  event === "contact_submitted" ||
-  event === "application_submitted" ||
-  event === "booking_completed";
+  event === "contact_submitted" || event === "application_submitted";
 
 const taskIdFor = (env: FunnelEnv, funnelId: string, event: FormEvent) => {
   if (funnelId !== "creative-multiplier-sprint") return undefined;
@@ -23,7 +18,6 @@ const taskIdFor = (env: FunnelEnv, funnelId: string, event: FormEvent) => {
   return {
     contact_submitted: env.CREATIVE_MULTIPLIER_SPRINT_CONTACT_TASK_ID,
     application_submitted: env.CREATIVE_MULTIPLIER_SPRINT_APPLICATION_TASK_ID,
-    booking_completed: env.CREATIVE_MULTIPLIER_SPRINT_BOOKING_TASK_ID,
   }[event];
 };
 

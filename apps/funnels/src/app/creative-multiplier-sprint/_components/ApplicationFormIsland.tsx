@@ -140,6 +140,7 @@ export function ApplicationFormIsland({
         eventId?: string;
         qualificationStatus?: "qualified" | "unqualified";
         nextStep?: "booking" | "unqualified";
+        bookingIdentity?: { submissionId: string; token: string };
         error?: string;
       };
 
@@ -150,6 +151,9 @@ export function ApplicationFormIsland({
           ? { qualificationStatus: result.qualificationStatus }
           : {}),
         ...(result.nextStep ? { nextStep: result.nextStep } : {}),
+        ...(result.bookingIdentity
+          ? { bookingIdentity: result.bookingIdentity }
+          : {}),
         ...(result.error ? { error: result.error } : {}),
       };
     },

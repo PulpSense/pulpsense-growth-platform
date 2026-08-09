@@ -30,6 +30,9 @@ export async function handleMetaCapi(request: Request, env: FunnelEnv) {
   if (!body?.event_name || !body.event_id || !body.event_source_url) {
     return json({ error: "Invalid Meta CAPI event" }, 400);
   }
+  if (body.event_name === "Schedule") {
+    return json({ error: "authoritative_booking_required" }, 403);
+  }
 
   const userData: Record<string, unknown> = {
     client_ip_address: getClientIp(request),

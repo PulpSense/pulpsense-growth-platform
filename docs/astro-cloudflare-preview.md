@@ -19,11 +19,11 @@ The page shell and outcome pages are static HTML. React hydration is limited to:
 - the above-the-fold DSL carousel;
 - the responsive hero loop, hydrated only for the visible desktop or mobile copy;
 - the proof-video grids, hydrated when visible;
-- the application and Cal.com flow, hydrated when visible;
+- the application flow, hydrated when visible, with Cal.com split into a later lazy chunk;
 - interaction- or idle-delayed browser tracking;
 - the mobile sticky CTA.
 
-Hero and proof video sources are attached only when their active players approach the viewport. Cal.com is mounted only after a qualified application reaches the booking step. Browser Meta tracking is included only when a `PUBLIC_META_PIXEL_ID` is supplied at build time. Tracking attaches after the first visitor interaction or after the two-second idle fallback, ensuring a passive visit still emits `PageView`.
+Hero and proof video sources are attached only when their active players approach the viewport. Cal.com is imported and mounted only after the server returns a signed booking identity for a qualified applicant with a verified business email. Browser Meta tracking is included only when a `PUBLIC_META_PIXEL_ID` is supplied at build time. Tracking attaches after the first visitor interaction or after the two-second idle fallback, ensuring a passive visit still emits `PageView`.
 
 ## Preview deployment
 
