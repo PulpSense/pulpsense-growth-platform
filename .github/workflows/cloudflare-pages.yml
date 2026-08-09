@@ -1,0 +1,205 @@
+name: Cloudflare Pages
+
+on:
+  pull_request:
+    branches: [master]
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      deploy_production:
+        description: Deploy the selected master commit after Production approval
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare-pages-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+  verify:
+    name: Verify
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm test
+
+      - name: Check types
+        run: pnpm check-types
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build Astro
+        env:
+          PUBLIC_PULPSENSE_ENVIRONMENT: preview
+          PUBLIC_META_PIXEL_ID: ci-preview-pixel
+          PUBLIC_CAL_LINK: ci/preview
+          PUBLIC_CAL_NAMESPACE: ci-preview
+          PUBLIC_TURNSTILE_SITE_KEY: ci-preview-turnstile
+        run: pnpm --filter @pulpsense/funnels build
+
+  deploy-preview:
+    name: Deploy preview
+    needs: verify
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    environment:
+      name: Preview
+      url: ${{ steps.deploy.outputs.pages-deployment-alias-url || steps.deploy.outputs.deployment-url }}
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Preview configuration
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}
+          PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Preview CLOUDFLARE_ACCOUNT_ID is not configured"; exit 1; }
+          test -n "$CLOUDFLARE_PAGES_PROJECT" || { echo "Preview CLOUDFLARE_PAGES_PROJECT is not configured"; exit 1; }
+          test -n "$PUBLIC_CAL_LINK" || { echo "Preview PUBLIC_CAL_LINK is not configured"; exit 1; }
+          test -n "$PUBLIC_META_PIXEL_ID" || { echo "Preview PUBLIC_META_PIXEL_ID is not configured"; exit 1; }
+          test -n "$PUBLIC_TURNSTILE_SITE_KEY" || { echo "Preview PUBLIC_TURNSTILE_SITE_KEY is not configured"; exit 1; }
+
+      - name: Build Preview
+        env:
+          PUBLIC_PULPSENSE_ENVIRONMENT: preview
+          PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}
+          PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}
+          PUBLIC_CAL_NAMESPACE: ${{ vars.PUBLIC_CAL_NAMESPACE }}
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+        run: pnpm --filter @pulpsense/funnels build
+
+      - name: Deploy Preview
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          packageManager: pnpm
+          workingDirectory: apps/funnels
+          wranglerVersion: "4.120.0"
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=pr-${{ github.event.pull_request.number }}
+
+      - name: Publish Preview URL
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url || steps.deploy.outputs.deployment-url }}
+        run: |
+          printf '### Cloudflare Pages Preview\n\n[%s](%s)\n' "$DEPLOYMENT_URL" "$DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-production:
+    name: Deploy production
+    needs: verify
+    if: >-
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_production)
+    runs-on: ubuntu-latest
+    environment:
+      name: Production
+      url: ${{ steps.deploy.outputs.deployment-url }}
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Production configuration
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_BRANCH: ${{ vars.CLOUDFLARE_PAGES_BRANCH }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}
+          PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+        run: |
+          test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Production CLOUDFLARE_ACCOUNT_ID is not configured"; exit 1; }
+          test -n "$CLOUDFLARE_PAGES_BRANCH" || { echo "Production CLOUDFLARE_PAGES_BRANCH is not configured"; exit 1; }
+          test -n "$CLOUDFLARE_PAGES_PROJECT" || { echo "Production CLOUDFLARE_PAGES_PROJECT is not configured"; exit 1; }
+          test -n "$PUBLIC_CAL_LINK" || { echo "Production PUBLIC_CAL_LINK is not configured"; exit 1; }
+          test -n "$PUBLIC_META_PIXEL_ID" || { echo "Production PUBLIC_META_PIXEL_ID is not configured"; exit 1; }
+          test -n "$PUBLIC_TURNSTILE_SITE_KEY" || { echo "Production PUBLIC_TURNSTILE_SITE_KEY is not configured"; exit 1; }
+
+      - name: Build Production
+        env:
+          PUBLIC_PULPSENSE_ENVIRONMENT: production
+          PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}
+          PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}
+          PUBLIC_CAL_NAMESPACE: ${{ vars.PUBLIC_CAL_NAMESPACE }}
+          PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
+        run: pnpm --filter @pulpsense/funnels build
+
+      - name: Deploy Production
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          packageManager: pnpm
+          workingDirectory: apps/funnels
+          wranglerVersion: "4.120.0"
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=${{ vars.CLOUDFLARE_PAGES_BRANCH }}
+
+      - name: Publish Production URL
+        env:
+          DEPLOYMENT_URL: ${{ steps.deploy.outputs.deployment-url }}
+        run: |
+          printf '### Cloudflare Pages Production\n\n[%s](%s)\n' "$DEPLOYMENT_URL" "$DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"

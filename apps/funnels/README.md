@@ -23,17 +23,17 @@ Open <http://localhost:4321/creative-multiplier-sprint/>.
 
 ## Scripts
 
-| Command               | Description                                                         |
-| --------------------- | ------------------------------------------------------------------- |
-| `pnpm dev`            | Start Astro development                                             |
-| `pnpm build`          | Produce static output in `dist/`                                    |
-| `pnpm start`          | Serve `dist/` with Pages Functions through Wrangler                 |
-| `pnpm check-parity`   | Check routes, crawler controls, API fallbacks, and trailing slashes |
-| `pnpm check-types`    | Check Astro and TypeScript                                          |
-| `pnpm lint`           | Lint source and function files                                      |
-| `pnpm deploy:preview` | Deploy the `issue-81` branch to the non-production Pages project    |
-| `pnpm dev:next`       | Start the transitional Next.js rollback reference                   |
-| `pnpm build:next`     | Build the transitional Next.js rollback reference                   |
+| Command               | Description                                                                     |
+| --------------------- | ------------------------------------------------------------------------------- |
+| `pnpm dev`            | Start Astro development                                                         |
+| `pnpm build`          | Produce static output in `dist/`                                                |
+| `pnpm start`          | Serve `dist/` with Pages Functions through Wrangler                             |
+| `pnpm check-parity`   | Check routes, crawler controls, API fallbacks, and trailing slashes             |
+| `pnpm check-types`    | Check Astro and TypeScript                                                      |
+| `pnpm lint`           | Lint source and function files                                                  |
+| `pnpm deploy:preview` | Manually deploy the `issue-81` fallback preview; PR previews use GitHub Actions |
+| `pnpm dev:next`       | Start the transitional Next.js rollback reference                               |
+| `pnpm build:next`     | Build the transitional Next.js rollback reference                               |
 
 ## Project structure
 
