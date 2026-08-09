@@ -439,8 +439,18 @@ describe("process-funnel-event", () => {
           },
         }),
       )
-      .mockResolvedValueOnce(new Response(null, { status: 409 }))
-      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(
+        Response.json(
+          { messages: ["A duplicate entry was detected"] },
+          { status: 400 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        Response.json(
+          { messages: ["A duplicate entry was detected"] },
+          { status: 400 },
+        ),
+      )
       .mockResolvedValueOnce(
         Response.json({
           data: {

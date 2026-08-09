@@ -319,6 +319,13 @@ const createTwentyRecordOnce = async (
   );
   if (response.status === 409) return;
   if (!response.ok) {
+    const body = await response.text();
+    if (
+      response.status === 400 &&
+      body.toLowerCase().includes("duplicate entry")
+    ) {
+      return;
+    }
     throw new Error(
       `Twenty ${objectNamePlural} create failed (${response.status})`,
     );
