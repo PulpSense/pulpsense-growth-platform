@@ -34,7 +34,6 @@ describe("createFunnelAnalyticsClient", () => {
         step: "contact",
         fields: ["email", "phone"],
         $process_person_profile: false,
-        $geoip_disable: true,
       },
     });
   });

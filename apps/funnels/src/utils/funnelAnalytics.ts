@@ -161,7 +161,6 @@ export function createFunnelAnalyticsClient(
               funnel_id: config.funnelId,
               ...sanitizedProperties(event, properties),
               $process_person_profile: false,
-              $geoip_disable: true,
             },
           }),
           keepalive: true,
