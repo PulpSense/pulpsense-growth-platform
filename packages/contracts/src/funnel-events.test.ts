@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { contactSubmittedEventSchema } from "./funnel-events.js";
+import {
+  applicationSubmittedEventSchema,
+  contactSubmittedEventSchema,
+  funnelEventSchema,
+} from "./funnel-events.js";
 
 const acceptedEvent = {
   schemaVersion: 1,
@@ -39,5 +43,30 @@ describe("funnel event contract", () => {
         schemaVersion: 2,
       }).success,
     ).toBe(false);
+  });
+
+  it("accepts a server-qualified application event in the shared union", () => {
+    const applicationEvent = {
+      ...acceptedEvent,
+      eventType: "application_submitted",
+      eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+      payload: {
+        ...acceptedEvent.payload,
+        application: {
+          brandUrl: "https://brand.com",
+          paidSocialSpend: "$20k - $50k/month",
+          winnerStatus: "Yes, one clear winner",
+          platforms: ["Meta"],
+          deliveryTimeline: "This week",
+        },
+      },
+      qualificationStatus: "qualified",
+      companyDomain: "brand.com",
+    };
+
+    expect(applicationSubmittedEventSchema.parse(applicationEvent)).toEqual(
+      applicationEvent,
+    );
+    expect(funnelEventSchema.parse(applicationEvent)).toEqual(applicationEvent);
   });
 });

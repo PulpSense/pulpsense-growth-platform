@@ -48,16 +48,10 @@ type CalStep = {
   subtitle?: string;
 };
 
-type QualificationRule = {
-  field: string;
-  disqualifyValues: string[];
-};
-
 export type MultiStepFormConfig = {
   funnelId?: string;
   turnstileSiteKey?: string;
   steps: FormStep[];
-  qualificationRules?: QualificationRule[];
   qualifiedRedirect: string;
   unqualifiedRedirect: string;
   onStepComplete?: (
@@ -101,6 +95,22 @@ export type ContactSubmissionResult =
       error: ContactSubmissionError;
       retryAvailable: boolean;
     };
+
+export type ApplicationSubmissionInput = {
+  data: Readonly<Record<string, string | string[]>>;
+  sourceUrl: string;
+  referrer?: string;
+  fbp?: string;
+  fbc?: string;
+};
+
+export type ApplicationSubmissionResult = {
+  accepted: boolean;
+  eventId?: string;
+  qualificationStatus?: 'qualified' | 'unqualified';
+  nextStep?: 'booking' | 'unqualified';
+  error?: string;
+};
 
 /* ── Phone: countries + formatting ── */
 
@@ -384,6 +394,7 @@ export function MultiStepForm({
   config,
   className,
   onContactSubmit,
+  onApplicationSubmit,
   onContactInputChanged,
 }: {
   config: MultiStepFormConfig;
@@ -391,6 +402,9 @@ export function MultiStepForm({
   onContactSubmit?: (
     input: ContactSubmissionInput,
   ) => Promise<ContactSubmissionResult>;
+  onApplicationSubmit?: (
+    input: ApplicationSubmissionInput,
+  ) => Promise<ApplicationSubmissionResult>;
   onContactInputChanged?: () => boolean;
 }) {
   // Capture UTM params once on mount so they survive step transitions
@@ -674,21 +688,6 @@ export function MultiStepForm({
     return Object.keys(errs).length === 0;
   }, [step, formData, phoneCountry]);
 
-  const checkQualification = useCallback((): boolean => {
-    if (!config.qualificationRules) return true;
-    for (const rule of config.qualificationRules) {
-      const val = formData[rule.field];
-      if (typeof val === 'string' && rule.disqualifyValues.includes(val))
-        return false;
-      if (
-        Array.isArray(val) &&
-        val.some((v) => rule.disqualifyValues.includes(v))
-      )
-        return false;
-    }
-    return true;
-  }, [config.qualificationRules, formData]);
-
   const submitContact = useCallback(async () => {
     if (!onContactSubmit) {
       setSubmissionError(
@@ -759,36 +758,48 @@ export function MultiStepForm({
     turnstileToken,
   ]);
 
-  const sendWebhook = useCallback(
-    async (
-      event: string,
-      extraData?: Record<string, string | string[] | boolean>,
-    ) => {
-      // Enrich phone with country code for the webhook payload
-      const phoneVal = formData.phone as string | undefined;
-      const enriched = {
-        funnelId: config.funnelId ?? 'default',
-        ...formData,
-        ...(phoneVal ? { phone: `${phoneCountry.code} ${phoneVal}` } : {}),
-        ...extraData,
-        ...utmParams.current,
-      };
-      try {
-        await fetch('/api/form-submit', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            event,
-            data: enriched,
-            submittedAt: new Date().toISOString(),
-          }),
-        });
-      } catch {
-        // Silently fail — don't block the user
+  const submitApplication = useCallback(async () => {
+    if (!onApplicationSubmit) {
+      setSubmissionError(
+        'Application submission is not configured for this environment.',
+      );
+      return undefined;
+    }
+
+    try {
+      const fbp = getBrowserCookie('_fbp');
+      const fbc = getBrowserCookie('_fbc');
+      const result = await onApplicationSubmit({
+        data: formData,
+        sourceUrl: window.location.href,
+        ...(document.referrer ? { referrer: document.referrer } : {}),
+        ...(fbp ? { fbp } : {}),
+        ...(fbc ? { fbc } : {}),
+      });
+
+      if (
+        !result.accepted ||
+        !result.eventId ||
+        !result.qualificationStatus ||
+        !result.nextStep
+      ) {
+        setSubmissionError(
+          result.error === 'rate_limited'
+            ? 'Too many attempts. Please wait a minute and try again.'
+            : 'We could not save your application yet. Your answers are still here—please try again.',
+        );
+        return undefined;
       }
-    },
-    [config.funnelId, formData, phoneCountry],
-  );
+
+      setSubmissionError('');
+      return result;
+    } catch {
+      setSubmissionError(
+        'We could not save your application yet. Your answers are still here—please try again.',
+      );
+      return undefined;
+    }
+  }, [formData, onApplicationSubmit]);
 
   const getMetaUserData = useCallback(() => {
     const email = formData.email;
@@ -828,30 +839,28 @@ export function MultiStepForm({
       }
     }
 
-    // After step 2 (qualify), check qualification + SubmitApplication event
+    // After step 2, trust only the server's qualification and navigation result.
     if (step.type === 'qualify') {
-      const qualified = checkQualification();
+      const application = await submitApplication();
+      if (!application) {
+        setSubmitting(false);
+        return;
+      }
+      const qualified = application.qualificationStatus === 'qualified';
       setIsQualified(qualified);
-      await sendWebhook('application_submitted', {
-        qualified,
-        qualificationStatus: qualified ? 'qualified' : 'unqualified',
-      });
       if (!submitApplicationEventSentRef.current) {
         submitApplicationEventSentRef.current = true;
         trackMetaEvent(
           'SubmitApplication',
           {
-            content_name: 'Creative Multiplier Sprint Application',
-            funnel_id: config.funnelId ?? 'default',
-            qualification_status: qualified ? 'qualified' : 'unqualified',
-            paid_social_spend: formData.paidSocialSpend,
-            winner_status: formData.winnerStatus,
+            qualification_status: application.qualificationStatus,
           },
           getMetaUserData(),
+          { eventId: application.eventId, serverHandled: true },
         );
       }
 
-      if (!qualified) {
+      if (application.nextStep === 'unqualified') {
         config.onStepComplete?.(currentStep, formData);
         window.location.assign(config.unqualifiedRedirect);
         setSubmitting(false);
@@ -871,8 +880,7 @@ export function MultiStepForm({
     step,
     totalSteps,
     submitContact,
-    sendWebhook,
-    checkQualification,
+    submitApplication,
     config,
     formData,
     getMetaUserData,

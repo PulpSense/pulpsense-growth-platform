@@ -13,9 +13,15 @@ The shared home for PulpSense background jobs, scheduled workflows, and durable 
    pnpm dev:automations
    ```
 
-The starter task is `health-check`. The public funnel task is `process-funnel-event`; it validates the shared versioned contact-event contract, upserts the Person in Twenty, and delivers the matching Meta Lead event.
+The starter task is `health-check`. The public funnel task is `process-funnel-event`; it validates the shared versioned contact/application contract, upserts the Person in Twenty, records each completed application as an immutable Person Note, maintains the qualified Opportunity lifecycle, and delivers the matching Meta event.
 
 Preview deployments must set `PULPSENSE_AUTOMATION_ENVIRONMENT=preview` and use only sandbox Twenty and Meta credentials. The task rejects an event whose environment does not match its configured destinations.
+
+Set `TWENTY_QUALIFIED_STAGE_VALUE` to the API value for the Twenty stage labelled **Qualified – Awaiting Booking**. Set `TWENTY_CLOSED_STAGE_VALUES` to the comma-separated API values that represent won, lost, or otherwise closed Opportunities in that workspace.
+
+The Twenty Opportunity object must expose the custom API fields `brandUrl`, `paidSocialSpend`, `winnerStatus`, `platforms`, and `deliveryTimeline`. The processor projects those sales fields on both create and repeat-update operations while the immutable Person Note remains the complete application record. Funnel-event runs are serialized to protect the one-open-Opportunity invariant.
+
+Twenty owns Company creation and Person-to-Company linking. Trigger.dev never creates a Company; it only matches an existing Company by the normalized business-email domain before linking a qualified Opportunity. The audit and operational constraint are documented in [`docs/twenty-company-ownership.md`](../../docs/twenty-company-ownership.md).
 
 Once the dev worker registers the health check, run it from the Trigger.dev dashboard with an optional payload:
 
