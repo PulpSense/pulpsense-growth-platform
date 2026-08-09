@@ -19,10 +19,7 @@ type ContactField = {
   label: string;
   placeholder?: string;
   required?: boolean;
-} & (
-  | { inputType: 'text' | 'email' | 'tel' }
-  | { inputType: 'phone' }
-);
+} & ({ inputType: 'text' | 'email' | 'tel' } | { inputType: 'phone' });
 
 type QualifyStep = {
   type: 'qualify';
@@ -57,11 +54,44 @@ type QualificationRule = {
 
 export type MultiStepFormConfig = {
   funnelId?: string;
+  turnstileSiteKey?: string;
   steps: FormStep[];
   qualificationRules?: QualificationRule[];
   qualifiedRedirect: string;
   unqualifiedRedirect: string;
-  onStepComplete?: (step: number, data: Record<string, string | string[]>) => void;
+  onStepComplete?: (
+    step: number,
+    data: Record<string, string | string[]>,
+  ) => void;
+};
+
+type AttributionTouch = {
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  utmTerm?: string;
+};
+
+export type ContactSubmissionInput = {
+  data: Readonly<Record<string, string | string[]>>;
+  phoneCountryCode: string;
+  attribution: {
+    firstTouch: AttributionTouch;
+    lastTouch: AttributionTouch;
+  };
+  turnstileToken: string;
+  sourceUrl: string;
+  referrer?: string;
+  fbp?: string;
+  fbc?: string;
+};
+
+export type ContactSubmissionResult = {
+  accepted: boolean;
+  eventId?: string;
+  error?: string;
+  retryAvailable?: boolean;
 };
 
 /* ── Phone: countries + formatting ── */
@@ -88,7 +118,9 @@ function formatPhone(digits: string, country: Country): string {
 
 function isValidPhone(raw: string, country: Country): boolean {
   const digits = raw.replace(/\D/g, '');
-  return digits.length >= country.minDigits && digits.length <= country.maxDigits;
+  return (
+    digits.length >= country.minDigits && digits.length <= country.maxDigits
+  );
 }
 
 function stripUrlProtocol(raw: string): string {
@@ -98,6 +130,11 @@ function stripUrlProtocol(raw: string): string {
 function normalizeHttpsUrl(raw: string): string {
   const withoutProtocol = stripUrlProtocol(raw);
   return withoutProtocol ? `https://${withoutProtocol}` : '';
+}
+
+function getCookieValue(name: string): string | undefined {
+  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+  return match?.[2];
 }
 
 /* ── Generic dropdown ── */
@@ -111,7 +148,17 @@ type DropdownOption = {
   suffix?: string;
 };
 
-function Dropdown({ options, value, onChange, placeholder, hasError, searchable, toggleLabel, toggleClass, fullWidth }: {
+function Dropdown({
+  options,
+  value,
+  onChange,
+  placeholder,
+  hasError,
+  searchable,
+  toggleLabel,
+  toggleClass,
+  fullWidth,
+}: {
   options: DropdownOption[];
   value: string;
   onChange: (value: string) => void;
@@ -137,7 +184,10 @@ function Dropdown({ options, value, onChange, placeholder, hasError, searchable,
   useEffect(() => {
     if (!open) return;
     const handle = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
         setSearch('');
       }
@@ -151,28 +201,38 @@ function Dropdown({ options, value, onChange, placeholder, hasError, searchable,
   }, [open, showSearch]);
 
   const filtered = search
-    ? options.filter((o) =>
-        o.label.toLowerCase().includes(search.toLowerCase()) ||
-        o.value.toLowerCase().includes(search.toLowerCase()) ||
-        (o.suffix ?? '').toLowerCase().includes(search.toLowerCase())
+    ? options.filter(
+        (o) =>
+          o.label.toLowerCase().includes(search.toLowerCase()) ||
+          o.value.toLowerCase().includes(search.toLowerCase()) ||
+          (o.suffix ?? '').toLowerCase().includes(search.toLowerCase()),
       )
     : options;
 
   return (
-    <div className={`msf-dropdown ${fullWidth ? 'msf-dropdown-full' : ''}`} ref={containerRef}>
+    <div
+      className={`msf-dropdown ${fullWidth ? 'msf-dropdown-full' : ''}`}
+      ref={containerRef}
+    >
       <button
         type="button"
         className={`msf-dropdown-toggle ${hasError ? 'msf-input-error' : ''} ${toggleClass ?? ''}`}
         onClick={() => setOpen(!open)}
       >
         {toggleLabel ?? (
-          <span className={`msf-dropdown-label ${!selected ? 'msf-dropdown-placeholder' : ''}`}>
+          <span
+            className={`msf-dropdown-label ${!selected ? 'msf-dropdown-placeholder' : ''}`}
+          >
             {selected ? (
               <>
-                {selected.prefix && <span className="msf-dropdown-prefix">{selected.prefix}</span>}
+                {selected.prefix && (
+                  <span className="msf-dropdown-prefix">{selected.prefix}</span>
+                )}
                 {selected.label}
               </>
-            ) : (placeholder ?? 'Select one')}
+            ) : (
+              (placeholder ?? 'Select one')
+            )}
           </span>
         )}
         <span className="msf-dropdown-caret">▾</span>
@@ -201,9 +261,13 @@ function Dropdown({ options, value, onChange, placeholder, hasError, searchable,
                   setSearch('');
                 }}
               >
-                {o.prefix && <span className="msf-dropdown-prefix">{o.prefix}</span>}
+                {o.prefix && (
+                  <span className="msf-dropdown-prefix">{o.prefix}</span>
+                )}
                 <span className="msf-dropdown-option-label">{o.label}</span>
-                {o.suffix && <span className="msf-dropdown-option-suffix">{o.suffix}</span>}
+                {o.suffix && (
+                  <span className="msf-dropdown-option-suffix">{o.suffix}</span>
+                )}
               </button>
             ))}
             {filtered.length === 0 && (
@@ -225,12 +289,18 @@ const COUNTRY_OPTIONS: DropdownOption[] = COUNTRIES.map((c, i) => ({
   suffix: c.code,
 }));
 
-function CountryPicker({ value, onChange, hasError }: {
+function CountryPicker({
+  value,
+  onChange,
+  hasError,
+}: {
   value: Country;
   onChange: (c: Country) => void;
   hasError: boolean;
 }) {
-  const selectedIdx = COUNTRIES.findIndex((c) => c.name === value.name && c.code === value.code);
+  const selectedIdx = COUNTRIES.findIndex(
+    (c) => c.name === value.name && c.code === value.code,
+  );
 
   return (
     <Dropdown
@@ -253,65 +323,245 @@ function CountryPicker({ value, onChange, hasError }: {
 /* ── Component ── */
 
 /* ── Email verification status icon ── */
-function EmailStatus({ status }: { status: 'idle' | 'verifying' | 'valid' | 'invalid' }) {
+function EmailStatus({
+  status,
+}: {
+  status: 'idle' | 'verifying' | 'valid' | 'invalid';
+}) {
   if (status === 'idle') return null;
   if (status === 'verifying') {
-    return <span className="msf-email-status msf-email-spinner" aria-label="Verifying email" />;
+    return (
+      <span
+        className="msf-email-status msf-email-spinner"
+        aria-label="Verifying email"
+      />
+    );
   }
   if (status === 'valid') {
-    return <span className="msf-email-status msf-email-valid" aria-label="Email verified">✓</span>;
+    return (
+      <span
+        className="msf-email-status msf-email-valid"
+        aria-label="Email verified"
+      >
+        ✓
+      </span>
+    );
   }
-  return <span className="msf-email-status msf-email-invalid" aria-label="Invalid email">✗</span>;
+  return (
+    <span
+      className="msf-email-status msf-email-invalid"
+      aria-label="Invalid email"
+    >
+      ✗
+    </span>
+  );
 }
 
-export function MultiStepForm({ config, className }: { config: MultiStepFormConfig; className?: string }) {
+declare global {
+  interface Window {
+    turnstile?: {
+      render(
+        container: HTMLElement,
+        options: {
+          sitekey: string;
+          action: string;
+          appearance: 'interaction-only';
+          callback: (token: string) => void;
+          'error-callback': () => void;
+          'expired-callback': () => void;
+        },
+      ): string;
+      remove(widgetId: string): void;
+      reset(widgetId: string): void;
+    };
+  }
+}
+
+export function MultiStepForm({
+  config,
+  className,
+  onContactSubmit,
+  onContactInputChanged,
+}: {
+  config: MultiStepFormConfig;
+  className?: string;
+  onContactSubmit?: (
+    input: ContactSubmissionInput,
+  ) => Promise<ContactSubmissionResult>;
+  onContactInputChanged?: () => boolean;
+}) {
   // Capture UTM params once on mount so they survive step transitions
   const utmParams = useRef<Record<string, string>>({});
+  const attribution = useRef<{
+    firstTouch: AttributionTouch;
+    lastTouch: AttributionTouch;
+  }>({ firstTouch: {}, lastTouch: {} });
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
-    const keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+    const keys = [
+      'utm_source',
+      'utm_medium',
+      'utm_campaign',
+      'utm_content',
+      'utm_term',
+    ];
     const params: Record<string, string> = {};
     for (const key of keys) {
       const val = searchParams.get(key);
       if (val) params[key] = val;
     }
     if (Object.keys(params).length > 0) utmParams.current = params;
-  }, []);
+
+    const touch: AttributionTouch = {
+      ...(params.utm_source ? { utmSource: params.utm_source } : {}),
+      ...(params.utm_medium ? { utmMedium: params.utm_medium } : {}),
+      ...(params.utm_campaign ? { utmCampaign: params.utm_campaign } : {}),
+      ...(params.utm_content ? { utmContent: params.utm_content } : {}),
+      ...(params.utm_term ? { utmTerm: params.utm_term } : {}),
+    };
+    const storageKey = `pulpsense:first-touch:${config.funnelId ?? 'default'}`;
+    let firstTouch = touch;
+
+    try {
+      const stored = window.localStorage.getItem(storageKey);
+      if (stored) {
+        firstTouch = JSON.parse(stored) as AttributionTouch;
+      } else if (Object.keys(touch).length > 0) {
+        window.localStorage.setItem(storageKey, JSON.stringify(touch));
+      }
+    } catch {
+      // Attribution storage is best effort; submission must still work.
+    }
+
+    attribution.current = { firstTouch, lastTouch: touch };
+  }, [config.funnelId]);
 
   const [currentStep, setCurrentStep] = useState(0);
-  const [formData, setFormData] = useState<Record<string, string | string[]>>({});
+  const [formData, setFormData] = useState<Record<string, string | string[]>>(
+    {},
+  );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [isQualified, setIsQualified] = useState(true);
   const [phoneCountry, setPhoneCountry] = useState<Country>(DEFAULT_COUNTRY);
-  const [emailStatus, setEmailStatus] = useState<'idle' | 'verifying' | 'valid' | 'invalid'>('idle');
+  const [emailStatus, setEmailStatus] = useState<
+    'idle' | 'verifying' | 'valid' | 'invalid'
+  >('idle');
+  const [submissionError, setSubmissionError] = useState('');
+  const [turnstileToken, setTurnstileToken] = useState('');
   const emailAbortRef = useRef<AbortController | null>(null);
   const lastVerifiedEmail = useRef<string>('');
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetRef = useRef<string | undefined>(undefined);
 
   const step = config.steps[currentStep]!;
   const totalSteps = config.steps.length;
 
-  const updateField = useCallback((name: string, value: string | string[]) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    setErrors((prev) => {
-      const next = { ...prev };
-      delete next[name];
-      return next;
-    });
-  }, []);
+  useEffect(() => {
+    const siteKey = config.turnstileSiteKey;
+    if (!siteKey) return;
 
-  const handlePhoneChange = useCallback((name: string, raw: string) => {
-    const digits = stripToDigits(raw, phoneCountry.maxDigits);
-    const formatted = formatPhone(digits, phoneCountry);
-    updateField(name, formatted);
-  }, [updateField, phoneCountry]);
+    const renderWidget = () => {
+      if (
+        !window.turnstile ||
+        !turnstileContainerRef.current ||
+        turnstileWidgetRef.current
+      ) {
+        return;
+      }
 
-  const handleCountryChange = useCallback((name: string, country: Country) => {
-    setPhoneCountry(country);
-    const currentVal = (formData[name] as string) ?? '';
-    const digits = stripToDigits(currentVal, country.maxDigits);
-    updateField(name, formatPhone(digits, country));
-  }, [formData, updateField]);
+      turnstileWidgetRef.current = window.turnstile.render(
+        turnstileContainerRef.current,
+        {
+          sitekey: siteKey,
+          action: 'contact_submit',
+          appearance: 'interaction-only',
+          callback: (token) => {
+            setTurnstileToken(token);
+            setSubmissionError('');
+          },
+          'error-callback': () => {
+            setTurnstileToken('');
+            setSubmissionError(
+              'The security check could not load. Please try again.',
+            );
+          },
+          'expired-callback': () => {
+            setTurnstileToken('');
+            if (turnstileWidgetRef.current) {
+              window.turnstile?.reset(turnstileWidgetRef.current);
+            }
+          },
+        },
+      );
+    };
+
+    const existingScript = document.querySelector<HTMLScriptElement>(
+      'script[data-pulpsense-turnstile]',
+    );
+    if (window.turnstile) {
+      renderWidget();
+    } else if (existingScript) {
+      existingScript.addEventListener('load', renderWidget, { once: true });
+    } else {
+      const script = document.createElement('script');
+      script.src =
+        'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      script.dataset.pulpsenseTurnstile = 'true';
+      script.addEventListener('load', renderWidget, { once: true });
+      document.head.append(script);
+    }
+
+    return () => {
+      existingScript?.removeEventListener('load', renderWidget);
+      if (turnstileWidgetRef.current) {
+        window.turnstile?.remove(turnstileWidgetRef.current);
+        turnstileWidgetRef.current = undefined;
+      }
+    };
+  }, [config.turnstileSiteKey]);
+
+  const updateField = useCallback(
+    (name: string, value: string | string[]) => {
+      setFormData((prev) => ({ ...prev, [name]: value }));
+      if (
+        step.type === 'contact' &&
+        onContactInputChanged?.() &&
+        turnstileWidgetRef.current
+      ) {
+        window.turnstile?.reset(turnstileWidgetRef.current);
+        setTurnstileToken('');
+      }
+      setSubmissionError('');
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[name];
+        return next;
+      });
+    },
+    [onContactInputChanged, step.type],
+  );
+
+  const handlePhoneChange = useCallback(
+    (name: string, raw: string) => {
+      const digits = stripToDigits(raw, phoneCountry.maxDigits);
+      const formatted = formatPhone(digits, phoneCountry);
+      updateField(name, formatted);
+    },
+    [updateField, phoneCountry],
+  );
+
+  const handleCountryChange = useCallback(
+    (name: string, country: Country) => {
+      setPhoneCountry(country);
+      const currentVal = (formData[name] as string) ?? '';
+      const digits = stripToDigits(currentVal, country.maxDigits);
+      updateField(name, formatPhone(digits, country));
+    },
+    [formData, updateField],
+  );
 
   const verifyEmail = useCallback(async (email: string) => {
     // Skip if the email hasn't changed since last verification
@@ -351,7 +601,11 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
         });
       } else {
         setEmailStatus('invalid');
-        setErrors((prev) => ({ ...prev, email: "Hmm.. seems there's something wrong with this email. Can you double check?" }));
+        setErrors((prev) => ({
+          ...prev,
+          email:
+            "Hmm.. seems there's something wrong with this email. Can you double check?",
+        }));
       }
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === 'AbortError') return;
@@ -382,12 +636,21 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
         const val = (formData[field.name] as string) ?? '';
         if (field.required && !val.trim()) {
           errs[field.name] = 'Required';
-        } else if (field.inputType === 'email' && val && !isBusinessEmail(val)) {
+        } else if (
+          field.inputType === 'email' &&
+          val &&
+          !isBusinessEmail(val)
+        ) {
           errs[field.name] = 'Please use your business email';
-        } else if (field.inputType === 'phone' && val && !isValidPhone(val, phoneCountry)) {
-          errs[field.name] = phoneCountry.minDigits === phoneCountry.maxDigits
-            ? `Enter a valid ${phoneCountry.minDigits}-digit phone number`
-            : `Enter a valid phone number (${phoneCountry.minDigits}–${phoneCountry.maxDigits} digits)`;
+        } else if (
+          field.inputType === 'phone' &&
+          val &&
+          !isValidPhone(val, phoneCountry)
+        ) {
+          errs[field.name] =
+            phoneCountry.minDigits === phoneCountry.maxDigits
+              ? `Enter a valid ${phoneCountry.minDigits}-digit phone number`
+              : `Enter a valid phone number (${phoneCountry.minDigits}–${phoneCountry.maxDigits} digits)`;
         }
       }
     }
@@ -396,7 +659,8 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
         const val = formData[field.name];
         if (field.required) {
           if (field.inputType === 'multi-select') {
-            if (!val || (val as string[]).length === 0) errs[field.name] = 'Select at least one';
+            if (!val || (val as string[]).length === 0)
+              errs[field.name] = 'Select at least one';
           } else {
             if (!val || !(val as string).trim()) errs[field.name] = 'Required';
           }
@@ -411,39 +675,117 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
     if (!config.qualificationRules) return true;
     for (const rule of config.qualificationRules) {
       const val = formData[rule.field];
-      if (typeof val === 'string' && rule.disqualifyValues.includes(val)) return false;
-      if (Array.isArray(val) && val.some((v) => rule.disqualifyValues.includes(v))) return false;
+      if (typeof val === 'string' && rule.disqualifyValues.includes(val))
+        return false;
+      if (
+        Array.isArray(val) &&
+        val.some((v) => rule.disqualifyValues.includes(v))
+      )
+        return false;
     }
     return true;
   }, [config.qualificationRules, formData]);
 
-  const sendWebhook = useCallback(async (
-    event: string,
-    extraData?: Record<string, string | string[] | boolean>,
-  ) => {
-    // Enrich phone with country code for the webhook payload
-    const phoneVal = formData.phone as string | undefined;
-    const enriched = {
-      funnelId: config.funnelId ?? 'default',
-      ...formData,
-      ...(phoneVal ? { phone: `${phoneCountry.code} ${phoneVal}` } : {}),
-      ...extraData,
-      ...utmParams.current,
-    };
-    try {
-      await fetch('/api/form-submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event,
-          data: enriched,
-          submittedAt: new Date().toISOString(),
-        }),
-      });
-    } catch {
-      // Silently fail — don't block the user
+  const submitContact = useCallback(async () => {
+    if (!onContactSubmit) {
+      setSubmissionError(
+        'Contact submission is not configured for this environment.',
+      );
+      return undefined;
     }
-  }, [config.funnelId, formData, phoneCountry]);
+
+    try {
+      const fbp = getCookieValue('_fbp');
+      const fbc = getCookieValue('_fbc');
+      const result = await onContactSubmit({
+        data: formData,
+        phoneCountryCode: phoneCountry.code,
+        attribution: attribution.current,
+        turnstileToken,
+        sourceUrl: window.location.href,
+        ...(document.referrer ? { referrer: document.referrer } : {}),
+        ...(fbp ? { fbp } : {}),
+        ...(fbc ? { fbc } : {}),
+      });
+
+      if (!result.accepted || !result.eventId) {
+        if (result.error === 'email_invalid') {
+          setEmailStatus('invalid');
+          setErrors((previous) => ({
+            ...previous,
+            email:
+              "Hmm.. seems there's something wrong with this email. Can you double check?",
+          }));
+        }
+        setSubmissionError(
+          result.error === 'rate_limited'
+            ? 'Too many attempts. Please wait a minute and try again.'
+            : result.error === 'email_invalid'
+              ? 'Please correct your business email and try again.'
+              : result.error === 'turnstile_unavailable'
+                ? config.turnstileSiteKey
+                  ? 'The security check is still loading. Please try again.'
+                  : 'Contact submission is not configured for this environment.'
+                : 'We could not save your details yet. Your answers are still here—please try again.',
+        );
+
+        if (!result.retryAvailable && turnstileWidgetRef.current) {
+          window.turnstile?.reset(turnstileWidgetRef.current);
+          setTurnstileToken('');
+        }
+        return undefined;
+      }
+
+      setSubmissionError('');
+      return { eventId: result.eventId };
+    } catch {
+      setSubmissionError(
+        'We could not save your details yet. Your answers are still here—please try again.',
+      );
+      if (turnstileWidgetRef.current) {
+        window.turnstile?.reset(turnstileWidgetRef.current);
+        setTurnstileToken('');
+      }
+      return undefined;
+    }
+  }, [
+    config.turnstileSiteKey,
+    formData,
+    onContactSubmit,
+    phoneCountry.code,
+    turnstileToken,
+  ]);
+
+  const sendWebhook = useCallback(
+    async (
+      event: string,
+      extraData?: Record<string, string | string[] | boolean>,
+    ) => {
+      // Enrich phone with country code for the webhook payload
+      const phoneVal = formData.phone as string | undefined;
+      const enriched = {
+        funnelId: config.funnelId ?? 'default',
+        ...formData,
+        ...(phoneVal ? { phone: `${phoneCountry.code} ${phoneVal}` } : {}),
+        ...extraData,
+        ...utmParams.current,
+      };
+      try {
+        await fetch('/api/form-submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event,
+            data: enriched,
+            submittedAt: new Date().toISOString(),
+          }),
+        });
+      } catch {
+        // Silently fail — don't block the user
+      }
+    },
+    [config.funnelId, formData, phoneCountry],
+  );
 
   const getMetaUserData = useCallback(() => {
     const email = formData.email;
@@ -451,9 +793,10 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
 
     return {
       email: typeof email === 'string' ? email : undefined,
-      phone: typeof phone === 'string' && phone
-        ? `${phoneCountry.code} ${phone}`
-        : undefined,
+      phone:
+        typeof phone === 'string' && phone
+          ? `${phoneCountry.code} ${phone}`
+          : undefined,
     };
   }, [formData.email, formData.phone, phoneCountry]);
 
@@ -463,7 +806,11 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
 
     // After step 1 (contact), fire partial webhook + Lead event
     if (currentStep === 0) {
-      await sendWebhook('contact_submitted');
+      const contact = await submitContact();
+      if (!contact) {
+        setSubmitting(false);
+        return;
+      }
       if (!leadEventSentRef.current) {
         leadEventSentRef.current = true;
         trackMetaEvent(
@@ -473,6 +820,7 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
             funnel_id: config.funnelId ?? 'default',
           },
           getMetaUserData(),
+          { eventId: contact.eventId, serverHandled: true },
         );
       }
     }
@@ -514,7 +862,18 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
       setCurrentStep((prev) => prev + 1);
     }
     setSubmitting(false);
-  }, [validate, currentStep, step, totalSteps, sendWebhook, checkQualification, config, formData, getMetaUserData]);
+  }, [
+    validate,
+    currentStep,
+    step,
+    totalSteps,
+    submitContact,
+    sendWebhook,
+    checkQualification,
+    config,
+    formData,
+    getMetaUserData,
+  ]);
 
   const handleBack = useCallback(() => {
     if (currentStep > 0) setCurrentStep((prev) => prev - 1);
@@ -527,9 +886,15 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
   const leadEventSentRef = useRef(false);
   const submitApplicationEventSentRef = useRef(false);
   const scheduleEventSentRef = useRef(false);
-  useEffect(() => { formDataRef.current = formData; }, [formData]);
-  useEffect(() => { isQualifiedRef.current = isQualified; }, [isQualified]);
-  useEffect(() => { phoneCountryRef.current = phoneCountry; }, [phoneCountry]);
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+  useEffect(() => {
+    isQualifiedRef.current = isQualified;
+  }, [isQualified]);
+  useEffect(() => {
+    phoneCountryRef.current = phoneCountry;
+  }, [phoneCountry]);
 
   // Initialize Cal.com API and listen for booking confirmation
   const calNamespace = step.type === 'cal' ? (step.namespace ?? 'default') : '';
@@ -555,16 +920,25 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
           const booking = (raw.booking as Record<string, unknown>) ?? raw;
 
           if (process.env.NODE_ENV === 'development') {
-            console.log('[Cal.com bookingSuccessful] raw event data:', JSON.stringify(raw, null, 2));
+            console.log(
+              '[Cal.com bookingSuccessful] raw event data:',
+              JSON.stringify(raw, null, 2),
+            );
           }
 
           const enrichedData = {
             funnelId: config.funnelId ?? 'default',
             ...formDataRef.current,
-            ...(formDataRef.current.phone ? { phone: `${phoneCountryRef.current.code} ${formDataRef.current.phone}` } : {}),
+            ...(formDataRef.current.phone
+              ? {
+                  phone: `${phoneCountryRef.current.code} ${formDataRef.current.phone}`,
+                }
+              : {}),
             bookingUid: (booking.uid as string) ?? '',
-            bookingDate: (booking.date as string) ?? (booking.startTime as string) ?? '',
-            bookingTitle: (booking.title as string) ?? (booking.eventTitle as string) ?? '',
+            bookingDate:
+              (booking.date as string) ?? (booking.startTime as string) ?? '',
+            bookingTitle:
+              (booking.title as string) ?? (booking.eventTitle as string) ?? '',
             ...utmParams.current,
           };
 
@@ -641,15 +1015,27 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
                     <input
                       id={field.name}
                       type="tel"
-                      placeholder={phoneCountry.code === '+1' ? '(555) 123-4567' : '123 456 789'}
+                      placeholder={
+                        phoneCountry.code === '+1'
+                          ? '(555) 123-4567'
+                          : '123 456 789'
+                      }
                       value={(formData[field.name] as string) ?? ''}
-                      onChange={(e) => handlePhoneChange(field.name, e.target.value)}
+                      onChange={(e) =>
+                        handlePhoneChange(field.name, e.target.value)
+                      }
                       className={errors[field.name] ? 'msf-input-error' : ''}
                       autoComplete="tel"
                     />
                   </div>
                 ) : (
-                  <div className={field.inputType === 'email' ? 'msf-email-wrapper' : undefined}>
+                  <div
+                    className={
+                      field.inputType === 'email'
+                        ? 'msf-email-wrapper'
+                        : undefined
+                    }
+                  >
                     <input
                       id={field.name}
                       type={field.inputType}
@@ -659,19 +1045,33 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
                         updateField(field.name, e.target.value);
                         if (field.inputType === 'email') setEmailStatus('idle');
                       }}
-                      onBlur={field.inputType === 'email' ? () => verifyEmail((formData[field.name] as string) ?? '') : undefined}
+                      onBlur={
+                        field.inputType === 'email'
+                          ? () =>
+                              verifyEmail(
+                                (formData[field.name] as string) ?? '',
+                              )
+                          : undefined
+                      }
                       className={errors[field.name] ? 'msf-input-error' : ''}
                       autoComplete={
-                        field.inputType === 'email' ? 'email' :
-                        field.name.includes('first') ? 'given-name' :
-                        field.name.includes('last') ? 'family-name' :
-                        'off'
+                        field.inputType === 'email'
+                          ? 'email'
+                          : field.name.includes('first')
+                            ? 'given-name'
+                            : field.name.includes('last')
+                              ? 'family-name'
+                              : 'off'
                       }
                     />
-                    {field.inputType === 'email' && <EmailStatus status={emailStatus} />}
+                    {field.inputType === 'email' && (
+                      <EmailStatus status={emailStatus} />
+                    )}
                   </div>
                 )}
-                {errors[field.name] && <span className="msf-error">{errors[field.name]}</span>}
+                {errors[field.name] && (
+                  <span className="msf-error">{errors[field.name]}</span>
+                )}
               </div>
             ))}
           </div>
@@ -688,7 +1088,10 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
 
                 {field.inputType === 'select' && (
                   <Dropdown
-                    options={field.options.map((opt) => ({ value: opt, label: opt }))}
+                    options={field.options.map((opt) => ({
+                      value: opt,
+                      label: opt,
+                    }))}
                     value={(formData[field.name] as string) ?? ''}
                     onChange={(v) => updateField(field.name, v)}
                     placeholder="Select one"
@@ -697,17 +1100,30 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
                   />
                 )}
 
-                {(field.inputType === 'text' || field.inputType === 'url') && (
-                  field.inputType === 'url' ? (
-                    <div className={`msf-url-input ${errors[field.name] ? 'msf-input-error' : ''}`}>
+                {(field.inputType === 'text' || field.inputType === 'url') &&
+                  (field.inputType === 'url' ? (
+                    <div
+                      className={`msf-url-input ${errors[field.name] ? 'msf-input-error' : ''}`}
+                    >
                       <span className="msf-url-prefix">https://</span>
                       <input
                         id={field.name}
                         type="text"
                         inputMode="url"
-                        placeholder={field.placeholder ? stripUrlProtocol(field.placeholder) : undefined}
-                        value={stripUrlProtocol((formData[field.name] as string) ?? '')}
-                        onChange={(e) => updateField(field.name, normalizeHttpsUrl(e.target.value))}
+                        placeholder={
+                          field.placeholder
+                            ? stripUrlProtocol(field.placeholder)
+                            : undefined
+                        }
+                        value={stripUrlProtocol(
+                          (formData[field.name] as string) ?? '',
+                        )}
+                        onChange={(e) =>
+                          updateField(
+                            field.name,
+                            normalizeHttpsUrl(e.target.value),
+                          )
+                        }
                         className={errors[field.name] ? 'msf-input-error' : ''}
                         autoComplete="url"
                       />
@@ -722,13 +1138,14 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
                       className={errors[field.name] ? 'msf-input-error' : ''}
                       autoComplete="off"
                     />
-                  )
-                )}
+                  ))}
 
                 {field.inputType === 'multi-select' && (
                   <div className="msf-chips">
                     {field.options.map((opt) => {
-                      const selected = ((formData[field.name] as string[] | undefined) ?? []).includes(opt);
+                      const selected = (
+                        (formData[field.name] as string[] | undefined) ?? []
+                      ).includes(opt);
                       return (
                         <button
                           key={opt}
@@ -743,7 +1160,9 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
                   </div>
                 )}
 
-                {errors[field.name] && <span className="msf-error">{errors[field.name]}</span>}
+                {errors[field.name] && (
+                  <span className="msf-error">{errors[field.name]}</span>
+                )}
               </div>
             ))}
           </div>
@@ -775,12 +1194,16 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
                     email: formData.email as string,
                     rev: formData.revenue as string,
                     biztype: formData.businessType as string,
-                    leadgen: Array.isArray(formData.leadGen) ? formData.leadGen.join(', ') : '',
+                    leadgen: Array.isArray(formData.leadGen)
+                      ? formData.leadGen.join(', ')
+                      : '',
                     brandUrl: formData.brandUrl as string,
                     role: formData.role as string,
                     paidSocialSpend: formData.paidSocialSpend as string,
                     winnerStatus: formData.winnerStatus as string,
-                    platforms: Array.isArray(formData.platforms) ? formData.platforms.join(', ') : '',
+                    platforms: Array.isArray(formData.platforms)
+                      ? formData.platforms.join(', ')
+                      : '',
                     deliveryTimeline: formData.deliveryTimeline as string,
                   }).filter(([, v]) => !!v),
                 )}
@@ -790,10 +1213,21 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
         )}
       </div>
 
+      <div ref={turnstileContainerRef} className="msf-turnstile" />
+      {submissionError && (
+        <p className="msf-error" role="alert">
+          {submissionError}
+        </p>
+      )}
+
       {/* Navigation */}
       {step.type === 'cal' && currentStep > 0 && (
         <div className="msf-nav">
-          <button type="button" className="msf-btn msf-btn-back" onClick={handleBack}>
+          <button
+            type="button"
+            className="msf-btn msf-btn-back"
+            onClick={handleBack}
+          >
             ← Back
           </button>
         </div>
@@ -801,7 +1235,11 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
       {step.type !== 'cal' && (
         <div className="msf-nav">
           {currentStep > 0 && (
-            <button type="button" className="msf-btn msf-btn-back" onClick={handleBack}>
+            <button
+              type="button"
+              className="msf-btn msf-btn-back"
+              onClick={handleBack}
+            >
               ← Back
             </button>
           )}
@@ -809,7 +1247,11 @@ export function MultiStepForm({ config, className }: { config: MultiStepFormConf
             type="button"
             className="msf-btn msf-btn-primary"
             onClick={handleNext}
-            disabled={submitting || emailStatus === 'verifying' || emailStatus === 'invalid'}
+            disabled={
+              submitting ||
+              emailStatus === 'verifying' ||
+              emailStatus === 'invalid'
+            }
           >
             {submitting ? 'Submitting…' : 'Next →'}
           </button>
