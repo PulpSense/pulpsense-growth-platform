@@ -10,6 +10,11 @@ import {
 } from "react";
 import { isBusinessEmail } from "@/utils/businessEmail";
 import { getBrowserCookie } from "@/utils/browserCookie";
+import {
+  captureFunnelAttribution,
+  type FunnelAttribution,
+} from "@/utils/funnelAttribution";
+import { trackFunnelEvent } from "@/utils/funnelAnalytics";
 import { trackMetaEvent } from "@/utils/metaCapi";
 
 /* ── Types ── */
@@ -66,21 +71,11 @@ export type MultiStepFormConfig = {
   ) => void;
 };
 
-type AttributionTouch = {
-  utmSource?: string;
-  utmMedium?: string;
-  utmCampaign?: string;
-  utmContent?: string;
-  utmTerm?: string;
-};
-
 export type ContactSubmissionInput = {
   data: Readonly<Record<string, string | string[]>>;
   phoneCountryCode: string;
-  attribution: {
-    firstTouch: AttributionTouch;
-    lastTouch: AttributionTouch;
-  };
+  attribution: FunnelAttribution;
+  analyticsId: string;
   turnstileToken: string;
   sourceUrl: string;
   referrer?: string;
@@ -104,6 +99,7 @@ export type ContactSubmissionResult =
 
 export type ApplicationSubmissionInput = {
   data: Readonly<Record<string, string | string[]>>;
+  analyticsId: string;
   sourceUrl: string;
   referrer?: string;
   fbp?: string;
@@ -420,50 +416,18 @@ export function MultiStepForm({
   ) => Promise<ApplicationSubmissionResult>;
   onContactInputChanged?: () => boolean;
 }) {
-  // Capture UTM params once on mount so they survive step transitions
-  const utmParams = useRef<Record<string, string>>({});
-  const attribution = useRef<{
-    firstTouch: AttributionTouch;
-    lastTouch: AttributionTouch;
-  }>({ firstTouch: {}, lastTouch: {} });
+  const measurement = useRef<{
+    attribution: FunnelAttribution;
+    analyticsId: string;
+  }>({ attribution: { firstTouch: {}, lastTouch: {} }, analyticsId: "" });
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const keys = [
-      "utm_source",
-      "utm_medium",
-      "utm_campaign",
-      "utm_content",
-      "utm_term",
-    ];
-    const params: Record<string, string> = {};
-    for (const key of keys) {
-      const val = searchParams.get(key);
-      if (val) params[key] = val;
-    }
-    if (Object.keys(params).length > 0) utmParams.current = params;
-
-    const touch: AttributionTouch = {
-      ...(params.utm_source ? { utmSource: params.utm_source } : {}),
-      ...(params.utm_medium ? { utmMedium: params.utm_medium } : {}),
-      ...(params.utm_campaign ? { utmCampaign: params.utm_campaign } : {}),
-      ...(params.utm_content ? { utmContent: params.utm_content } : {}),
-      ...(params.utm_term ? { utmTerm: params.utm_term } : {}),
-    };
-    const storageKey = `pulpsense:first-touch:${config.funnelId ?? "default"}`;
-    let firstTouch = touch;
-
-    try {
-      const stored = window.localStorage.getItem(storageKey);
-      if (stored) {
-        firstTouch = JSON.parse(stored) as AttributionTouch;
-      } else if (Object.keys(touch).length > 0) {
-        window.localStorage.setItem(storageKey, JSON.stringify(touch));
-      }
-    } catch {
-      // Attribution storage is best effort; submission must still work.
-    }
-
-    attribution.current = { firstTouch, lastTouch: touch };
+    measurement.current = captureFunnelAttribution({
+      funnelId: config.funnelId ?? "default",
+      href: window.location.href,
+      referrer: document.referrer,
+      storage: window.localStorage,
+      createAnalyticsId: () => crypto.randomUUID(),
+    });
   }, [config.funnelId]);
 
   const [currentStep, setCurrentStep] = useState(0);
@@ -489,6 +453,16 @@ export function MultiStepForm({
 
   const step = config.steps[currentStep]!;
   const totalSteps = config.steps.length;
+  const measurementStep =
+    step.type === "qualify"
+      ? "qualification"
+      : step.type === "cal"
+        ? "booking"
+        : "contact";
+
+  useEffect(() => {
+    trackFunnelEvent("funnel_step_viewed", { step: measurementStep });
+  }, [measurementStep]);
 
   useEffect(() => {
     const siteKey = config.turnstileSiteKey;
@@ -700,9 +674,16 @@ export function MultiStepForm({
         }
       }
     }
+    const invalidFields = Object.keys(errs);
     setErrors(errs);
-    return Object.keys(errs).length === 0;
-  }, [step, formData, phoneCountry]);
+    if (invalidFields.length > 0) {
+      trackFunnelEvent("funnel_validation_failed", {
+        step: measurementStep,
+        fields: invalidFields,
+      });
+    }
+    return invalidFields.length === 0;
+  }, [step, formData, phoneCountry, measurementStep]);
 
   const submitContact = useCallback(async () => {
     if (!onContactSubmit) {
@@ -718,7 +699,8 @@ export function MultiStepForm({
       const result = await onContactSubmit({
         data: formData,
         phoneCountryCode: phoneCountry.code,
-        attribution: attribution.current,
+        attribution: measurement.current.attribution,
+        analyticsId: measurement.current.analyticsId,
         turnstileToken,
         sourceUrl: window.location.href,
         ...(document.referrer ? { referrer: document.referrer } : {}),
@@ -787,6 +769,7 @@ export function MultiStepForm({
       const fbc = getBrowserCookie("_fbc");
       const result = await onApplicationSubmit({
         data: formData,
+        analyticsId: measurement.current.analyticsId,
         sourceUrl: window.location.href,
         ...(document.referrer ? { referrer: document.referrer } : {}),
         ...(fbp ? { fbp } : {}),
@@ -843,6 +826,7 @@ export function MultiStepForm({
       }
       if (!leadEventSentRef.current) {
         leadEventSentRef.current = true;
+        trackFunnelEvent("funnel_step_completed", { step: "contact" });
         trackMetaEvent(
           "Lead",
           {
@@ -862,8 +846,19 @@ export function MultiStepForm({
         setSubmitting(false);
         return;
       }
+      const qualificationStatus = application.qualificationStatus;
+      if (!qualificationStatus) {
+        setSubmitting(false);
+        return;
+      }
       if (!submitApplicationEventSentRef.current) {
         submitApplicationEventSentRef.current = true;
+        trackFunnelEvent("funnel_step_completed", {
+          step: "qualification",
+        });
+        trackFunnelEvent("qualification_outcome", {
+          status: qualificationStatus,
+        });
         trackMetaEvent(
           "SubmitApplication",
           {
@@ -913,6 +908,7 @@ export function MultiStepForm({
   }, [currentStep]);
 
   const handleBookingSuccessful = useCallback(() => {
+    trackFunnelEvent("booking_interaction", { action: "booking_successful" });
     window.location.assign(config.qualifiedRedirect);
   }, [config.qualifiedRedirect]);
 

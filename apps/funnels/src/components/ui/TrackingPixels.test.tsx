@@ -19,6 +19,32 @@ afterEach(() => {
 });
 
 describe("TrackingPixels", () => {
+  it("loads immediately when the outer island already deferred hydration", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <TrackingPixels
+          interactionReady
+          pixels={{
+            facebookPixelId: "sandbox-pixel",
+            facebookEvents: [{ name: "PageView", type: "standard" }],
+          }}
+        />,
+      );
+    });
+
+    const script = document.head.querySelector(
+      "script[data-pulpsense-tracking]",
+    );
+    expect(script?.textContent).toContain("sandbox-pixel");
+    expect(script?.textContent).toContain("PageView");
+
+    await act(async () => root.unmount());
+  });
+
   it("loads PageView tracking after an idle fallback without interaction", async () => {
     vi.useFakeTimers();
     const container = document.createElement("div");

@@ -3,6 +3,7 @@ import {
   SprintThankYouPage,
   SprintThankYouVideos,
 } from "@/app/creative-multiplier-sprint/_components/SprintThankYouPage";
+import { FunnelAnalytics } from "@/components/ui";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 ---
 
@@ -10,6 +11,13 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
   title="Call Booked | Creative Multiplier Sprint"
   description="What to prepare before your Creative Multiplier Sprint fit call."
 >
+  <FunnelAnalytics
+    client:interaction
+    apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
+    host={import.meta.env.PUBLIC_POSTHOG_HOST}
+    funnelId="creative-multiplier-sprint"
+    page="qualified"
+  />
   <SprintThankYouPage qualified>
     <SprintThankYouVideos slot="proof" client:visible />
   </SprintThankYouPage>

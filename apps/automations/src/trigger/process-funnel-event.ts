@@ -7,6 +7,8 @@ import {
 } from "@pulpsense/contracts";
 import { logger, schemaTask } from "@trigger.dev/sdk";
 
+import { createPostHogLifecycleCapture } from "./posthog-lifecycle.js";
+
 type ProcessorDependencies = {
   assertEnvironment?(environment: FunnelEvent["environment"]): void;
   upsertTwentyPerson(event: FunnelEvent): Promise<{ personId: string }>;
@@ -27,9 +29,27 @@ type ProcessorDependencies = {
   sendMetaSchedule?(
     event: BookingCompletedEvent,
   ): Promise<{ eventsReceived: number }>;
+  capturePostHogLifecycle?(event: FunnelEvent): Promise<void>;
   log: {
     info(message: string, data?: Record<string, unknown>): void;
   };
+};
+
+const capturePostHogSafely = async (
+  event: FunnelEvent,
+  dependencies: ProcessorDependencies,
+) => {
+  if (!dependencies.capturePostHogLifecycle) return;
+
+  try {
+    await dependencies.capturePostHogLifecycle(event);
+  } catch {
+    dependencies.log.info("PostHog lifecycle delivery failed", {
+      submissionId: event.submissionId,
+      eventId: event.eventId,
+      eventType: event.eventType,
+    });
+  }
 };
 
 export async function processFunnelEvent(
@@ -52,6 +72,7 @@ export async function processFunnelEvent(
     const { personId } = await dependencies.upsertTwentyPerson(event);
     const booking = await dependencies.recordTwentyBooking(event, personId);
     const { eventsReceived } = await dependencies.sendMetaSchedule(event);
+    await capturePostHogSafely(event, dependencies);
 
     dependencies.log.info("Processed verified funnel booking", {
       submissionId: event.submissionId,
@@ -93,6 +114,7 @@ export async function processFunnelEvent(
       personId,
     );
     const { eventsReceived } = await dependencies.sendMetaApplication(event);
+    await capturePostHogSafely(event, dependencies);
 
     dependencies.log.info("Processed funnel application", {
       submissionId: event.submissionId,
@@ -126,6 +148,7 @@ export async function processFunnelEvent(
 
   const { personId } = await dependencies.upsertTwentyPerson(event);
   const { eventsReceived } = await dependencies.sendMetaLead(event);
+  await capturePostHogSafely(event, dependencies);
 
   dependencies.log.info("Processed funnel contact", {
     submissionId: event.submissionId,
@@ -149,9 +172,29 @@ type ProcessorEnvironment = {
   TWENTY_CLOSED_STAGE_VALUES?: string;
   META_PIXEL_ID?: string;
   META_CAPI_ACCESS_TOKEN?: string;
+  META_TEST_EVENT_CODE?: string;
   META_GRAPH_API_VERSION?: string;
+  POSTHOG_PROJECT_KEY?: string;
+  POSTHOG_HOST?: string;
   PULPSENSE_AUTOMATION_ENVIRONMENT?: FunnelEvent["environment"];
 };
+
+export const resolveMetaEnvironment = (
+  environment: Readonly<Record<string, string | undefined>>,
+): {
+  META_PIXEL_ID?: string;
+  META_CAPI_ACCESS_TOKEN?: string;
+  META_TEST_EVENT_CODE?: string;
+} => ({
+  META_PIXEL_ID:
+    environment.META_PIXEL_ID_AI_SEO_L || environment.META_PIXEL_ID,
+  META_CAPI_ACCESS_TOKEN:
+    environment.META_CAPI_ACCESS_TOKEN_AI_SEO_L ||
+    environment.META_CAPI_ACCESS_TOKEN,
+  META_TEST_EVENT_CODE:
+    environment.META_TEST_EVENT_CODE_AI_SEO_L ||
+    environment.META_TEST_EVENT_CODE,
+});
 
 const required = (value: string | undefined, name: string) => {
   if (!value) throw new Error(`${name} is not configured`);
@@ -603,6 +646,7 @@ const sendMetaEvent = async (
   graphApiVersion: string,
   pixelId: string,
   accessToken: string,
+  testEventCode?: string,
 ) => {
   const userData: Record<string, unknown> = {
     em: [await sha256(event.payload.email.trim().toLowerCase())],
@@ -632,6 +676,7 @@ const sendMetaEvent = async (
             custom_data: customData,
           },
         ],
+        ...(testEventCode ? { test_event_code: testEventCode } : {}),
       }),
     },
   );
@@ -654,6 +699,7 @@ const sendMetaLead = async (
   graphApiVersion: string,
   pixelId: string,
   accessToken: string,
+  testEventCode?: string,
 ) =>
   sendMetaEvent(
     event,
@@ -663,6 +709,7 @@ const sendMetaLead = async (
     graphApiVersion,
     pixelId,
     accessToken,
+    testEventCode,
   );
 
 const sendMetaApplication = async (
@@ -671,6 +718,7 @@ const sendMetaApplication = async (
   graphApiVersion: string,
   pixelId: string,
   accessToken: string,
+  testEventCode?: string,
 ) =>
   sendMetaEvent(
     event,
@@ -680,6 +728,7 @@ const sendMetaApplication = async (
     graphApiVersion,
     pixelId,
     accessToken,
+    testEventCode,
   );
 
 const sendMetaSchedule = async (
@@ -688,6 +737,7 @@ const sendMetaSchedule = async (
   graphApiVersion: string,
   pixelId: string,
   accessToken: string,
+  testEventCode?: string,
 ) =>
   sendMetaEvent(
     event,
@@ -697,6 +747,7 @@ const sendMetaSchedule = async (
     graphApiVersion,
     pixelId,
     accessToken,
+    testEventCode,
   );
 
 export function createProcessorDependencies(
@@ -712,6 +763,7 @@ export function createProcessorDependencies(
     environment.META_CAPI_ACCESS_TOKEN,
     "META_CAPI_ACCESS_TOKEN",
   );
+  const metaTestEventCode = environment.META_TEST_EVENT_CODE;
   const graphVersion = required(
     environment.META_GRAPH_API_VERSION,
     "META_GRAPH_API_VERSION",
@@ -731,6 +783,15 @@ export function createProcessorDependencies(
       .map((value) => value.trim())
       .filter(Boolean),
   );
+  const capturePostHogLifecycle = environment.POSTHOG_PROJECT_KEY
+    ? createPostHogLifecycleCapture(
+        {
+          apiKey: environment.POSTHOG_PROJECT_KEY,
+          host: environment.POSTHOG_HOST ?? "https://us.i.posthog.com",
+        },
+        { fetch: runtime.fetch },
+      )
+    : undefined;
 
   return {
     assertEnvironment: (eventEnvironment) => {
@@ -756,7 +817,14 @@ export function createProcessorDependencies(
         closedStageValues,
       ),
     sendMetaLead: (event) =>
-      sendMetaLead(event, runtime.fetch, graphVersion, pixelId, metaToken),
+      sendMetaLead(
+        event,
+        runtime.fetch,
+        graphVersion,
+        pixelId,
+        metaToken,
+        metaTestEventCode,
+      ),
     sendMetaApplication: (event) =>
       sendMetaApplication(
         event,
@@ -764,9 +832,18 @@ export function createProcessorDependencies(
         graphVersion,
         pixelId,
         metaToken,
+        metaTestEventCode,
       ),
     sendMetaSchedule: (event) =>
-      sendMetaSchedule(event, runtime.fetch, graphVersion, pixelId, metaToken),
+      sendMetaSchedule(
+        event,
+        runtime.fetch,
+        graphVersion,
+        pixelId,
+        metaToken,
+        metaTestEventCode,
+      ),
+    ...(capturePostHogLifecycle ? { capturePostHogLifecycle } : {}),
     log: runtime.log,
   };
 }
@@ -796,9 +873,10 @@ export const processFunnelEventTask = schemaTask({
           TWENTY_CALL_BOOKED_STAGE_VALUE:
             process.env.TWENTY_CALL_BOOKED_STAGE_VALUE,
           TWENTY_CLOSED_STAGE_VALUES: process.env.TWENTY_CLOSED_STAGE_VALUES,
-          META_PIXEL_ID: process.env.META_PIXEL_ID,
-          META_CAPI_ACCESS_TOKEN: process.env.META_CAPI_ACCESS_TOKEN,
+          ...resolveMetaEnvironment(process.env),
           META_GRAPH_API_VERSION: process.env.META_GRAPH_API_VERSION,
+          POSTHOG_PROJECT_KEY: process.env.POSTHOG_PROJECT_KEY,
+          POSTHOG_HOST: process.env.POSTHOG_HOST,
           PULPSENSE_AUTOMATION_ENVIRONMENT: process.env
             .PULPSENSE_AUTOMATION_ENVIRONMENT as
             | FunnelEvent["environment"]

@@ -170,6 +170,7 @@ describe("process-funnel-event", () => {
         TWENTY_CALL_BOOKED_STAGE_VALUE: "CALL_BOOKED",
         META_PIXEL_ID: "pixel_123",
         META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_TEST_EVENT_CODE: "LAWYER_TEST",
         META_GRAPH_API_VERSION: "v26.0",
         PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
       },
@@ -208,6 +209,7 @@ describe("process-funnel-event", () => {
         event_id: bookingEvent.eventId,
       }),
     ]);
+    expect(metaBody.test_event_code).toBe("LAWYER_TEST");
   });
 
   it("records every unqualified application on the Person and sends one SubmitApplication event", async () => {

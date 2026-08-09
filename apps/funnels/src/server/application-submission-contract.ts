@@ -19,6 +19,7 @@ export const applicationSubmissionRequestSchema = z
     referrer: z.url().max(2048).optional(),
     fbp: z.string().max(255).optional(),
     fbc: z.string().max(255).optional(),
+    analyticsId: z.uuid().optional(),
   })
   .strict();
 

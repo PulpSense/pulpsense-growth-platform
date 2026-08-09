@@ -84,13 +84,15 @@ For every route above, confirm:
 
 ## Attribution and tracking behavior
 
-- `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, and `utm_term` are captured from the initial URL and appended to lifecycle payloads.
+- First-touch and last-touch attribution retain campaign parameters, supported ad click IDs, query-free landing URLs, and query-free referrers across contact, application, and verified booking events.
 - Meta Pixel `828948073514575` loads after the first interaction or a two-second idle fallback and emits `PageView` on the lander.
 - Browser Pixel and durable CAPI use the same generated event ID for `Lead` and `SubmitApplication`; verified `Schedule` is server-only and uses `booking_completed:{calBookingUid}`.
 - Meta CAPI hashes email and phone, includes request IP/user agent plus `_fbc`/`_fbp` when available, and forwards custom event data.
 - As of this checkpoint, `SubmitApplication` custom data includes `qualification_status`, `paid_social_spend`, and `winner_status`. This is a parity fact, not an endorsement of the later target design.
 - `/api/funnel-events` accepts contact and application events. `/api/form-submit` rejects browser-submitted `booking_completed`, and `/api/meta-capi` rejects browser-originated `Schedule`.
 - `/api/webhooks/cal` verifies `x-cal-signature-256`, the signed qualified submission identity, environment, and attendee email before enqueueing a booking event.
+- PostHog receives allowlisted funnel-view, step, validation, qualification-outcome, CTA, media, and booking-interaction events after visitor interaction; lifecycle processing separately emits redacted contact, application, and verified-booking events under the same anonymous analytics ID.
+- PostHog payloads never include email, phone, names, free text, brand URLs, or raw application answers. Browser delivery failures raise `pulpsense:analytics-failure`; automation delivery failures produce redacted run logs without interrupting the journey.
 
 ## Manual parity sign-off
 
