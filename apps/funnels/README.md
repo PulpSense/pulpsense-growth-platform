@@ -56,6 +56,8 @@ Browser-facing `PUBLIC_*` values must be present in the Astro build environment.
 
 Form lifecycle events are accepted through `/api/form-submit` and forwarded by the Pages Function only when a Trigger.dev preview secret and matching task ID are configured. Email verification and Meta CAPI use the same Pages Function boundary.
 
+Contact and email-verification requests call the private `FUNNEL_RATE_LIMIT_SERVICE` binding with a hashed IP key. The bound Worker owns Cloudflare's native Rate Limiting binding and has no public `workers.dev` route. `pnpm start` launches both configurations locally. This repository currently targets the isolated preview Pages project and preview rate-limiter service; production must receive a separate configuration during #87.
+
 See [`../../docs/astro-cloudflare-preview.md`](../../docs/astro-cloudflare-preview.md) for deployment and rollback details.
 
 ## License

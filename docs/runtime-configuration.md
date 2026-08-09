@@ -11,6 +11,7 @@ This inventory records configuration names and ownership without secret values. 
 | `PUBLIC_CAL_LINK`                                | No     | Selects the Cal.com event mounted after qualification; preview builds require an explicit value.                        | Optional override                                      | Required preview-only event     | Production event                    |
 | `PUBLIC_CAL_NAMESPACE`                           | No     | Selects the Cal embed namespace independently from its event link.                                                      | Optional override                                      | Preview namespace when distinct | Production namespace                |
 | `PUBLIC_TURNSTILE_SITE_KEY`                      | No     | Renders the browser Turnstile widget used for first contact submission.                                                 | Cloudflare test or local site key                      | Preview-only site key           | Production site key                 |
+| `FUNNEL_RATE_LIMIT_SERVICE`                      | No     | Private service binding to the Worker that applies Cloudflare's native limit to hashed contact and verification keys.   | Launched with Pages by `pnpm start`                    | Dedicated preview Worker        | Separate Worker required by #87     |
 | `META_PIXEL_ID`                                  | No     | Meta dataset used by `/api/meta-capi`; the endpoint returns 500 when it or the access token is absent.                  | `apps/funnels/.dev.vars`                               | Funnel-host environment         | Funnel-host environment             |
 | `META_CAPI_ACCESS_TOKEN`                         | Yes    | Authorizes Meta Conversions API delivery.                                                                               | `apps/funnels/.dev.vars`                               | Preview-only credential/dataset | Production credential               |
 | `MILLION_VERIFIER_API_KEY`                       | Yes    | Enables server-side email verification; when absent, verification reports unverified `provider_error` and fails open.   | `apps/funnels/.dev.vars`                               | Preview credential              | Production credential               |
@@ -25,6 +26,8 @@ This inventory records configuration names and ownership without secret values. 
 | Default Cal.com event link                       | No     | `santileoni/growth-mapping-funnel`, namespace `growth-mapping-funnel`; used only when no explicit override is required. | Default for local/rollback comparison                  | Rejected without explicit link  | Default until launch configuration  |
 
 `apps/funnels/.env.example` is the value-free legacy/host key list. Wrangler local preview intentionally ignores `.env` files; copy `apps/funnels/.dev.vars.example` to the ignored `.dev.vars` file and use sandbox values only. Do not commit either local secret file.
+
+The rate-limiter Worker owns the Workers-only `FUNNEL_RATE_LIMITER` binding and is reachable from Pages only through a service binding. Pages hashes the endpoint and client IP before calling it. Missing service configuration or a failed service call returns `rate_limiter_unavailable` and blocks the request; Turnstile remains mandatory for contact submission.
 
 ## Automation worker
 

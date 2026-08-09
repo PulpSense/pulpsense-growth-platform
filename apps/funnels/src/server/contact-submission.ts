@@ -11,6 +11,7 @@ import {
 } from "./email-verification";
 import type { FunnelEnv } from "./funnel-env";
 import { getClientIp, json, parseJson, rejectCrossOrigin } from "./http";
+import { consumeRateLimit } from "./rate-limit";
 
 const encodeBase64Url = (bytes: Uint8Array) => {
   let binary = "";
@@ -146,15 +147,15 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
     return json({ error: "invalid_request" }, 400);
   }
 
-  if (!env.FUNNEL_RATE_LIMITER) {
+  const clientIp = getClientIp(request);
+  const rateLimit = await consumeRateLimit(
+    env.FUNNEL_RATE_LIMIT_SERVICE,
+    `contact:${clientIp}`,
+  );
+  if (rateLimit === "unavailable") {
     return json({ error: "rate_limiter_unavailable" }, 503);
   }
-
-  const clientIp = getClientIp(request);
-  const rateLimit = await env.FUNNEL_RATE_LIMITER.limit({
-    key: `contact:${clientIp}`,
-  });
-  if (!rateLimit.success) {
+  if (rateLimit === "limited") {
     return json({ error: "rate_limited" }, 429);
   }
 

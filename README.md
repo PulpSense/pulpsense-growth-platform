@@ -7,7 +7,8 @@ The shared monorepo for PulpSense acquisition funnels and durable growth automat
 ```text
 apps/
 ├── funnels/       # Astro + Cloudflare Pages funnel app
-└── automations/   # Trigger.dev tasks
+├── automations/   # Trigger.dev tasks
+└── rate-limiter/  # Private Cloudflare Worker for native request limits
 packages/
 └── contracts/     # Shared validated event schemas when both apps consume them
 ```
@@ -24,7 +25,7 @@ pnpm lint                # Lint the funnel app
 pnpm check-types         # Type-check every workspace package
 ```
 
-Run package-specific commands with `pnpm --filter @pulpsense/funnels …` or `pnpm --filter @pulpsense/automations …`.
+Run package-specific commands with `pnpm --filter @pulpsense/funnels …`, `pnpm --filter @pulpsense/automations …`, or `pnpm --filter @pulpsense/rate-limiter …`.
 
 The current funnel behavior and the value-free runtime configuration inventory are recorded in:
 
@@ -33,4 +34,4 @@ The current funnel behavior and the value-free runtime configuration inventory a
 
 ## Deployment
 
-The funnel builds as static Astro output and is served with Cloudflare Pages Functions. Preview deployment and environment-isolation details are in [`docs/astro-cloudflare-preview.md`](docs/astro-cloudflare-preview.md). No production hostname is attached by this repository configuration. Trigger.dev configuration lives with `apps/automations` and must never expose its secret to browser code.
+The funnel builds as static Astro output and is served with Cloudflare Pages Functions. A private Worker supplies the Workers-only native rate-limit binding through a Pages service binding. Preview deployment and environment-isolation details are in [`docs/astro-cloudflare-preview.md`](docs/astro-cloudflare-preview.md). No production hostname is attached by this repository configuration. Trigger.dev configuration lives with `apps/automations` and must never expose its secret to browser code.

@@ -2,10 +2,6 @@ name = "pulpsense-funnels-preview"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-08-08"
 
-[[ratelimits]]
-name = "FUNNEL_RATE_LIMITER"
-namespace_id = "1001"
-
-  [ratelimits.simple]
-  limit = 10
-  period = 60
+[[services]]
+binding = "FUNNEL_RATE_LIMIT_SERVICE"
+service = "pulpsense-funnel-rate-limiter-preview"

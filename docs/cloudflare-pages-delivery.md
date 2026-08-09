@@ -25,7 +25,7 @@ Configure the `Preview` GitHub environment with:
 | Variable | `PUBLIC_CAL_NAMESPACE`      | Optional Cal embed namespace                                             |
 | Variable | `PUBLIC_TURNSTILE_SITE_KEY` | The browser-facing Turnstile widget key                                  |
 
-Pages Function credentials such as Trigger.dev, MillionVerifier, Turnstile, and webhook secrets stay in the Cloudflare Pages environment. They are not copied into GitHub because Direct Upload preserves the project's runtime configuration.
+Pages Function credentials such as Trigger.dev, MillionVerifier, Turnstile, and webhook secrets stay in the Cloudflare Pages environment. They are not copied into GitHub because Direct Upload preserves the project's runtime configuration. The checked-in Wrangler configuration binds preview deployments to the private `pulpsense-funnel-rate-limiter-preview` Worker. Deploy that Worker from `apps/rate-limiter` before the Pages project; #87 must provide a separate production service before launch.
 
 ## Production gate
 
