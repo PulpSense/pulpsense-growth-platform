@@ -1,9 +1,4 @@
-import { handleFunnelEvent, type FunnelEnv } from "../../src/server/funnel-api";
+import { handleFunnelEvent } from "../../src/server/contact-submission";
+import { createPagesPostHandler } from "../../src/server/pages-function";
 
-type PagesContext = {
-  request: Request;
-  env: FunnelEnv;
-};
-
-export const onRequestPost = ({ request, env }: PagesContext) =>
-  handleFunnelEvent(request, env);
+export const onRequestPost = createPagesPostHandler(handleFunnelEvent);

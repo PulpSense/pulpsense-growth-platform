@@ -1,12 +1,4 @@
-import {
-  handleVerifyEmail,
-  type FunnelEnv,
-} from '../../src/server/funnel-api';
+import { handleVerifyEmail } from "../../src/server/email-verification";
+import { createPagesPostHandler } from "../../src/server/pages-function";
 
-type PagesContext = {
-  request: Request;
-  env: FunnelEnv;
-};
-
-export const onRequestPost = ({ request, env }: PagesContext) =>
-  handleVerifyEmail(request, env);
+export const onRequestPost = createPagesPostHandler(handleVerifyEmail);

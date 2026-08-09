@@ -84,7 +84,7 @@ For every route above, confirm:
 ## Attribution and tracking behavior
 
 - `utm_source`, `utm_medium`, `utm_campaign`, `utm_content`, and `utm_term` are captured from the initial URL and appended to lifecycle payloads.
-- Meta Pixel `828948073514575` loads after interaction and emits `PageView` on the lander.
+- Meta Pixel `828948073514575` loads after the first interaction or a two-second idle fallback and emits `PageView` on the lander.
 - Browser Pixel and `/api/meta-capi` use the same generated event ID for `Lead`, `SubmitApplication`, and `Schedule` deduplication.
 - Meta CAPI hashes email and phone, includes request IP/user agent plus `_fbc`/`_fbp` when available, and forwards custom event data.
 - As of this checkpoint, `SubmitApplication` custom data includes `qualification_status`, `paid_social_spend`, and `winner_status`. This is a parity fact, not an endorsement of the later target design.
@@ -126,4 +126,4 @@ For every route above, confirm:
 - Browser console checks returned no errors or warnings.
 - The executable parity check passed against the public preview for all three routes, six narrow React island exports, three sandbox API fallbacks, and `robots.txt`.
 - The preview response includes `X-Robots-Tag: noindex, nofollow, noarchive, noimageindex`; each page includes noindex metadata; `robots.txt` disallows all crawling.
-- The deployment has no production Pixel ID or runtime credentials. Browser Meta tracking is absent unless a non-production `PUBLIC_META_PIXEL_ID` is supplied at build time.
+- The historical deployment had no production Pixel ID or runtime credentials. Current preview builds instead require an explicit non-production `PUBLIC_META_PIXEL_ID` and `PUBLIC_CAL_LINK`, reject the known production Pixel ID, and exercise passive `PageView` loading through the idle fallback.

@@ -4,6 +4,7 @@ import { useCallback, useRef } from "react";
 
 import { MultiStepForm } from "@/components/ui/MultiStepForm";
 import type {
+  ContactSubmissionError,
   ContactSubmissionInput,
   ContactSubmissionResult,
   MultiStepFormConfig,
@@ -15,6 +16,20 @@ type ApplicationFormIslandProps = {
   config: MultiStepFormConfig;
   turnstileSiteKey?: string;
 };
+
+const knownSubmissionErrors = new Set<ContactSubmissionError>([
+  "email_invalid",
+  "rate_limited",
+  "turnstile_unavailable",
+  "submission_failed",
+]);
+
+const normalizeSubmissionError = (
+  error: string | undefined,
+): ContactSubmissionError =>
+  error && knownSubmissionErrors.has(error as ContactSubmissionError)
+    ? (error as ContactSubmissionError)
+    : "submission_failed";
 
 export function ApplicationFormIsland({
   config,
@@ -28,7 +43,11 @@ export function ApplicationFormIsland({
   const submitContact = useCallback(
     async (input: ContactSubmissionInput): Promise<ContactSubmissionResult> => {
       if (!retryRef.current && !input.turnstileToken) {
-        return { accepted: false, error: "turnstile_unavailable" };
+        return {
+          accepted: false,
+          error: "turnstile_unavailable",
+          retryAvailable: false,
+        };
       }
 
       attemptIdRef.current ||= crypto.randomUUID();
@@ -65,10 +84,13 @@ export function ApplicationFormIsland({
 
       if (result.retry) retryRef.current = result.retry;
 
+      if (response.ok && result.accepted === true && result.eventId) {
+        return { accepted: true, eventId: result.eventId };
+      }
+
       return {
-        accepted: response.ok && result.accepted === true,
-        ...(result.eventId ? { eventId: result.eventId } : {}),
-        ...(result.error ? { error: result.error } : {}),
+        accepted: false,
+        error: normalizeSubmissionError(result.error),
         retryAvailable: Boolean(retryRef.current),
       };
     },

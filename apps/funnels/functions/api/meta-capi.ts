@@ -1,12 +1,4 @@
-import {
-  handleMetaCapi,
-  type FunnelEnv,
-} from '../../src/server/funnel-api';
+import { handleMetaCapi } from "../../src/server/meta-conversions";
+import { createPagesPostHandler } from "../../src/server/pages-function";
 
-type PagesContext = {
-  request: Request;
-  env: FunnelEnv;
-};
-
-export const onRequestPost = ({ request, env }: PagesContext) =>
-  handleMetaCapi(request, env);
+export const onRequestPost = createPagesPostHandler(handleMetaCapi);

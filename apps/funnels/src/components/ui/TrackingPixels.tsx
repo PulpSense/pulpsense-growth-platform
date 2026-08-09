@@ -98,12 +98,26 @@ const TrackingPixels = ({ pixels }: TrackingPixelsProps) => {
     if (!vendorCode.trim()) return;
 
     let loaded = false;
+    let idleCallbackId: number | undefined;
+    let timeoutId: number | undefined;
+    const cancelScheduledLoad = () => {
+      if (idleCallbackId !== undefined) {
+        window.cancelIdleCallback(idleCallbackId);
+        idleCallbackId = undefined;
+      }
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+        timeoutId = undefined;
+      }
+    };
     const load = () => {
       if (loaded) return;
       loaded = true;
+      cancelScheduledLoad();
 
       const script = document.createElement('script');
       script.text = vendorCode;
+      script.dataset.pulpsenseTracking = 'true';
       document.head.appendChild(script);
 
       for (const eventName of interactionEvents) {
@@ -114,8 +128,14 @@ const TrackingPixels = ({ pixels }: TrackingPixelsProps) => {
     for (const eventName of interactionEvents) {
       window.addEventListener(eventName, load, { once: true, passive: true });
     }
+    if (window.requestIdleCallback) {
+      idleCallbackId = window.requestIdleCallback(load, { timeout: 2_000 });
+    } else {
+      timeoutId = window.setTimeout(load, 2_000);
+    }
 
     return () => {
+      cancelScheduledLoad();
       for (const eventName of interactionEvents) {
         window.removeEventListener(eventName, load);
       }

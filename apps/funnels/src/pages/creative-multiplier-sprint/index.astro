@@ -7,19 +7,31 @@ import { ApplicationFormIsland } from "@/app/creative-multiplier-sprint/_compone
 import { DslCarousel } from "@/app/creative-multiplier-sprint/_components/DslCarousel";
 import { MobileStickyCta } from "@/app/creative-multiplier-sprint/_components/MobileStickyCta";
 import { DeferredLoopVideo } from "@/app/creative-multiplier-sprint/_components/DeferredLoopVideo";
-import { formConfig } from "@/app/creative-multiplier-sprint/content";
+import { createFormConfig } from "@/app/creative-multiplier-sprint/content";
+import {
+  createBrowserTrackingConfig,
+  type DeploymentEnvironment,
+} from "@/app/creative-multiplier-sprint/preview-config";
 import { TrackingPixels } from "@/components/ui";
 import type { PixelConfig } from "@/components/ui";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
-const previewPixels = {
-  ...(import.meta.env.PUBLIC_META_PIXEL_ID
-    ? {
-        facebookPixelId: import.meta.env.PUBLIC_META_PIXEL_ID,
-        facebookEvents: [{ name: "PageView", type: "standard" as const }],
-      }
-    : {}),
-} satisfies PixelConfig;
+const rawEnvironment = import.meta.env.PUBLIC_PULPSENSE_ENVIRONMENT ?? "local";
+if (!["local", "preview", "production"].includes(rawEnvironment)) {
+  throw new Error(
+    `Unsupported PUBLIC_PULPSENSE_ENVIRONMENT: ${rawEnvironment}`,
+  );
+}
+const deploymentEnvironment = rawEnvironment as DeploymentEnvironment;
+const previewPixels = createBrowserTrackingConfig({
+  environment: deploymentEnvironment,
+  metaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID,
+}) satisfies PixelConfig;
+const formConfig = createFormConfig({
+  environment: deploymentEnvironment,
+  calLink: import.meta.env.PUBLIC_CAL_LINK,
+  calNamespace: import.meta.env.PUBLIC_CAL_NAMESPACE,
+});
 ---
 
 <BaseLayout

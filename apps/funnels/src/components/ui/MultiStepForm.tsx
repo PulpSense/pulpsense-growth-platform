@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import Cal, { getCalApi } from '@calcom/embed-react';
 import { isBusinessEmail } from '@/utils/businessEmail';
+import { getBrowserCookie } from '@/utils/browserCookie';
 import { trackMetaEvent } from '@/utils/metaCapi';
 
 /* ── Types ── */
@@ -87,12 +88,19 @@ export type ContactSubmissionInput = {
   fbc?: string;
 };
 
-export type ContactSubmissionResult = {
-  accepted: boolean;
-  eventId?: string;
-  error?: string;
-  retryAvailable?: boolean;
-};
+export type ContactSubmissionError =
+  | 'email_invalid'
+  | 'rate_limited'
+  | 'turnstile_unavailable'
+  | 'submission_failed';
+
+export type ContactSubmissionResult =
+  | { accepted: true; eventId: string }
+  | {
+      accepted: false;
+      error: ContactSubmissionError;
+      retryAvailable: boolean;
+    };
 
 /* ── Phone: countries + formatting ── */
 
@@ -130,11 +138,6 @@ function stripUrlProtocol(raw: string): string {
 function normalizeHttpsUrl(raw: string): string {
   const withoutProtocol = stripUrlProtocol(raw);
   return withoutProtocol ? `https://${withoutProtocol}` : '';
-}
-
-function getCookieValue(name: string): string | undefined {
-  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
-  return match?.[2];
 }
 
 /* ── Generic dropdown ── */
@@ -695,8 +698,8 @@ export function MultiStepForm({
     }
 
     try {
-      const fbp = getCookieValue('_fbp');
-      const fbc = getCookieValue('_fbc');
+      const fbp = getBrowserCookie('_fbp');
+      const fbc = getBrowserCookie('_fbc');
       const result = await onContactSubmit({
         data: formData,
         phoneCountryCode: phoneCountry.code,
@@ -708,7 +711,7 @@ export function MultiStepForm({
         ...(fbc ? { fbc } : {}),
       });
 
-      if (!result.accepted || !result.eventId) {
+      if (!result.accepted) {
         if (result.error === 'email_invalid') {
           setEmailStatus('invalid');
           setErrors((previous) => ({
