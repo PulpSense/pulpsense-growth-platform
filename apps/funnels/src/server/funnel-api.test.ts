@@ -892,7 +892,7 @@ describe("POST /api/webhooks/cal", () => {
       triggerEvent: "BOOKING_CREATED",
       createdAt: "2026-08-09T12:00:00.000Z",
       payload: {
-        type: "growth-mapping-funnel",
+        type: "funnel",
         status: "ACCEPTED",
         uid: "cal_booking_123",
         title: "Creative Multiplier Sprint Fit Call",
@@ -1030,7 +1030,7 @@ describe("POST /api/webhooks/cal", () => {
       triggerEvent: "BOOKING_CREATED",
       createdAt: "2026-08-09T12:00:00.000Z",
       payload: {
-        type: "growth-mapping-funnel",
+        type: "funnel",
         status: "ACCEPTED",
         uid: "cal_booking_forged",
         title: "Creative Multiplier Sprint Fit Call",

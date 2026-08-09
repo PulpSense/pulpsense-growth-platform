@@ -75,7 +75,7 @@ For every route above, confirm:
 
 ### Step 3 — qualified booking
 
-- The embedded event is `santileoni/growth-mapping-funnel`, namespaced `growth-mapping-funnel`, using the dark month view.
+- The embedded event is `santileoni/funnel`, namespaced `funnel`, using the dark month view.
 - Contact and qualification answers prefill the booking widget where Cal.com accepts them.
 - A `bookingSuccessful` browser event redirects to `/creative-multiplier-sprint/thank-you` for immediate UX only.
 - Cal's signed `BOOKING_CREATED` webhook is the sole source of `booking_completed`, Twenty stage advancement, and Meta `Schedule`.

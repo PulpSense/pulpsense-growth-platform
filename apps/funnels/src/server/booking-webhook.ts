@@ -43,7 +43,7 @@ const calBookingWebhookSchema = z.object({
   triggerEvent: z.literal("BOOKING_CREATED"),
   createdAt: z.iso.datetime({ offset: true }),
   payload: z.object({
-    type: z.literal("growth-mapping-funnel"),
+    type: z.literal("funnel"),
     status: z.literal("ACCEPTED"),
     uid: z.string().trim().min(1).max(200),
     title: z.string().trim().min(1).max(500),
