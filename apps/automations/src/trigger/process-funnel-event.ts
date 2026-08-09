@@ -293,6 +293,50 @@ const applicationMarkdown = (event: ApplicationSubmittedEvent) =>
     "```",
   ].join("\n");
 
+type ApplicationAnswers = ApplicationSubmittedEvent["payload"]["application"];
+
+const paidSocialSpendValues = {
+  "Less than $20k/month": "LESS_THAN_20K_MONTH",
+  "$20k - $50k/month": "FROM_20K_TO_50K_MONTH",
+  "$50k - $150k/month": "FROM_50K_TO_150K_MONTH",
+  "$150k+/month": "FROM_150K_MONTH",
+} satisfies Record<ApplicationAnswers["paidSocialSpend"], string>;
+
+const winnerStatusValues = {
+  "Yes, one clear winner": "ONE_CLEAR_WINNER",
+  "Yes, several winners": "SEVERAL_WINNERS",
+  "Promising ad, not fully proven": "PROMISING_NOT_PROVEN",
+  "No proven winner yet": "NO_PROVEN_WINNER",
+} satisfies Record<ApplicationAnswers["winnerStatus"], string>;
+
+const platformValues = {
+  Meta: "META",
+  TikTok: "TIKTOK",
+  Reels: "REELS",
+  Shorts: "SHORTS",
+  "TikTok Shop": "TIKTOK_SHOP",
+  "Other paid social": "OTHER_PAID_SOCIAL",
+} satisfies Record<ApplicationAnswers["platforms"][number], string>;
+
+const deliveryTimelineValues = {
+  "This week": "THIS_WEEK",
+  "Next 2 weeks": "NEXT_2_WEEKS",
+  "This month": "THIS_MONTH",
+  "Just researching": "JUST_RESEARCHING",
+} satisfies Record<ApplicationAnswers["deliveryTimeline"], string>;
+
+const twentyOpportunityProjection = (application: ApplicationAnswers) => ({
+  brandUrl: {
+    primaryLinkUrl: application.brandUrl,
+    primaryLinkLabel: new URL(application.brandUrl).hostname,
+    secondaryLinks: null,
+  },
+  paidSocialSpend: paidSocialSpendValues[application.paidSocialSpend],
+  winnerStatus: winnerStatusValues[application.winnerStatus],
+  platforms: application.platforms.map((platform) => platformValues[platform]),
+  deliveryTimeline: deliveryTimelineValues[application.deliveryTimeline],
+});
+
 const findOpenTwentyOpportunity = async (
   client: TwentyClient,
   personId: string,
@@ -419,11 +463,7 @@ const recordTwentyApplication = async (
       ...(openOpportunity ? {} : { stage }),
       pointOfContactId: personId,
       ...(companyId ? { companyId } : {}),
-      brandUrl: event.payload.application.brandUrl,
-      paidSocialSpend: event.payload.application.paidSocialSpend,
-      winnerStatus: event.payload.application.winnerStatus,
-      platforms: event.payload.application.platforms,
-      deliveryTimeline: event.payload.application.deliveryTimeline,
+      ...twentyOpportunityProjection(event.payload.application),
     },
     openOpportunity?.id,
   );

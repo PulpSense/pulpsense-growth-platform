@@ -272,11 +272,15 @@ describe("process-funnel-event", () => {
       stage: "QUALIFIED_AWAITING_BOOKING",
       pointOfContactId: "person_existing",
       companyId: "company_brand",
-      brandUrl: "https://www.brand.com/products",
-      paidSocialSpend: "$50k - $150k/month",
-      winnerStatus: "Yes, several winners",
-      platforms: ["Meta", "TikTok"],
-      deliveryTimeline: "Next 2 weeks",
+      brandUrl: {
+        primaryLinkUrl: "https://www.brand.com/products",
+        primaryLinkLabel: "www.brand.com",
+        secondaryLinks: null,
+      },
+      paidSocialSpend: "FROM_50K_TO_150K_MONTH",
+      winnerStatus: "SEVERAL_WINNERS",
+      platforms: ["META", "TIKTOK"],
+      deliveryTimeline: "NEXT_2_WEEKS",
     });
   });
 
