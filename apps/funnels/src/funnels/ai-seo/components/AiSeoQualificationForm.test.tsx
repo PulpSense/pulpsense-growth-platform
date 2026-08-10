@@ -141,7 +141,7 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
 
     await act(async () => callbacks.callback("retry-token"));
     expect(getSubmitButton().disabled).toBe(false);
-    expect(document.body.textContent).toContain("Security check complete");
+    expect(document.body.textContent).not.toContain("Security check complete");
 
     warn.mockRestore();
   });

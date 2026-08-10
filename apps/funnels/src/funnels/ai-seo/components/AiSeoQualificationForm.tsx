@@ -637,18 +637,20 @@ export function AiSeoQualificationForm({
                 </div>
               </div>
               <div ref={turnstileContainerRef} />
-              <p
-                className={
-                  recoverableTurnstileStatuses.has(turnstileStatus) ||
-                  turnstileStatus === "unsupported"
-                    ? "pr-tf-error"
-                    : "pr-tf-legend"
-                }
-                role="status"
-                aria-live="polite"
-              >
-                {TURNSTILE_STATUS_MESSAGES[turnstileStatus]}
-              </p>
+              {turnstileStatus !== "ready" && (
+                <p
+                  className={
+                    recoverableTurnstileStatuses.has(turnstileStatus) ||
+                    turnstileStatus === "unsupported"
+                      ? "pr-tf-error"
+                      : "pr-tf-legend"
+                  }
+                  role="status"
+                  aria-live="polite"
+                >
+                  {TURNSTILE_STATUS_MESSAGES[turnstileStatus]}
+                </p>
+              )}
               {recoverableTurnstileStatuses.has(turnstileStatus) && (
                 <button
                   type="button"
