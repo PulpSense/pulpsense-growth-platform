@@ -1,6 +1,6 @@
 # PulpSense Funnels
 
-The Creative Multiplier Sprint is rendered as a static Astro site for Cloudflare Pages. React components provide narrowly scoped carousel, form, video, tracking, and sticky-CTA islands. Cloudflare deployment history is the application rollback mechanism.
+The AI SEO funnel is rendered as a static Astro site for Cloudflare Pages. Astro owns the visual document and React islands provide narrowly scoped form, booking, and tracking behavior. Cloudflare deployment history is the application rollback mechanism.
 
 ## Tech stack
 
@@ -19,7 +19,7 @@ pnpm install
 pnpm dev
 ```
 
-Open <http://localhost:4321/creative-multiplier-sprint/>.
+Open <http://localhost:4321/ai-seo/>.
 
 ## Scripts
 
@@ -42,14 +42,32 @@ src/
 ├── pages/                  # Active Astro routes
 ├── layouts/                # Static HTML shell and crawler metadata
 ├── server/                 # Runtime-neutral Pages Function behavior
-├── funnels/                # Funnel-specific content and React components
+├── funnels/                # Funnel-owned content, sections, and styles
+├── lib/funnel/             # Shared funnel runtime and submission machinery
 ├── styles/                 # Global application styles
 └── components/             # Shared React primitives and explicit islands
 ```
 
+Each funnel owns its sections and page styles while the route remains the
+composition shell:
+
+```text
+src/funnels/ai-seo/
+├── components/
+│   ├── landing/            # Landing-page sections and interactions
+│   └── thank-you/          # Confirmation-page sections and interactions
+└── styles/                 # Route-specific funnel stylesheets
+```
+
+Cloudflare files under `functions/api/` are thin adapters. Server handlers keep
+the `(request, env) => response` interface, while endpoint internals live behind
+that seam. The funnel-event handler delegates contact and application flows to
+`src/server/funnel-events/`, which also owns signed identities, request context,
+and durable Trigger.dev delivery.
+
 ## Runtime isolation
 
-Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` copied from `.dev.vars.example`, with sandbox values only. Local builds may omit browser Meta tracking. Preview builds require a non-production `PUBLIC_META_PIXEL_ID` and a non-production `PUBLIC_CAL_LINK`; the build fails if either is absent or if the known production Meta dataset is supplied.
+Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` copied from `.dev.vars.example`, with sandbox values only. Local builds may omit browser Meta tracking. Preview builds require the lawyers-specific `PUBLIC_META_PIXEL_ID_AI_SEO_L` and a non-production `PUBLIC_CAL_LINK`; the build fails if either is absent or if the known production Meta dataset is supplied.
 
 Browser-facing `PUBLIC_*` values must be present in the Astro build environment. Pages Function secrets belong in the Cloudflare preview environment instead. `PUBLIC_CAL_NAMESPACE` may be set when the sandbox event uses a distinct embed namespace.
 
@@ -57,7 +75,7 @@ Set `PUBLIC_POSTHOG_KEY` and the region-appropriate `PUBLIC_POSTHOG_HOST` to ena
 
 Contact and application lifecycle events are accepted through `/api/funnel-events`. Email verification remains synchronous at `/api/verify-email`. Cal booking completion is accepted only at the signed `/api/webhooks/cal` boundary; the browser callback redirects to confirmation but cannot advance Twenty or emit Meta `Schedule`.
 
-The Cal embed is loaded as a separate lazy chunk only after the server returns a signed booking identity for a qualified applicant with a verified business email. Hero video playback waits until page load plus browser idle time, and proof videos attach sources only near their viewport. Configure Cal's `BOOKING_CREATED` webhook with `CAL_WEBHOOK_SECRET` and point it at `/api/webhooks/cal`.
+The Cal embed is loaded as a separate lazy chunk only after the server returns a signed booking identity for a qualified applicant with a verified business email. Wistia players load paused and proof videos attach sources only near their viewport. Configure Cal's `BOOKING_CREATED` webhook with `CAL_WEBHOOK_SECRET` and point it at `/api/webhooks/cal`.
 
 Contact and email-verification requests call the private `FUNNEL_RATE_LIMIT_SERVICE` binding with a hashed IP key. The bound Worker owns Cloudflare's native Rate Limiting binding and has no public `workers.dev` route. `pnpm start` launches both configurations locally. Preview and production use separate Pages projects and private rate-limiter Workers.
 

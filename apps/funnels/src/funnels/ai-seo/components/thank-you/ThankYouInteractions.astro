@@ -1,0 +1,72 @@
+<div class="pr-lightbox" id="pr-lightbox" hidden>
+  <button
+    class="pr-lightbox-close"
+    id="pr-lightbox-close"
+    aria-label="Close enlarged review"
+  >
+    ×
+  </button>
+  <img id="pr-lightbox-img" src="" alt="" />
+</div>
+<script is:inline>
+  /* Review lightbox — tap a card to view the screenshot at reading size. */
+  (function () {
+    var box = document.getElementById("pr-lightbox");
+    var boxImg = document.getElementById("pr-lightbox-img");
+    var closeBtn = document.getElementById("pr-lightbox-close");
+    if (!box || !boxImg || !closeBtn) return;
+    function open(img) {
+      /* Serve a higher-res render for reading (r_800 grid thumb → r_1200). */
+      boxImg.src = img.src.replace("/r_800/", "/r_1200/");
+      boxImg.alt = img.alt;
+      box.hidden = false;
+      document.body.style.overflow = "hidden";
+    }
+    function close() {
+      box.hidden = true;
+      boxImg.src = "";
+      document.body.style.overflow = "";
+    }
+    document.querySelectorAll(".pr-review-card img").forEach(function (img) {
+      img.closest(".pr-review-card").addEventListener("click", function () {
+        open(img);
+      });
+    });
+    box.addEventListener("click", function (e) {
+      if (e.target !== boxImg) close();
+    });
+    closeBtn.addEventListener("click", close);
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && !box.hidden) close();
+    });
+  })();
+</script>
+<script is:inline>
+  /* Review carousel auto-advance — only when cards overflow (mobile);
+         hands control back permanently on any user interaction. */
+  (function () {
+    var track = document.getElementById("pr-reviews-track");
+    if (!track) return;
+    var stopped = false;
+    var idx = 0;
+    ["pointerdown", "wheel", "touchstart", "keydown"].forEach(function (ev) {
+      track.addEventListener(
+        ev,
+        function () {
+          stopped = true;
+        },
+        { passive: true },
+      );
+    });
+    setInterval(function () {
+      if (stopped || track.scrollWidth <= track.clientWidth + 8) return;
+      var cards = track.children;
+      if (!cards.length) return;
+      idx = (idx + 1) % cards.length;
+      track.scrollTo({
+        left: cards[idx].offsetLeft - cards[0].offsetLeft,
+        behavior: "smooth",
+      });
+    }, 4000);
+  })();
+</script>

@@ -5,6 +5,10 @@ export const CONTACT_SUBMITTED_EVENT = "contact_submitted" as const;
 export const APPLICATION_SUBMITTED_EVENT = "application_submitted" as const;
 export const BOOKING_COMPLETED_EVENT = "booking_completed" as const;
 
+export const funnelIdSchema = z.enum(["ai-seo", "creative-multiplier-sprint"]);
+
+export type FunnelId = z.infer<typeof funnelIdSchema>;
+
 const attributionTouchSchema = z
   .object({
     utmSource: z.string().trim().max(200).optional(),
@@ -32,7 +36,7 @@ export const funnelAttributionSchema = z
 export const contactPayloadSchema = z
   .object({
     firstName: z.string().trim().min(1).max(100),
-    lastName: z.string().trim().min(1).max(100),
+    lastName: z.string().trim().max(100).optional().default(""),
     email: z.string().trim().toLowerCase().email().max(320),
     phone: z.string().trim().min(7).max(40),
   })
@@ -65,7 +69,7 @@ export const contactSubmittedEventSchema = z
   .object({
     schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
     eventType: z.literal(CONTACT_SUBMITTED_EVENT),
-    funnelId: z.literal("creative-multiplier-sprint"),
+    funnelId: funnelIdSchema,
     submissionId: z.string().uuid(),
     eventId: z.string().min(1).max(200),
     occurredAt: z.string().datetime({ offset: true }),
@@ -114,17 +118,19 @@ export const applicationAnswersSchema = z
   })
   .strict();
 
-export const applicationSubmittedEventSchema = z
+export const aiSeoApplicationAnswersSchema = z
+  .object({
+    businessOwner: z.literal("yes"),
+  })
+  .strict();
+
+const applicationSubmittedEventBase = z
   .object({
     schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
     eventType: z.literal(APPLICATION_SUBMITTED_EVENT),
-    funnelId: z.literal("creative-multiplier-sprint"),
     submissionId: z.string().uuid(),
     eventId: z.string().min(1).max(200),
     occurredAt: z.string().datetime({ offset: true }),
-    payload: verifiedContactPayloadSchema.extend({
-      application: applicationAnswersSchema,
-    }),
     qualificationStatus: z.enum(["qualified", "unqualified"]),
     companyDomain: z.string().min(1).max(253),
     attribution: funnelAttributionSchema,
@@ -133,11 +139,30 @@ export const applicationSubmittedEventSchema = z
   })
   .strict();
 
+export const applicationSubmittedEventSchema = z.discriminatedUnion(
+  "funnelId",
+  [
+    applicationSubmittedEventBase.extend({
+      funnelId: z.literal("creative-multiplier-sprint"),
+      payload: verifiedContactPayloadSchema.extend({
+        application: applicationAnswersSchema,
+      }),
+    }),
+    applicationSubmittedEventBase.extend({
+      funnelId: z.literal("ai-seo"),
+      payload: verifiedContactPayloadSchema.extend({
+        application: aiSeoApplicationAnswersSchema,
+      }),
+      qualificationStatus: z.literal("qualified"),
+    }),
+  ],
+);
+
 export const bookingCompletedEventSchema = z
   .object({
     schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
     eventType: z.literal(BOOKING_COMPLETED_EVENT),
-    funnelId: z.literal("creative-multiplier-sprint"),
+    funnelId: funnelIdSchema,
     submissionId: z.string().uuid(),
     eventId: z.string().min(1).max(300),
     occurredAt: z.string().datetime({ offset: true }),
@@ -176,6 +201,9 @@ export const funnelEventSchema = z.discriminatedUnion("eventType", [
 ]);
 
 export type ApplicationAnswers = z.infer<typeof applicationAnswersSchema>;
+export type AiSeoApplicationAnswers = z.infer<
+  typeof aiSeoApplicationAnswersSchema
+>;
 export type ApplicationSubmittedEvent = z.infer<
   typeof applicationSubmittedEventSchema
 >;

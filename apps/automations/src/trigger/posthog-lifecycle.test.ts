@@ -41,6 +41,7 @@ const contactEvent: ContactSubmittedEvent = {
 const applicationEvent: ApplicationSubmittedEvent = {
   ...contactEvent,
   eventType: "application_submitted",
+  funnelId: "creative-multiplier-sprint",
   eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   payload: {
     ...contactEvent.payload,

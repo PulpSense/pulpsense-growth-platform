@@ -57,7 +57,7 @@ jobs:
       - name: Build Astro
         env:
           PUBLIC_PULPSENSE_ENVIRONMENT: preview
-          PUBLIC_META_PIXEL_ID: "123456789012345"
+          PUBLIC_META_PIXEL_ID_AI_SEO_L: "123456789012345"
           PUBLIC_POSTHOG_KEY: phc_ci-preview
           PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
           PUBLIC_CAL_LINK: ci/preview
@@ -101,21 +101,21 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
           PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}
-          PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}
+          PUBLIC_META_PIXEL_ID_AI_SEO_L: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_L }}
           PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
           PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
         run: |
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Preview CLOUDFLARE_ACCOUNT_ID is not configured"; exit 1; }
           test -n "$CLOUDFLARE_PAGES_PROJECT" || { echo "Preview CLOUDFLARE_PAGES_PROJECT is not configured"; exit 1; }
           test -n "$PUBLIC_CAL_LINK" || { echo "Preview PUBLIC_CAL_LINK is not configured"; exit 1; }
-          test -n "$PUBLIC_META_PIXEL_ID" || { echo "Preview PUBLIC_META_PIXEL_ID is not configured"; exit 1; }
+          test -n "$PUBLIC_META_PIXEL_ID_AI_SEO_L" || { echo "Preview PUBLIC_META_PIXEL_ID_AI_SEO_L is not configured"; exit 1; }
           test -n "$PUBLIC_POSTHOG_KEY" || { echo "Preview PUBLIC_POSTHOG_KEY is not configured"; exit 1; }
           test -n "$PUBLIC_TURNSTILE_SITE_KEY" || { echo "Preview PUBLIC_TURNSTILE_SITE_KEY is not configured"; exit 1; }
 
       - name: Build Preview
         env:
           PUBLIC_PULPSENSE_ENVIRONMENT: preview
-          PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}
+          PUBLIC_META_PIXEL_ID_AI_SEO_L: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_L }}
           PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
           PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
           PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}
@@ -178,7 +178,7 @@ jobs:
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
           PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}
           PUBLIC_CAL_NAMESPACE: ${{ vars.PUBLIC_CAL_NAMESPACE }}
-          PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}
+          PUBLIC_META_PIXEL_ID_AI_SEO_L: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_L }}
           PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
           PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
           PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
@@ -188,7 +188,7 @@ jobs:
           test "$CLOUDFLARE_PAGES_PROJECT" = "pulpsense-funnels" || { echo "Production CLOUDFLARE_PAGES_PROJECT must be pulpsense-funnels"; exit 1; }
           test -n "$PUBLIC_CAL_LINK" || { echo "Production PUBLIC_CAL_LINK is not configured"; exit 1; }
           test -n "$PUBLIC_CAL_NAMESPACE" || { echo "Production PUBLIC_CAL_NAMESPACE is not configured"; exit 1; }
-          test -n "$PUBLIC_META_PIXEL_ID" || { echo "Production PUBLIC_META_PIXEL_ID is not configured"; exit 1; }
+          test -n "$PUBLIC_META_PIXEL_ID_AI_SEO_L" || { echo "Production PUBLIC_META_PIXEL_ID_AI_SEO_L is not configured"; exit 1; }
           test -n "$PUBLIC_POSTHOG_HOST" || { echo "Production PUBLIC_POSTHOG_HOST is not configured"; exit 1; }
           test -n "$PUBLIC_POSTHOG_KEY" || { echo "Production PUBLIC_POSTHOG_KEY is not configured"; exit 1; }
           test -n "$PUBLIC_TURNSTILE_SITE_KEY" || { echo "Production PUBLIC_TURNSTILE_SITE_KEY is not configured"; exit 1; }
@@ -222,7 +222,7 @@ jobs:
       - name: Build Production
         env:
           PUBLIC_PULPSENSE_ENVIRONMENT: production
-          PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}
+          PUBLIC_META_PIXEL_ID_AI_SEO_L: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_L }}
           PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
           PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
           PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}

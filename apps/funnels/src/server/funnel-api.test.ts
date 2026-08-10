@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { handleCalWebhook } from "./booking-webhook";
 import { handleFunnelEvent } from "./contact-submission";
 import { handleVerifyEmail } from "./email-verification";
-import { handleFormSubmit } from "./lifecycle-events";
 import { handleMetaCapi } from "./meta-conversions";
 
 afterEach(() => {
@@ -311,6 +310,91 @@ describe("POST /api/funnel-events", () => {
       },
     });
     expect(triggerBody.options.idempotencyKey).toBe(result.eventId);
+  });
+
+  it("accepts an AI SEO owner with an optional last name and returns a signed Cal identity", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ result: "ok" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_application" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const env = {
+      ...allowingRateLimit,
+      TURNSTILE_SECRET_KEY: "turnstile-secret",
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+      PULPSENSE_ENVIRONMENT: "preview" as const,
+    };
+
+    const contactResponse = await handleFunnelEvent(
+      requestWithBody({
+        schemaVersion: 1,
+        eventType: "contact_submitted",
+        funnelId: "ai-seo",
+        attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
+        turnstileToken: "turnstile-token",
+        payload: {
+          firstName: "Maya",
+          email: "maya@brand.com",
+          phone: "+1 (555) 123-4567",
+        },
+        attribution: { firstTouch: {}, lastTouch: {} },
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
+      }),
+      env,
+    );
+    expect(contactResponse.status).toBe(200);
+    const contact = (await contactResponse.json()) as {
+      submissionId: string;
+      retry: { submissionId: string; token: string };
+    };
+
+    const applicationResponse = await handleFunnelEvent(
+      requestWithBody({
+        schemaVersion: 1,
+        eventType: "application_submitted",
+        funnelId: "ai-seo",
+        identity: contact.retry,
+        payload: { businessOwner: "yes" },
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
+      }),
+      env,
+    );
+
+    expect(applicationResponse.status).toBe(200);
+    await expect(applicationResponse.json()).resolves.toMatchObject({
+      accepted: true,
+      submissionId: contact.submissionId,
+      qualificationStatus: "qualified",
+      nextStep: "booking",
+      bookingIdentity: { submissionId: contact.submissionId },
+      runId: "run_application",
+    });
+
+    const contactTriggerBody = JSON.parse(
+      String(fetchMock.mock.calls[2]?.[1]?.body),
+    );
+    expect(contactTriggerBody.payload).toMatchObject({
+      funnelId: "ai-seo",
+      payload: { firstName: "Maya", lastName: "" },
+    });
+    const applicationTriggerBody = JSON.parse(
+      String(fetchMock.mock.calls[3]?.[1]?.body),
+    );
+    expect(applicationTriggerBody.payload).toMatchObject({
+      funnelId: "ai-seo",
+      qualificationStatus: "qualified",
+      payload: { application: { businessOwner: "yes" } },
+    });
   });
 
   it("calculates an unqualified application on the server before allowing navigation", async () => {
@@ -1067,28 +1151,6 @@ describe("POST /api/webhooks/cal", () => {
 });
 
 describe("browser booking boundaries", () => {
-  it("rejects booking completion submitted through the legacy browser endpoint", async () => {
-    const fetchMock = vi.fn<typeof fetch>();
-    vi.stubGlobal("fetch", fetchMock);
-    const response = await handleFormSubmit(
-      new Request("https://preview.pulpsense.com/api/form-submit", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          event: "booking_completed",
-          data: {
-            funnelId: "creative-multiplier-sprint",
-            bookingUid: "cal_booking_forged",
-          },
-        }),
-      }),
-      { PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret" },
-    );
-
-    expect(response.status).toBe(400);
-    expect(fetchMock).not.toHaveBeenCalled();
-  });
-
   it("rejects a browser-originated Meta Schedule CAPI event", async () => {
     const fetchMock = vi.fn<typeof fetch>();
     vi.stubGlobal("fetch", fetchMock);

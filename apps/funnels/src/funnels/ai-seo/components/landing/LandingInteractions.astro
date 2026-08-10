@@ -1,0 +1,168 @@
+<script is:inline>
+  (function () {
+    var root = document.getElementById("pr-funnel");
+    if (!root) return;
+    var sticky = root.querySelector(".pr-sticky-cta");
+    var form = document.getElementById("pr-funnel-form");
+    if (!sticky || !form) return;
+    root.classList.add("pr-has-sticky");
+    var formVisible = false;
+    var scrolledPast = false;
+    function update() {
+      if (scrolledPast && !formVisible) {
+        sticky.classList.add("is-visible");
+        sticky.setAttribute("aria-hidden", "false");
+      } else {
+        sticky.classList.remove("is-visible");
+        sticky.setAttribute("aria-hidden", "true");
+      }
+    }
+    if ("IntersectionObserver" in window) {
+      new IntersectionObserver(
+        function (entries) {
+          formVisible = entries[0].isIntersecting;
+          update();
+        },
+        { threshold: 0.05 },
+      ).observe(form);
+    }
+    var threshold = window.innerHeight * 0.6;
+    function onScroll() {
+      scrolledPast = window.scrollY > threshold;
+      update();
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", function () {
+      threshold = window.innerHeight * 0.6;
+      onScroll();
+    });
+    onScroll();
+  })();
+</script>
+<script is:inline>
+  /* Re-anchor CTA jumps after lazy media above the form changes page height. */
+  var formSection = document.getElementById("pr-funnel-form");
+  document
+    .querySelectorAll('a[href="#pr-funnel-form"]')
+    .forEach(function (anchor) {
+      anchor.addEventListener("click", function (event) {
+        if (!formSection) return;
+        event.preventDefault();
+        formSection.scrollIntoView({ behavior: "smooth" });
+
+        var lastY = -1;
+        var still = 0;
+        var deadline = Date.now() + 3000;
+
+        (function settle() {
+          if (Date.now() > deadline) return;
+
+          var y = window.scrollY;
+          still = y === lastY ? still + 1 : 0;
+          lastY = y;
+
+          if (still >= 12) {
+            if (formSection.getBoundingClientRect().top > 40) {
+              formSection.scrollIntoView({ behavior: "smooth" });
+            }
+            return;
+          }
+
+          requestAnimationFrame(settle);
+        })();
+      });
+    });
+</script>
+<div class="pr-lightbox" id="pr-lightbox" hidden>
+  <button
+    class="pr-lightbox-close"
+    id="pr-lightbox-close"
+    aria-label="Close enlarged review"
+  >
+    ×
+  </button>
+  <img id="pr-lightbox-img" src="" alt="" />
+</div>
+<script is:inline>
+  /* Review lightbox + carousel auto-advance (same behavior as the thank-you page). */
+  (function () {
+    var box = document.getElementById("pr-lightbox");
+    var boxImg = document.getElementById("pr-lightbox-img");
+    var closeBtn = document.getElementById("pr-lightbox-close");
+    if (box && boxImg && closeBtn) {
+      var open = function (img) {
+        boxImg.src = img.src.replace("/r_800/", "/r_1200/");
+        boxImg.alt = img.alt;
+        box.hidden = false;
+        document.body.style.overflow = "hidden";
+      };
+      var close = function () {
+        box.hidden = true;
+        boxImg.src = "";
+        document.body.style.overflow = "";
+      };
+      document.querySelectorAll(".pr-review-card img").forEach(function (img) {
+        img.closest(".pr-review-card").addEventListener("click", function () {
+          open(img);
+        });
+      });
+      box.addEventListener("click", function (e) {
+        if (e.target !== boxImg) close();
+      });
+      closeBtn.addEventListener("click", close);
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && !box.hidden) close();
+      });
+    }
+    var track = document.getElementById("pr-reviews-track");
+    if (!track) return;
+    var stopped = false;
+    var idx = 0;
+    ["pointerdown", "wheel", "touchstart", "keydown"].forEach(function (ev) {
+      track.addEventListener(
+        ev,
+        function () {
+          stopped = true;
+        },
+        { passive: true },
+      );
+    });
+    setInterval(function () {
+      if (stopped || track.scrollWidth <= track.clientWidth + 8) return;
+      var cards = track.children;
+      if (!cards.length) return;
+      idx = (idx + 1) % cards.length;
+      track.scrollTo({
+        left: cards[idx].offsetLeft - cards[0].offsetLeft,
+        behavior: "smooth",
+      });
+    }, 4000);
+  })();
+</script>
+<script is:inline>
+  /* Skip-the-call rail: carry any typed contact info onto /start (pixel
+         advanced matching + /onboarding prefill downstream) and log which
+         placement was clicked. */
+  (function () {
+    document.addEventListener("click", function (e) {
+      var a = e.target.closest && e.target.closest(".pr-skip-call");
+      if (!a) return;
+      var placement = a.getAttribute("data-skip-call") || "unknown";
+      try {
+        var u = new URL(a.getAttribute("href"), location.origin);
+        var email = (document.getElementById("ai-seo-email") || {}).value;
+        var phone = (document.getElementById("ai-seo-phone") || {}).value;
+        var first = (document.getElementById("ai-seo-first") || {}).value;
+        var last = (document.getElementById("ai-seo-last") || {}).value;
+        if (email) u.searchParams.set("email", email.trim());
+        if (phone) u.searchParams.set("phone", phone.trim());
+        if (first) u.searchParams.set("first_name", first.trim());
+        if (last) u.searchParams.set("last_name", last.trim());
+        u.searchParams.set("src", placement);
+        a.href = u.toString();
+      } catch (err) {}
+      if (window.fbq)
+        fbq("trackCustom", "SkipCallClick", { placement: placement });
+    });
+  })();
+</script>

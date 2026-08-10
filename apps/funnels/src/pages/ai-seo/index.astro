@@ -1,0 +1,86 @@
+---
+import { FunnelAnalytics, TrackingPixels } from "@/components/ui";
+import DisclosureFooter from "@/funnels/ai-seo/components/DisclosureFooter.astro";
+import BenefitsSection from "@/funnels/ai-seo/components/landing/BenefitsSection.astro";
+import ComparisonSection from "@/funnels/ai-seo/components/landing/ComparisonSection.astro";
+import EducationSection from "@/funnels/ai-seo/components/landing/EducationSection.astro";
+import FaqSection from "@/funnels/ai-seo/components/landing/FaqSection.astro";
+import GuaranteeSection from "@/funnels/ai-seo/components/landing/GuaranteeSection.astro";
+import HeroSection from "@/funnels/ai-seo/components/landing/HeroSection.astro";
+import LandingInteractions from "@/funnels/ai-seo/components/landing/LandingInteractions.astro";
+import MarketShiftSection from "@/funnels/ai-seo/components/landing/MarketShiftSection.astro";
+import PricingSection from "@/funnels/ai-seo/components/landing/PricingSection.astro";
+import ProcessSection from "@/funnels/ai-seo/components/landing/ProcessSection.astro";
+import QualificationSection from "@/funnels/ai-seo/components/landing/QualificationSection.astro";
+import ResultsSection from "@/funnels/ai-seo/components/landing/ResultsSection.astro";
+import ReviewsSection from "@/funnels/ai-seo/components/landing/ReviewsSection.astro";
+import StickyCta from "@/funnels/ai-seo/components/landing/StickyCta.astro";
+import { AI_SEO_LAWYERS_PRODUCTION_PIXEL_ID } from "@/funnels/ai-seo/meta-destination";
+import "@/funnels/ai-seo/styles/landing.css";
+import {
+  createBrowserTrackingConfig,
+  parseDeploymentEnvironment,
+  resolveCalConfig,
+} from "@/lib/funnel/runtime-config";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const deploymentEnvironment = parseDeploymentEnvironment(
+  import.meta.env.PUBLIC_PULPSENSE_ENVIRONMENT,
+);
+const pixels = createBrowserTrackingConfig({
+  environment: deploymentEnvironment,
+  metaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_L,
+  productionMetaPixelId: AI_SEO_LAWYERS_PRODUCTION_PIXEL_ID,
+});
+const cal = resolveCalConfig({
+  environment: deploymentEnvironment,
+  calLink: import.meta.env.PUBLIC_CAL_LINK,
+  calNamespace: import.meta.env.PUBLIC_CAL_NAMESPACE,
+  localFallback: "santileoni/funnel",
+});
+---
+
+<BaseLayout
+  title="45 New Calls in 90 Days for $297/mo — Lead Oracle AI"
+  description="Get found in Google and AI search with Lead Oracle AI."
+>
+  <link
+    slot="head"
+    rel="preconnect"
+    href="https://fast.wistia.com"
+    crossorigin
+  />
+  <FunnelAnalytics
+    client:interaction="idle"
+    apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
+    host={import.meta.env.PUBLIC_POSTHOG_HOST}
+    funnelId="ai-seo"
+    page="landing"
+  />
+  <TrackingPixels client:interaction="idle" pixels={pixels} interactionReady />
+
+  <div id="pr-funnel">
+    <main class="pr-main">
+      <HeroSection />
+      <BenefitsSection />
+      <MarketShiftSection />
+      <ComparisonSection />
+      <EducationSection />
+      <ResultsSection />
+      <ProcessSection />
+      <PricingSection />
+      <GuaranteeSection />
+      <FaqSection />
+      <ReviewsSection />
+      <QualificationSection
+        calLink={cal.calLink}
+        calNamespace={cal.namespace}
+        turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}
+      />
+    </main>
+
+    <DisclosureFooter />
+    <StickyCta />
+  </div>
+  <LandingInteractions />
+</BaseLayout>
