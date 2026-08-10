@@ -1295,11 +1295,13 @@ describe("POST /api/verify-email", () => {
   it("redacts and returns an unexpected verifier result code for diagnosis", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn<typeof fetch>()
-        .mockResolvedValue(
-          Response.json({ result: "blocked by IP", free: false }),
-        ),
+      vi.fn<typeof fetch>().mockResolvedValue(
+        Response.json({
+          result: "error",
+          error: "IP address blocked",
+          free: false,
+        }),
+      ),
     );
     const request = new Request(
       "https://preview.pulpsense.com/api/verify-email",
@@ -1322,7 +1324,10 @@ describe("POST /api/verify-email", () => {
       "provider_unexpected_result",
     );
     expect(response.headers.get("x-pulpsense-email-verification-result")).toBe(
-      "blocked_by_IP",
+      "error",
+    );
+    expect(response.headers.get("x-pulpsense-email-verification-error")).toBe(
+      "IP_address_blocked",
     );
   });
 
