@@ -15,17 +15,17 @@ New commits cancel older in-progress work for the same pull request. Fork and De
 
 Configure the `Preview` GitHub environment with:
 
-| Kind     | Name                        | Value                                                                     |
-| -------- | --------------------------- | ------------------------------------------------------------------------- |
-| Secret   | `CLOUDFLARE_API_TOKEN`      | A token scoped to Cloudflare Pages edit access for the PulpSense account  |
-| Variable | `CLOUDFLARE_ACCOUNT_ID`     | The PulpSense Cloudflare account ID                                       |
-| Variable | `CLOUDFLARE_PAGES_PROJECT`  | `pulpsense-funnels-preview`                                               |
-| Variable | `PUBLIC_META_PIXEL_ID`      | The non-production Meta dataset used by the current target market         |
-| Variable | `PUBLIC_POSTHOG_KEY`        | The public PostHog project key used for privacy-allowlisted funnel events |
-| Variable | `PUBLIC_POSTHOG_HOST`       | The region-appropriate PostHog ingestion host                             |
-| Variable | `PUBLIC_CAL_LINK`           | The non-production Cal event link                                         |
-| Variable | `PUBLIC_CAL_NAMESPACE`      | Optional Cal embed namespace                                              |
-| Variable | `PUBLIC_TURNSTILE_SITE_KEY` | The browser-facing Turnstile widget key                                   |
+| Kind     | Name                            | Value                                                                     |
+| -------- | ------------------------------- | ------------------------------------------------------------------------- |
+| Secret   | `CLOUDFLARE_API_TOKEN`          | A token scoped to Cloudflare Pages edit access for the PulpSense account  |
+| Variable | `CLOUDFLARE_ACCOUNT_ID`         | The PulpSense Cloudflare account ID                                       |
+| Variable | `CLOUDFLARE_PAGES_PROJECT`      | `pulpsense-funnels-preview`                                               |
+| Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_L` | The non-production lawyers Meta dataset used by the AI SEO funnel         |
+| Variable | `PUBLIC_POSTHOG_KEY`            | The public PostHog project key used for privacy-allowlisted funnel events |
+| Variable | `PUBLIC_POSTHOG_HOST`           | The region-appropriate PostHog ingestion host                             |
+| Variable | `PUBLIC_CAL_LINK`               | The non-production Cal event link                                         |
+| Variable | `PUBLIC_CAL_NAMESPACE`          | Optional Cal embed namespace                                              |
+| Variable | `PUBLIC_TURNSTILE_SITE_KEY`     | The browser-facing Turnstile widget key                                   |
 
 Pages Function credentials such as Trigger.dev, MillionVerifier, Turnstile, and webhook secrets stay in the Cloudflare Pages environment. They are not copied into GitHub because Direct Upload preserves the project's runtime configuration. The checked-in Wrangler configuration binds preview deployments to the private `pulpsense-funnel-rate-limiter-preview` Worker. Deploy that Worker from `apps/rate-limiter` before the Pages project; #87 must provide a separate production service before launch.
 
@@ -70,7 +70,7 @@ pnpm test
 pnpm check-types
 pnpm lint
 PUBLIC_PULPSENSE_ENVIRONMENT=preview \
-PUBLIC_META_PIXEL_ID=<sandbox-dataset> \
+PUBLIC_META_PIXEL_ID_AI_SEO_L=<sandbox-lawyers-dataset> \
 PUBLIC_POSTHOG_KEY=<project-key> \
 PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
 PUBLIC_CAL_LINK=<sandbox-owner/sandbox-event> \

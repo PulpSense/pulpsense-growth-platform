@@ -67,7 +67,7 @@ and durable Trigger.dev delivery.
 
 ## Runtime isolation
 
-Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` copied from `.dev.vars.example`, with sandbox values only. Local builds may omit browser Meta tracking. Preview builds require a non-production `PUBLIC_META_PIXEL_ID` and a non-production `PUBLIC_CAL_LINK`; the build fails if either is absent or if the known production Meta dataset is supplied.
+Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` copied from `.dev.vars.example`, with sandbox values only. Local builds may omit browser Meta tracking. Preview builds require the lawyers-specific `PUBLIC_META_PIXEL_ID_AI_SEO_L` and a non-production `PUBLIC_CAL_LINK`; the build fails if either is absent or if the known production Meta dataset is supplied.
 
 Browser-facing `PUBLIC_*` values must be present in the Astro build environment. Pages Function secrets belong in the Cloudflare preview environment instead. `PUBLIC_CAL_NAMESPACE` may be set when the sandbox event uses a distinct embed namespace.
 

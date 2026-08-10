@@ -9,6 +9,7 @@ import {
 import { logger, retry, schemaTask } from "@trigger.dev/sdk";
 
 import { createPostHogLifecycleCapture } from "./posthog-lifecycle.js";
+import { resolveMetaEnvironment } from "./meta-destination.js";
 
 type AdapterDestination = "twenty" | "meta" | "slack";
 
@@ -289,18 +290,6 @@ type ProcessorEnvironment = {
   SLACK_FAILURE_WEBHOOK_URL?: string;
   PULPSENSE_AUTOMATION_ENVIRONMENT?: FunnelEvent["environment"];
 };
-
-export const resolveMetaEnvironment = (
-  environment: Readonly<Record<string, string | undefined>>,
-): {
-  META_PIXEL_ID?: string;
-  META_CAPI_ACCESS_TOKEN?: string;
-  META_TEST_EVENT_CODE?: string;
-} => ({
-  META_PIXEL_ID: environment.META_PIXEL_ID,
-  META_CAPI_ACCESS_TOKEN: environment.META_CAPI_ACCESS_TOKEN,
-  META_TEST_EVENT_CODE: environment.META_TEST_EVENT_CODE,
-});
 
 const required = (value: string | undefined, name: string) => {
   if (!value) throw new Error(`${name} is not configured`);
@@ -1053,7 +1042,7 @@ export const processFunnelEventTask = schemaTask({
           TWENTY_CALL_BOOKED_STAGE_VALUE:
             process.env.TWENTY_CALL_BOOKED_STAGE_VALUE,
           TWENTY_CLOSED_STAGE_VALUES: process.env.TWENTY_CLOSED_STAGE_VALUES,
-          ...resolveMetaEnvironment(process.env),
+          ...resolveMetaEnvironment(process.env, event.funnelId),
           META_GRAPH_API_VERSION: process.env.META_GRAPH_API_VERSION,
           POSTHOG_PROJECT_KEY: process.env.POSTHOG_PROJECT_KEY,
           POSTHOG_HOST: process.env.POSTHOG_HOST,

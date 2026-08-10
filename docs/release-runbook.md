@@ -25,7 +25,7 @@ The `Production` environment must allow only `master`, require the project owner
 - secret `CLOUDFLARE_API_TOKEN`;
 - secret `TRIGGER_ACCESS_TOKEN`;
 - variables `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_PAGES_PROJECT`, and `CLOUDFLARE_PAGES_BRANCH`;
-- variables `PUBLIC_META_PIXEL_ID`, `PUBLIC_POSTHOG_KEY`, `PUBLIC_POSTHOG_HOST`, `PUBLIC_CAL_LINK`, `PUBLIC_CAL_NAMESPACE`, and `PUBLIC_TURNSTILE_SITE_KEY`.
+- variables `PUBLIC_META_PIXEL_ID_AI_SEO_L`, `PUBLIC_POSTHOG_KEY`, `PUBLIC_POSTHOG_HOST`, `PUBLIC_CAL_LINK`, `PUBLIC_CAL_NAMESPACE`, and `PUBLIC_TURNSTILE_SITE_KEY`.
 
 The project must be `pulpsense-funnels`, its production branch must be `master`, and it must have no custom domain until owner approval.
 
@@ -41,8 +41,8 @@ Deploy the qualified automation version and confirm the Production environment c
 
 - `PULPSENSE_AUTOMATION_ENVIRONMENT=production`;
 - `TWENTY_API_ORIGIN`, `TWENTY_API_KEY`, `TWENTY_QUALIFIED_STAGE_VALUE`, `TWENTY_CALL_BOOKED_STAGE_VALUE`, and `TWENTY_CLOSED_STAGE_VALUES` for the production Twenty workspace;
-- `META_PIXEL_ID`, `META_CAPI_ACCESS_TOKEN`, and `META_GRAPH_API_VERSION` for the intended shared production dataset;
-- no `META_TEST_EVENT_CODE` during live delivery;
+- `META_PIXEL_ID_AI_SEO_L`, `META_CAPI_ACCESS_TOKEN_AI_SEO_L`, and `META_GRAPH_API_VERSION` for the lawyers production dataset;
+- no `META_TEST_EVENT_CODE_AI_SEO_L` during live delivery;
 - `POSTHOG_PROJECT_KEY` and the region-correct `POSTHOG_HOST`;
 - `SLACK_FAILURE_WEBHOOK_URL` for the production reliability channel.
 

@@ -23,7 +23,7 @@ The page shell and outcome pages are static HTML. React hydration is limited to:
 - interaction- or idle-delayed browser tracking;
 - the mobile sticky CTA.
 
-Hero and proof video sources are attached only when their active players approach the viewport. Cal.com is imported and mounted only after the server returns a signed booking identity for a qualified applicant with a verified business email. Browser Meta tracking is included only when a `PUBLIC_META_PIXEL_ID` is supplied at build time. Tracking attaches after the first visitor interaction or after the two-second idle fallback, ensuring a passive visit still emits `PageView`.
+Hero and proof video sources are attached only when their active players approach the viewport. Cal.com is imported and mounted only after the server returns a signed booking identity for a qualified applicant with a verified business email. AI SEO browser Meta tracking is included only when `PUBLIC_META_PIXEL_ID_AI_SEO_L` is supplied at build time. Tracking attaches after the first visitor interaction or after the two-second idle fallback, ensuring a passive visit still emits `PageView`.
 
 ## Preview deployment
 
@@ -32,7 +32,7 @@ Pull requests targeting `master` are verified and deployed automatically by `.gi
 The existing command remains a manual fallback for the issue #81 branch:
 
 ```bash
-PUBLIC_META_PIXEL_ID=<preview-dataset-id> \
+PUBLIC_META_PIXEL_ID_AI_SEO_L=<preview-lawyers-dataset-id> \
 PUBLIC_POSTHOG_KEY=<project-key> \
 PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
 PUBLIC_CAL_LINK=<preview-team/preview-event> \
@@ -40,7 +40,7 @@ PUBLIC_CAL_NAMESPACE=<preview-embed-namespace> \
 pnpm --filter @pulpsense/funnels deploy:preview
 ```
 
-`PUBLIC_META_PIXEL_ID`, `PUBLIC_POSTHOG_KEY`, and `PUBLIC_CAL_LINK` are mandatory in the GitHub preview deployment. The build requires a numeric Pixel ID and rejects the known production Meta dataset; the required Cal link prevents the preview from silently booking into the committed production destination. `PUBLIC_POSTHOG_HOST` defaults to the US ingestion host, and `PUBLIC_CAL_NAMESPACE` is optional when the preview event intentionally shares the default embed namespace.
+`PUBLIC_META_PIXEL_ID_AI_SEO_L`, `PUBLIC_POSTHOG_KEY`, and `PUBLIC_CAL_LINK` are mandatory in the GitHub preview deployment. The build requires a numeric lawyers Pixel ID and rejects the known production Meta dataset; the required Cal link prevents the preview from silently booking into the committed production destination. `PUBLIC_POSTHOG_HOST` defaults to the US ingestion host, and `PUBLIC_CAL_NAMESPACE` is optional when the preview event intentionally shares the default embed namespace.
 
 The command targets project `pulpsense-funnels-preview` and branch `issue-81`. Do not attach a custom production domain or add production credentials to that project. Configure Pages Function secrets separately in the Pages preview environment; the public build values above are not secrets.
 

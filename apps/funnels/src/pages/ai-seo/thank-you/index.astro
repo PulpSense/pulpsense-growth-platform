@@ -7,6 +7,7 @@ import ReviewsSection from "@/funnels/ai-seo/_components/thank-you/ReviewsSectio
 import SeoAuditStep from "@/funnels/ai-seo/_components/thank-you/SeoAuditStep.astro";
 import TestimonialVideosSection from "@/funnels/ai-seo/_components/thank-you/TestimonialVideosSection.astro";
 import ThankYouInteractions from "@/funnels/ai-seo/_components/thank-you/ThankYouInteractions.astro";
+import { AI_SEO_LAWYERS_PRODUCTION_PIXEL_ID } from "@/funnels/ai-seo/meta-destination";
 import "@/funnels/ai-seo/styles/thank-you.css";
 import {
   createBrowserTrackingConfig,
@@ -19,8 +20,8 @@ const deploymentEnvironment = parseDeploymentEnvironment(
 );
 const pixels = createBrowserTrackingConfig({
   environment: deploymentEnvironment,
-  metaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID,
-  productionMetaPixelId: "828948073514575",
+  metaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_L,
+  productionMetaPixelId: AI_SEO_LAWYERS_PRODUCTION_PIXEL_ID,
 });
 ---
 

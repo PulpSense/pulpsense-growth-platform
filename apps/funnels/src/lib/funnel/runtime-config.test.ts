@@ -13,7 +13,7 @@ describe("funnel runtime configuration", () => {
         metaPixelId: "",
         productionMetaPixelId: "828948073514575",
       }),
-    ).toThrow("PUBLIC_META_PIXEL_ID");
+    ).toThrow("vertical-specific public Meta Pixel ID");
 
     expect(() =>
       createBrowserTrackingConfig({
