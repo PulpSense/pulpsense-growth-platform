@@ -25,7 +25,6 @@
     "@pulpsense/contracts": "workspace:*",
     "@tailwindcss/vite": "^4.3.3",
     "astro": "^7.2.0",
-    "classnames": "^2.5.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.3.6"
