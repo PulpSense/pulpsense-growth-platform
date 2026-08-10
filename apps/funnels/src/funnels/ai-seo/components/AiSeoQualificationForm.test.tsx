@@ -145,4 +145,43 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
 
     warn.mockRestore();
   });
+
+  it("does not claim an email is verified when the verifier is unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        Response.json({
+          valid: true,
+          status: "unverified",
+          result: "provider_error",
+        }),
+      ),
+    );
+    window.turnstile = {
+      render: vi.fn(() => "widget-id"),
+      remove: vi.fn(),
+      reset: vi.fn(),
+    };
+
+    await renderForm();
+    const emailInput =
+      document.querySelector<HTMLInputElement>("#ai-seo-email");
+    expect(emailInput).toBeInstanceOf(HTMLInputElement);
+    const setValue = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+
+    await act(async () => {
+      setValue?.call(emailInput, "maya@brand.com");
+      emailInput?.dispatchEvent(new Event("input", { bubbles: true }));
+      emailInput?.dispatchEvent(new Event("change", { bubbles: true }));
+      emailInput?.dispatchEvent(new Event("focusout", { bubbles: true }));
+    });
+
+    expect(document.body.textContent).toContain(
+      "couldn't verify your email automatically, but you can continue",
+    );
+    expect(document.body.textContent).not.toContain("Email verified");
+  });
 });
