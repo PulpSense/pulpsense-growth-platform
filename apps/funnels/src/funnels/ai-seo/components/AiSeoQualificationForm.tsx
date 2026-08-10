@@ -295,22 +295,32 @@ export function AiSeoQualificationForm({
         body: JSON.stringify({ email }),
         signal: controller.signal,
       });
-      const result = (await response.json()) as { valid?: boolean };
+      const result = (await response.json()) as {
+        valid?: boolean;
+        status?: "verified" | "unverified" | "invalid";
+      };
       if (controller.signal.aborted) return;
       lastVerifiedEmail.current = email;
-      if (result.valid) {
+      if (result.valid && result.status === "verified") {
         setEmailStatus("valid");
         setErrors((current) => {
           const next = { ...current };
           delete next.email;
           return next;
         });
-      } else {
+      } else if (result.status === "invalid") {
         setEmailStatus("invalid");
         setErrors((current) => ({
           ...current,
           email: "Please enter a valid business email.",
         }));
+      } else {
+        setEmailStatus("idle");
+        setErrors((current) => {
+          const next = { ...current };
+          delete next.email;
+          return next;
+        });
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;

@@ -42,8 +42,8 @@ export function CalBookingStep({
       cal("ui", {
         theme: "light",
         cssVarsPerTheme: {
-          dark: { "cal-brand": "#f97316" },
-          light: { "cal-brand": "#f97316" },
+          dark: { "cal-brand": "#0080ff" },
+          light: { "cal-brand": "#0080ff" },
         },
         hideEventTypeDetails: true,
         layout: "month_view",

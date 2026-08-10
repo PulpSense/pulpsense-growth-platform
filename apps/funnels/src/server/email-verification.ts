@@ -93,5 +93,8 @@ export async function handleVerifyEmail(request: Request, env: FunnelEnv) {
     return json({ valid: false, ...verification });
   }
 
-  return json({ valid: true, ...verification });
+  return json({
+    valid: verification.status === "verified",
+    ...verification,
+  });
 }
