@@ -1,7 +1,7 @@
-export const json = (body: unknown, status = 200, headers?: HeadersInit) =>
+export const json = (body: unknown, status = 200) =>
   Response.json(body, {
     status,
-    headers: { "Cache-Control": "no-store", ...headers },
+    headers: { "Cache-Control": "no-store" },
   });
 
 export const parseJson = async <T>(

@@ -142,17 +142,13 @@ export async function processContactSubmission(
     if (!isBusinessEmail(submission.payload.email)) {
       return json({ error: "email_invalid" }, 422);
     }
-    const verificationResult = await verifyBusinessEmail(
+    const verification = await verifyBusinessEmail(
       submission.payload.email,
       env.MILLION_VERIFIER_API_KEY,
     );
-    if (verificationResult.status === "invalid") {
+    if (verification.status === "invalid") {
       return json({ error: "email_invalid" }, 422);
     }
-    const verification: EmailVerification = {
-      status: verificationResult.status,
-      result: verificationResult.result,
-    };
 
     if (!env.SUBMISSION_SIGNING_SECRET || !env.PULPSENSE_TRIGGER_SECRET_KEY) {
       return json({ error: "handoff_unavailable" }, 503);
