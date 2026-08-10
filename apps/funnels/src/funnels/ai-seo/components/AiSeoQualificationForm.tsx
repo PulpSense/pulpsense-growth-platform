@@ -31,8 +31,10 @@ declare global {
           action?: string;
           appearance?: "always" | "execute" | "interaction-only";
           callback(token: string): void;
-          "error-callback"?(): void;
+          "error-callback"?(errorCode: string): boolean | void;
           "expired-callback"?(): void;
+          "timeout-callback"?(): void;
+          "unsupported-callback"?(): void;
         },
       ): string;
       remove(widgetId: string): void;
@@ -43,6 +45,31 @@ declare global {
 
 type Step = "owner" | "contact" | "calendar" | "not-owner";
 type EmailStatus = "idle" | "verifying" | "valid" | "invalid";
+type TurnstileStatus =
+  | "loading"
+  | "rendering"
+  | "ready"
+  | "error"
+  | "expired"
+  | "timeout"
+  | "unsupported";
+
+const TURNSTILE_STATUS_MESSAGES: Record<TurnstileStatus, string> = {
+  loading: "Running security check…",
+  rendering: "Running security check…",
+  ready: "Security check complete.",
+  error: "The security check could not start. Please try again.",
+  expired: "The security check expired. Please run it again.",
+  timeout: "The security check timed out. Please try again.",
+  unsupported:
+    "This browser cannot run the security check. Please update your browser or try another one.",
+};
+
+const recoverableTurnstileStatuses = new Set<TurnstileStatus>([
+  "error",
+  "expired",
+  "timeout",
+]);
 
 type ContactData = {
   firstName: string;
@@ -85,6 +112,9 @@ export function AiSeoQualificationForm({
   const [emailStatus, setEmailStatus] = useState<EmailStatus>("idle");
   const [submitting, setSubmitting] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [turnstileStatus, setTurnstileStatus] = useState<TurnstileStatus>(
+    turnstileSiteKey ? "loading" : "error",
+  );
   const [bookingIdentity, setBookingIdentity] = useState<{
     submissionId: string;
     token: string;
@@ -118,63 +148,124 @@ export function AiSeoQualificationForm({
   }, [step]);
 
   useEffect(() => {
-    if (!turnstileSiteKey) return;
+    if (step !== "contact") return;
+
+    if (!turnstileSiteKey) {
+      console.warn("PulpSense Turnstile failed", {
+        funnelId,
+        status: "error",
+        code: "site_key_missing",
+      });
+      return;
+    }
+
+    let active = true;
+    let loadTimeout: number | undefined;
+
+    const reportFailure = (
+      status: Extract<
+        TurnstileStatus,
+        "error" | "expired" | "timeout" | "unsupported"
+      >,
+      code: string,
+    ) => {
+      if (!active) return;
+      setTurnstileToken("");
+      setTurnstileStatus(status);
+      const detail = { funnelId, status, code };
+      console.warn("PulpSense Turnstile failed", detail);
+      window.dispatchEvent(
+        new CustomEvent("pulpsense:turnstile-failure", { detail }),
+      );
+    };
 
     const renderWidget = () => {
       if (
+        !active ||
         !window.turnstile ||
         !turnstileContainerRef.current ||
         turnstileWidgetRef.current
       ) {
         return;
       }
-      turnstileWidgetRef.current = window.turnstile.render(
-        turnstileContainerRef.current,
-        {
-          sitekey: turnstileSiteKey,
-          action: "contact_submit",
-          appearance: "interaction-only",
-          callback: (token) => {
-            setTurnstileToken(token);
-            setSubmissionError("");
+      setTurnstileStatus("rendering");
+      try {
+        turnstileWidgetRef.current = window.turnstile.render(
+          turnstileContainerRef.current,
+          {
+            sitekey: turnstileSiteKey,
+            action: "contact_submit",
+            appearance: "interaction-only",
+            callback: (token) => {
+              if (!active) return;
+              setTurnstileToken(token);
+              setTurnstileStatus("ready");
+              setSubmissionError("");
+            },
+            "error-callback": (errorCode) => {
+              reportFailure("error", errorCode || "challenge_error");
+            },
+            "expired-callback": () => {
+              reportFailure("expired", "token_expired");
+            },
+            "timeout-callback": () => {
+              reportFailure("timeout", "challenge_timeout");
+            },
+            "unsupported-callback": () => {
+              reportFailure("unsupported", "browser_unsupported");
+            },
           },
-          "error-callback": () => {
-            setTurnstileToken("");
-            setSubmissionError(
-              "The security check could not load. Please try again.",
-            );
-          },
-          "expired-callback": () => setTurnstileToken(""),
-        },
-      );
+        );
+      } catch {
+        reportFailure("error", "render_failed");
+      }
     };
 
-    const existingScript = document.querySelector<HTMLScriptElement>(
+    const script = document.querySelector<HTMLScriptElement>(
       "script[data-pulpsense-turnstile]",
     );
     if (window.turnstile) {
       renderWidget();
-    } else if (existingScript) {
-      existingScript.addEventListener("load", renderWidget, { once: true });
+    } else if (script?.dataset.status === "error") {
+      reportFailure("error", "api_script_failed");
     } else {
-      const script = document.createElement("script");
-      script.src =
-        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-      script.async = true;
-      script.defer = true;
-      script.dataset.pulpsenseTurnstile = "true";
-      script.addEventListener("load", renderWidget, { once: true });
-      document.head.append(script);
+      script?.addEventListener("load", renderWidget, { once: true });
+      script?.addEventListener(
+        "error",
+        () => reportFailure("error", "api_script_failed"),
+        { once: true },
+      );
+      loadTimeout = window.setTimeout(() => {
+        if (window.turnstile) renderWidget();
+        else reportFailure("timeout", "api_load_timeout");
+      }, 20_000);
     }
 
     return () => {
-      existingScript?.removeEventListener("load", renderWidget);
+      active = false;
+      if (loadTimeout) window.clearTimeout(loadTimeout);
+      script?.removeEventListener("load", renderWidget);
       if (turnstileWidgetRef.current) {
         window.turnstile?.remove(turnstileWidgetRef.current);
         turnstileWidgetRef.current = undefined;
       }
     };
-  }, [turnstileSiteKey]);
+  }, [funnelId, step, turnstileSiteKey]);
+
+  const retryTurnstile = useCallback(() => {
+    setSubmissionError("");
+    setTurnstileToken("");
+    if (window.turnstile && turnstileWidgetRef.current) {
+      setTurnstileStatus("rendering");
+      try {
+        window.turnstile.reset(turnstileWidgetRef.current);
+        return;
+      } catch {
+        // Reloading below also retries a failed or stale API script.
+      }
+    }
+    window.location.reload();
+  }, []);
 
   const updateContact = useCallback(
     (field: keyof ContactData, value: string) => {
@@ -183,6 +274,7 @@ export function AiSeoQualificationForm({
       if (resetIdentity && turnstileWidgetRef.current) {
         window.turnstile?.reset(turnstileWidgetRef.current);
         setTurnstileToken("");
+        setTurnstileStatus("rendering");
       }
       setErrors((current) => {
         const next = { ...current };
@@ -273,6 +365,10 @@ export function AiSeoQualificationForm({
   ) => {
     event.preventDefault();
     if (!validateContact() || submitting) return;
+    if (!turnstileToken) {
+      setSubmissionError(TURNSTILE_STATUS_MESSAGES[turnstileStatus]);
+      return;
+    }
     setSubmitting(true);
     setSubmissionError("");
 
@@ -302,11 +398,14 @@ export function AiSeoQualificationForm({
             ? "Please correct your business email and try again."
             : contactResult.error === "rate_limited"
               ? "Too many attempts. Please wait a minute and try again."
-              : "We could not save your details yet. Please try again.",
+              : contactResult.error === "turnstile_unavailable"
+                ? "The security check was not ready. Please run it again."
+                : "We could not save your details yet. Please try again.",
         );
         if (!contactResult.retryAvailable && turnstileWidgetRef.current) {
           window.turnstile?.reset(turnstileWidgetRef.current);
           setTurnstileToken("");
+          setTurnstileStatus("rendering");
         }
         return;
       }
@@ -538,6 +637,27 @@ export function AiSeoQualificationForm({
                 </div>
               </div>
               <div ref={turnstileContainerRef} />
+              <p
+                className={
+                  recoverableTurnstileStatuses.has(turnstileStatus) ||
+                  turnstileStatus === "unsupported"
+                    ? "pr-tf-error"
+                    : "pr-tf-legend"
+                }
+                role="status"
+                aria-live="polite"
+              >
+                {TURNSTILE_STATUS_MESSAGES[turnstileStatus]}
+              </p>
+              {recoverableTurnstileStatuses.has(turnstileStatus) && (
+                <button
+                  type="button"
+                  className="pr-tf-back"
+                  onClick={retryTurnstile}
+                >
+                  Retry security check
+                </button>
+              )}
               {submissionError && (
                 <p className="pr-tf-error" role="alert">
                   {submissionError}
@@ -549,6 +669,7 @@ export function AiSeoQualificationForm({
                   className="pr-btn"
                   disabled={
                     submitting ||
+                    !turnstileToken ||
                     emailStatus === "verifying" ||
                     emailStatus === "invalid"
                   }
