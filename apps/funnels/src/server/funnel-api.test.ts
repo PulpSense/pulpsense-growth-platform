@@ -1228,7 +1228,7 @@ describe("POST /api/verify-email", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("allows catch-all domains but marks them unverified", async () => {
+  it("returns catch-all domains as unverified", async () => {
     vi.stubGlobal(
       "fetch",
       vi
@@ -1253,7 +1253,7 @@ describe("POST /api/verify-email", () => {
     });
 
     await expect(response.json()).resolves.toEqual({
-      valid: true,
+      valid: false,
       status: "unverified",
       result: "catch_all",
     });
@@ -1316,7 +1316,7 @@ describe("POST /api/verify-email", () => {
     });
   });
 
-  it("fails open and marks the email unverified when the provider fails", async () => {
+  it("does not mark an email as verified when the provider fails", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn<typeof fetch>().mockRejectedValue(new Error("provider offline")),
@@ -1340,13 +1340,13 @@ describe("POST /api/verify-email", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      valid: true,
+      valid: false,
       status: "unverified",
       result: "provider_error",
     });
   });
 
-  it("fails open when the verifier responds with an infrastructure error", async () => {
+  it("does not mark an email as verified for a verifier infrastructure error", async () => {
     vi.stubGlobal(
       "fetch",
       vi
@@ -1373,7 +1373,7 @@ describe("POST /api/verify-email", () => {
     });
 
     await expect(response.json()).resolves.toEqual({
-      valid: true,
+      valid: false,
       status: "unverified",
       result: "provider_error",
     });

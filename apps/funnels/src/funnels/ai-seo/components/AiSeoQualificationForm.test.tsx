@@ -78,6 +78,7 @@ afterEach(async () => {
   document.body.replaceChildren();
   document.head.replaceChildren();
   delete window.turnstile;
+  vi.unstubAllGlobals();
 });
 
 describe("AiSeoQualificationForm Turnstile gate", () => {
@@ -143,5 +144,36 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
     expect(document.body.textContent).not.toContain("Security check complete");
 
     warn.mockRestore();
+  });
+
+  it("does not show the verified email check when the verifier is unavailable", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json({ valid: false, status: "unverified" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await renderForm();
+
+    const emailInput =
+      document.querySelector<HTMLInputElement>("#ai-seo-email");
+    expect(emailInput).toBeInstanceOf(HTMLInputElement);
+
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      setter?.call(emailInput, "name@examplebusiness.com");
+      emailInput?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      emailInput?.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    });
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(document.querySelector('[aria-label="Email verified"]')).toBeNull();
+    expect(document.body.textContent).not.toContain(
+      "Please enter a valid business email.",
+    );
   });
 });
