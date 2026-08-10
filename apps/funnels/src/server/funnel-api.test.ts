@@ -1292,6 +1292,40 @@ describe("POST /api/verify-email", () => {
     );
   });
 
+  it("redacts and returns an unexpected verifier result code for diagnosis", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(
+          Response.json({ result: "blocked by IP", free: false }),
+        ),
+    );
+    const request = new Request(
+      "https://preview.pulpsense.com/api/verify-email",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://preview.pulpsense.com",
+        },
+        body: JSON.stringify({ email: "maya@brand.com" }),
+      },
+    );
+
+    const response = await handleVerifyEmail(request, {
+      ...allowingRateLimit,
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+    });
+
+    expect(response.headers.get("x-pulpsense-email-verification")).toBe(
+      "provider_unexpected_result",
+    );
+    expect(response.headers.get("x-pulpsense-email-verification-result")).toBe(
+      "blocked_by_IP",
+    );
+  });
+
   it("fails closed for an email the verifier identifies as invalid", async () => {
     vi.stubGlobal(
       "fetch",

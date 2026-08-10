@@ -19,6 +19,7 @@ type BusinessEmailVerification =
         | "provider_unknown"
         | "provider_request_failed"
         | "provider_unexpected_result";
+      providerResult?: string;
       result: "provider_error";
       status: "unverified";
     }
@@ -91,6 +92,10 @@ export const verifyBusinessEmail = async (
       status: "unverified",
       result: "provider_error",
       diagnostic: "provider_unexpected_result",
+      providerResult:
+        typeof verification.result === "string" && verification.result
+          ? verification.result.replaceAll(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80)
+          : "missing",
     };
   } catch (error) {
     console.warn("PulpSense email verification failed", {
@@ -145,6 +150,8 @@ export async function handleVerifyEmail(request: Request, env: FunnelEnv) {
 
   const diagnostic =
     "diagnostic" in verification ? verification.diagnostic : undefined;
+  const providerResult =
+    "providerResult" in verification ? verification.providerResult : undefined;
   return json(
     {
       valid: true,
@@ -152,6 +159,11 @@ export async function handleVerifyEmail(request: Request, env: FunnelEnv) {
       result: verification.result,
     },
     200,
-    diagnostic ? { "x-pulpsense-email-verification": diagnostic } : undefined,
+    {
+      ...(diagnostic ? { "x-pulpsense-email-verification": diagnostic } : {}),
+      ...(providerResult
+        ? { "x-pulpsense-email-verification-result": providerResult }
+        : {}),
+    },
   );
 }
