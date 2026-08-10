@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { GradientButton } from '@/components/ui';
-import type { SectionCTAConfig } from './types';
+import { GradientButton } from "@/components/ui";
+import type { SectionCTAConfig } from "./types";
 
 export type HowItWorksStep = {
   number: number;
@@ -23,7 +23,7 @@ const HowItWorks = ({ headerLabel, header, steps, cta }: HowItWorksProps) => {
         {/* Header */}
         <div className="mb-12 text-center">
           {headerLabel && (
-            <span className="mb-2 inline-block text-sm font-semibold text-blue-600 uppercase tracking-wider">
+            <span className="mb-2 inline-block text-sm font-semibold tracking-wider text-blue-600 uppercase">
               {headerLabel}
             </span>
           )}
@@ -47,7 +47,7 @@ const HowItWorks = ({ headerLabel, header, steps, cta }: HowItWorksProps) => {
               <h3 className="mb-3 text-lg font-bold text-gray-900">
                 {step.title}
               </h3>
-              <p className="text-sm text-gray-600 leading-relaxed">
+              <p className="text-sm leading-relaxed text-gray-600">
                 {step.description}
               </p>
             </div>

@@ -1,19 +1,19 @@
-import { AppConfig } from '@/utils/AppConfig';
+import { AppConfig } from "@/utils/AppConfig";
 
 type LogoProps = {
   xl?: boolean;
 };
 
 const Logo = (props: LogoProps) => {
-  const size = props.xl ? '44' : '32';
+  const size = props.xl ? "44" : "32";
   const fontStyle = props.xl
-    ? 'font-semibold text-3xl'
-    : 'font-semibold text-xl';
+    ? "font-semibold text-3xl"
+    : "font-semibold text-xl";
 
   return (
     <span className={`inline-flex items-center text-gray-900 ${fontStyle}`}>
       <svg
-        className="mr-1 stroke-current text-primary-500"
+        className="text-primary-500 mr-1 stroke-current"
         xmlns="http://www.w3.org/2000/svg"
         width={size}
         height={size}

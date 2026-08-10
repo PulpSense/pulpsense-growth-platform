@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { GradientButton } from '@/components/ui';
-import type { SectionCTAConfig } from './types';
+import { GradientButton } from "@/components/ui";
+import type { SectionCTAConfig } from "./types";
 
 export type ComparisonRow = {
   feature: string;
@@ -34,7 +34,7 @@ const ComparisonTable = ({
   cta,
 }: ComparisonTableProps) => {
   const renderCellValue = (value: string | boolean) => {
-    if (typeof value === 'boolean') {
+    if (typeof value === "boolean") {
       return value ? (
         <span className="text-green-600">✓</span>
       ) : (
@@ -50,14 +50,12 @@ const ComparisonTable = ({
         {/* Header */}
         <div className="mb-8 text-center">
           <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">
-            {header}{' '}
+            {header}{" "}
             {headerHighlight && (
               <span className="text-blue-600">{headerHighlight}</span>
             )}
           </h2>
-          {subheader && (
-            <p className="mt-3 text-gray-600">{subheader}</p>
-          )}
+          {subheader && <p className="mt-3 text-gray-600">{subheader}</p>}
         </div>
 
         {/* Table */}
@@ -77,9 +75,11 @@ const ComparisonTable = ({
           {rows.map((row, index) => (
             <div
               key={index}
-              className={`grid grid-cols-3 ${index !== rows.length - 1 ? 'border-b border-gray-100' : ''}`}
+              className={`grid grid-cols-3 ${index !== rows.length - 1 ? "border-b border-gray-100" : ""}`}
             >
-              <div className="p-4 text-sm font-medium text-gray-900">{row.feature}</div>
+              <div className="p-4 text-sm font-medium text-gray-900">
+                {row.feature}
+              </div>
               <div className="flex items-center justify-center border-x border-gray-100 p-4 text-center text-sm text-gray-700">
                 {renderCellValue(row.traditional)}
               </div>
@@ -93,8 +93,12 @@ const ComparisonTable = ({
         {/* Bottom Note */}
         {bottomNote && (
           <div className="mx-auto mt-8 max-w-2xl rounded-2xl bg-blue-600 px-8 py-8 text-center text-white">
-            <h3 className="mb-3 text-xl font-bold italic">{bottomNote.title}</h3>
-            <p className="text-base leading-relaxed text-blue-50">{bottomNote.content}</p>
+            <h3 className="mb-3 text-xl font-bold italic">
+              {bottomNote.title}
+            </h3>
+            <p className="text-base leading-relaxed text-blue-50">
+              {bottomNote.content}
+            </p>
           </div>
         )}
 

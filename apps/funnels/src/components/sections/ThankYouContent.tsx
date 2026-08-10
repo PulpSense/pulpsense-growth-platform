@@ -1,7 +1,7 @@
-import { ContentCard } from '@/components/ui/ContentCard';
-import { VideoEmbed } from '@/components/ui/VideoEmbed';
+import { ContentCard } from "@/components/ui/ContentCard";
+import { VideoEmbed } from "@/components/ui/VideoEmbed";
 
-import type { ThankYouContentProps } from './types';
+import type { ThankYouContentProps } from "./types";
 
 const ThankYouContent = ({ steps, bottomVideos }: ThankYouContentProps) => {
   return (
@@ -10,7 +10,7 @@ const ThankYouContent = ({ steps, bottomVideos }: ThankYouContentProps) => {
         {steps.map((step) => (
           <div key={step.number} className="mb-10 text-center last:mb-0">
             {/* Step heading with orange gradient badge */}
-            <h3 className="mb-3 text-2xl font-black uppercase text-black md:text-3xl">
+            <h3 className="mb-3 text-2xl font-black text-black uppercase md:text-3xl">
               <span className="mr-2 inline-block rounded bg-gradient-to-r from-orange-500 to-orange-400 px-2.5 py-0.5 text-xl font-black text-white md:text-2xl">
                 STEP {step.number}:
               </span>
@@ -37,7 +37,7 @@ const ThankYouContent = ({ steps, bottomVideos }: ThankYouContentProps) => {
               <div className="mx-auto mb-4 max-w-xl overflow-hidden rounded-lg border border-gray-200 shadow-sm">
                 <img
                   src={step.imageSrc}
-                  alt={step.imageAlt || 'Step illustration'}
+                  alt={step.imageAlt || "Step illustration"}
                   width={754}
                   height={360}
                   loading="lazy"
@@ -81,10 +81,10 @@ const ThankYouContent = ({ steps, bottomVideos }: ThankYouContentProps) => {
                 </div>
               ) : (
                 <a
-                  href={video.href || '#'}
+                  href={video.href || "#"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group relative block aspect-video overflow-hidden rounded-lg bg-navy-800"
+                  className="group bg-navy-800 relative block aspect-video overflow-hidden rounded-lg"
                 >
                   {video.thumbnailSrc ? (
                     <img
@@ -95,7 +95,7 @@ const ThankYouContent = ({ steps, bottomVideos }: ThankYouContentProps) => {
                       className="absolute inset-0 size-full object-cover transition-transform group-hover:scale-105"
                     />
                   ) : (
-                    <div className="flex size-full items-center justify-center bg-navy-800" />
+                    <div className="bg-navy-800 flex size-full items-center justify-center" />
                   )}
                   {/* Play button overlay */}
                   <div className="absolute inset-0 flex items-center justify-center">

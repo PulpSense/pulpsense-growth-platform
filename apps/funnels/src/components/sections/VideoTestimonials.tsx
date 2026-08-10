@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { GradientButton, WistiaPlayer, YouTubePlayer } from '@/components/ui';
-import type { SectionCTAConfig, VideoConfig } from './types';
+import { GradientButton, WistiaPlayer, YouTubePlayer } from "@/components/ui";
+import type { SectionCTAConfig, VideoConfig } from "./types";
 
 export type VideoTestimonial = {
   video: VideoConfig;
@@ -25,10 +25,10 @@ const VideoTestimonials = ({
   cta,
 }: VideoTestimonialsProps) => {
   const renderVideo = (video: VideoConfig) => {
-    if (video.provider === 'wistia') {
+    if (video.provider === "wistia") {
       return <WistiaPlayer mediaId={video.videoId} />;
     }
-    if (video.provider === 'youtube') {
+    if (video.provider === "youtube") {
       return <YouTubePlayer videoId={video.videoId} />;
     }
     // Placeholder
@@ -45,16 +45,14 @@ const VideoTestimonials = ({
         {/* Header */}
         <div className="mb-12 text-center">
           {headerLabel && (
-            <span className="mb-2 inline-block text-sm font-semibold text-blue-600 uppercase tracking-wider">
+            <span className="mb-2 inline-block text-sm font-semibold tracking-wider text-blue-600 uppercase">
               {headerLabel}
             </span>
           )}
           <h2 className="text-3xl font-bold text-gray-900 md:text-4xl">
             {header}
           </h2>
-          {subheader && (
-            <p className="mt-3 text-gray-600">{subheader}</p>
-          )}
+          {subheader && <p className="mt-3 text-gray-600">{subheader}</p>}
         </div>
 
         {/* Videos Grid */}

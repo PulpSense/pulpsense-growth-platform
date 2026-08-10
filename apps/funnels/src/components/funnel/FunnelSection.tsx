@@ -1,7 +1,7 @@
-import { forwardRef } from 'react';
-import type { ComponentPropsWithoutRef, ReactNode } from 'react';
+import { forwardRef } from "react";
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
-type FunnelSectionProps = ComponentPropsWithoutRef<'section'> & {
+type FunnelSectionProps = ComponentPropsWithoutRef<"section"> & {
   children: ReactNode;
 };
 
@@ -13,4 +13,4 @@ export const FunnelSection = forwardRef<HTMLElement, FunnelSectionProps>(
   ),
 );
 
-FunnelSection.displayName = 'FunnelSection';
+FunnelSection.displayName = "FunnelSection";

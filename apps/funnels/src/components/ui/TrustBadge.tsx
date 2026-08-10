@@ -1,8 +1,8 @@
 const DEFAULT_AVATARS = [
-  '/assets/images/avatars/avatar-1.avif',
-  '/assets/images/avatars/avatar-2.avif',
-  '/assets/images/avatars/avatar-3.avif',
-  '/assets/images/avatars/avatar-4.avif',
+  "/assets/images/avatars/avatar-1.avif",
+  "/assets/images/avatars/avatar-2.avif",
+  "/assets/images/avatars/avatar-3.avif",
+  "/assets/images/avatars/avatar-4.avif",
 ];
 
 type TrustBadgeProps = {
@@ -29,7 +29,7 @@ const TrustBadge = ({
             height={32}
             loading="lazy"
             decoding="async"
-            className="size-8 rounded-full border-2 border-navy-900 object-cover"
+            className="border-navy-900 size-8 rounded-full border-2 object-cover"
             aria-hidden="true"
           />
         ))}

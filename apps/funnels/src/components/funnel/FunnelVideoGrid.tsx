@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 type FunnelVideoGridItem = {
   id: string;
@@ -33,4 +33,3 @@ export function FunnelVideoGrid({
     </div>
   );
 }
-

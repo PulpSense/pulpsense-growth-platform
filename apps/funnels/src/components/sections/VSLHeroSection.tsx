@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { VideoPlaceholder } from '@/components/ui';
+import { VideoPlaceholder } from "@/components/ui";
 
-import type { VSLHeroSectionProps } from './types';
+import type { VSLHeroSectionProps } from "./types";
 
 const VSLHeroSection = ({
   announcementBar,
@@ -16,8 +16,8 @@ const VSLHeroSection = ({
   const savings = checkout.originalPrice - checkout.currentPrice;
 
   const handleScrollToCheckout = () => {
-    const el = document.getElementById('checkout');
-    el?.scrollIntoView({ behavior: 'smooth' });
+    const el = document.getElementById("checkout");
+    el?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -33,16 +33,16 @@ const VSLHeroSection = ({
 
       <div className="mx-auto max-w-6xl px-4">
         {/* For Label */}
-        <p className="mb-3 text-center text-sm font-semibold uppercase tracking-wide text-amber-400 md:text-base">
+        <p className="mb-3 text-center text-sm font-semibold tracking-wide text-amber-400 uppercase md:text-base">
           {forLabel}
         </p>
 
         {/* Headline */}
-        <h1 className="mb-2 text-center text-2xl font-extrabold leading-tight text-white md:text-3xl lg:text-4xl">
+        <h1 className="mb-2 text-center text-2xl leading-tight font-extrabold text-white md:text-3xl lg:text-4xl">
           {headline}
           {highlightedPrice && (
             <>
-              {' '}
+              {" "}
               <span className="text-green-400">{highlightedPrice}</span>
             </>
           )}
@@ -130,7 +130,7 @@ const VSLHeroSection = ({
 
             {/* Payment Logos Placeholder */}
             <div className="mt-3 flex items-center justify-center gap-3">
-              {['Visa', 'MC', 'Amex', 'PayPal'].map((name) => (
+              {["Visa", "MC", "Amex", "PayPal"].map((name) => (
                 <span
                   key={name}
                   className="rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-500"

@@ -1,4 +1,4 @@
-import { Marquee } from '@/components/ui';
+import { Marquee } from "@/components/ui";
 
 export type SocialProofLogosProps = {
   title?: string;
@@ -32,14 +32,14 @@ const SocialProofLogos = ({
               decoding="async"
               className={`h-8 w-auto object-contain transition-all ${
                 invertLogos
-                  ? 'brightness-0 opacity-60 hover:opacity-80'
-                  : 'grayscale opacity-60 hover:grayscale-0 hover:opacity-100'
+                  ? "opacity-60 brightness-0 hover:opacity-80"
+                  : "opacity-60 grayscale hover:opacity-100 hover:grayscale-0"
               }`}
             />
           ))}
         </Marquee>
         {title && (
-          <p className="mt-3 text-center text-sm font-medium uppercase tracking-wide text-gray-500">
+          <p className="mt-3 text-center text-sm font-medium tracking-wide text-gray-500 uppercase">
             {title}
           </p>
         )}

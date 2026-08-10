@@ -19,6 +19,7 @@
     "test": "vitest run",
     "qualify:release": "pnpm test && pnpm check-types && pnpm lint && pnpm build && pnpm check-parity && pnpm --filter @pulpsense/funnels check-release-performance",
     "format": "pnpm --filter @pulpsense/funnels format && prettier '**/*.{json,yaml,yml}' '!pnpm-lock.yaml' --write --ignore-path .gitignore",
+    "format:check": "pnpm --filter @pulpsense/funnels format:check && prettier '**/*.{json,yaml,yml}' '!pnpm-lock.yaml' --check --ignore-path .gitignore",
     "check-types": "pnpm -r check-types",
     "prepare": "husky"
   },

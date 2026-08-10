@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import type { ScrollerSummarySectionProps } from './types';
+import type { ScrollerSummarySectionProps } from "./types";
 
 const ScrollerSummarySection = ({
   label,
@@ -11,15 +11,15 @@ const ScrollerSummarySection = ({
   cta,
 }: ScrollerSummarySectionProps) => {
   const handleClick = () => {
-    const el = document.getElementById(cta.scrollTo ?? 'checkout');
-    el?.scrollIntoView({ behavior: 'smooth' });
+    const el = document.getElementById(cta.scrollTo ?? "checkout");
+    el?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
     <section className="bg-zinc-900 py-16">
       <div className="mx-auto max-w-3xl px-4 text-center">
         {/* Label */}
-        <p className="mb-2 text-sm font-bold uppercase tracking-widest text-amber-400">
+        <p className="mb-2 text-sm font-bold tracking-widest text-amber-400 uppercase">
           {label}
         </p>
 

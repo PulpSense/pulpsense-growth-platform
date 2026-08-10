@@ -1,6 +1,6 @@
-import type { ComponentPropsWithoutRef, ReactNode } from 'react';
+import type { ComponentPropsWithoutRef, ReactNode } from "react";
 
-type FunnelCtaProps = ComponentPropsWithoutRef<'a'> & {
+type FunnelCtaProps = ComponentPropsWithoutRef<"a"> & {
   children: ReactNode;
 };
 
@@ -11,4 +11,3 @@ export function FunnelCta({ children, className, ...props }: FunnelCtaProps) {
     </a>
   );
 }
-

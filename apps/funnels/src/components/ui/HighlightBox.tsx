@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 type HighlightBoxProps = {
   children: ReactNode;
@@ -6,7 +6,9 @@ type HighlightBoxProps = {
 
 const HighlightBox = ({ children }: HighlightBoxProps) => {
   return (
-    <div className="rounded-lg bg-navy-900 px-6 py-4 text-white">{children}</div>
+    <div className="bg-navy-900 rounded-lg px-6 py-4 text-white">
+      {children}
+    </div>
   );
 };
 

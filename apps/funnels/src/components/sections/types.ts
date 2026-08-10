@@ -14,12 +14,12 @@ export type TrustBadgeConfig = {
 
 export type BannerConfig = {
   text: string;
-  variant: 'orange' | 'red';
+  variant: "orange" | "red";
 };
 
 export type VideoConfig =
-  | { provider: 'wistia'; videoId: string }
-  | { provider: 'youtube'; videoId: string }
+  | { provider: "wistia"; videoId: string }
+  | { provider: "youtube"; videoId: string }
   | { provider?: undefined; posterSrc?: string; altText?: string };
 
 export type CTAConfig = {
@@ -134,8 +134,8 @@ export type ThankYouStep = {
 };
 
 export type ThankYouVideo = { title: string } & (
-  | { provider: 'wistia'; videoId: string }
-  | { provider: 'youtube'; videoId: string }
+  | { provider: "wistia"; videoId: string }
+  | { provider: "youtube"; videoId: string }
   | { provider?: undefined; thumbnailSrc?: string; href?: string }
 );
 
@@ -145,8 +145,8 @@ export type ThankYouHeroProps = {
   requiredLabel?: string;
   alertMessage?: string;
   videoPlaceholder?:
-    | { provider: 'wistia'; videoId: string }
-    | { provider: 'youtube'; videoId: string }
+    | { provider: "wistia"; videoId: string }
+    | { provider: "youtube"; videoId: string }
     | { provider?: undefined; title?: string; subtitle?: string };
 };
 

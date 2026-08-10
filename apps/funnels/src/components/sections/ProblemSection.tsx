@@ -1,6 +1,6 @@
-import { ContentCard, GradientButton } from '@/components/ui';
+import { ContentCard, GradientButton } from "@/components/ui";
 
-import type { ProblemSectionProps } from './types';
+import type { ProblemSectionProps } from "./types";
 
 const ProblemSection = ({
   headline,
@@ -14,18 +14,21 @@ const ProblemSection = ({
     <section className="bg-gray-100">
       <ContentCard>
         <h2 className="mb-8 text-center text-2xl font-bold text-gray-900 md:text-3xl">
-          {headline.split('\n').map((line, i) => (
-            <span key={i}>{line}{i < headline.split('\n').length - 1 && <br />}</span>
+          {headline.split("\n").map((line, i) => (
+            <span key={i}>
+              {line}
+              {i < headline.split("\n").length - 1 && <br />}
+            </span>
           ))}
         </h2>
-        <div className="mx-auto max-w-3xl space-y-4 text-gray-700 leading-relaxed">
+        <div className="mx-auto max-w-3xl space-y-4 leading-relaxed text-gray-700">
           {paragraphs.map((paragraph, index) => (
             <p
               key={index}
               className={
                 emphasizedText && paragraph === emphasizedText
-                  ? 'text-xl font-bold text-gray-900'
-                  : ''
+                  ? "text-xl font-bold text-gray-900"
+                  : ""
               }
             >
               {paragraph}
@@ -35,7 +38,7 @@ const ProblemSection = ({
         <div className="mx-auto my-8 max-w-3xl rounded-xl border-l-4 border-orange-500 bg-orange-50 p-6">
           <p className="font-semibold text-gray-900">{highlight}</p>
         </div>
-        <p className="mx-auto max-w-3xl text-gray-700 leading-relaxed">
+        <p className="mx-auto max-w-3xl leading-relaxed text-gray-700">
           {conclusion}
         </p>
         {cta && (
