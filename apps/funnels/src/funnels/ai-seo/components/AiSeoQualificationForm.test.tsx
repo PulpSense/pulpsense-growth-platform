@@ -176,4 +176,38 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
       "Please enter a valid business email.",
     );
   });
+
+  it("shows a red invalid-email indicator and message for a rejected email", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(Response.json({ valid: false, status: "invalid" })),
+    );
+
+    await renderForm();
+
+    const emailInput =
+      document.querySelector<HTMLInputElement>("#ai-seo-email");
+    expect(emailInput).toBeInstanceOf(HTMLInputElement);
+
+    await act(async () => {
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      setter?.call(emailInput, "asdf@alksjdf.com");
+      emailInput?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      emailInput?.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+    });
+
+    expect(
+      document.querySelector('[aria-label="Email is invalid"]'),
+    ).not.toBeNull();
+    expect(document.body.textContent).toContain(
+      "Email is invalid. Please enter a valid business email.",
+    );
+  });
 });

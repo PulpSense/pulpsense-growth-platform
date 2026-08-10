@@ -16,6 +16,31 @@ type BusinessEmailVerification =
 
 const INTERNAL_EMAIL_BYPASS = "santi@pulpsense.com";
 
+const isNonexistentEmailDomain = async (email: string): Promise<boolean> => {
+  const domain = email.trim().toLowerCase().split("@").at(-1);
+  if (!domain) return false;
+
+  try {
+    const response = await fetch(
+      `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(domain)}&type=MX`,
+      { headers: { accept: "application/dns-json" } },
+    );
+    if (!response.ok) return false;
+
+    const dnsResponse = (await response.json()) as { Status?: number };
+    return dnsResponse.Status === 3;
+  } catch {
+    return false;
+  }
+};
+
+const providerErrorVerification = async (
+  email: string,
+): Promise<BusinessEmailVerification> =>
+  (await isNonexistentEmailDomain(email))
+    ? { status: "invalid", result: "invalid" }
+    : { status: "unverified", result: "provider_error" };
+
 export const verifyBusinessEmail = async (
   email: string,
   apiKey: string | undefined,
@@ -23,7 +48,7 @@ export const verifyBusinessEmail = async (
   if (email.trim().toLowerCase() === INTERNAL_EMAIL_BYPASS) {
     return { status: "verified", result: "business" };
   }
-  if (!apiKey) return { status: "unverified", result: "provider_error" };
+  if (!apiKey) return providerErrorVerification(email);
 
   try {
     const response = await fetch(
@@ -49,9 +74,9 @@ export const verifyBusinessEmail = async (
       return { status: "unverified", result: "catch_all" };
     }
 
-    return { status: "unverified", result: "provider_error" };
+    return providerErrorVerification(email);
   } catch {
-    return { status: "unverified", result: "provider_error" };
+    return providerErrorVerification(email);
   }
 };
 
