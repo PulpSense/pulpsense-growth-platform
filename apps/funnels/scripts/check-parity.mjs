@@ -154,8 +154,18 @@ try {
     );
     assert.match(
       html,
-      /autoplay:\s*\{\s*enabled:\s*false,\s*mobile:\s*false/,
-      `${route.path} should keep Vidalytics autoplay disabled`,
+      /media-id="8py8vigtf1"/,
+      `${route.path} should embed the configured Wistia media`,
+    );
+    assert.match(
+      html,
+      /autoPlay:\s*false/,
+      `${route.path} should keep Wistia autoplay disabled`,
+    );
+    assert.doesNotMatch(
+      html,
+      /vidalytics/iu,
+      `${route.path} should not load Vidalytics`,
     );
 
     for (const marker of route.markers) {

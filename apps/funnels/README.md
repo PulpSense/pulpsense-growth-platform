@@ -57,7 +57,7 @@ Set `PUBLIC_POSTHOG_KEY` and the region-appropriate `PUBLIC_POSTHOG_HOST` to ena
 
 Contact and application lifecycle events are accepted through `/api/funnel-events`. Email verification remains synchronous at `/api/verify-email`. Cal booking completion is accepted only at the signed `/api/webhooks/cal` boundary; the browser callback redirects to confirmation but cannot advance Twenty or emit Meta `Schedule`.
 
-The Cal embed is loaded as a separate lazy chunk only after the server returns a signed booking identity for a qualified applicant with a verified business email. Hero video playback waits until page load plus browser idle time, and proof videos attach sources only near their viewport. Configure Cal's `BOOKING_CREATED` webhook with `CAL_WEBHOOK_SECRET` and point it at `/api/webhooks/cal`.
+The Cal embed is loaded as a separate lazy chunk only after the server returns a signed booking identity for a qualified applicant with a verified business email. Wistia players load paused and proof videos attach sources only near their viewport. Configure Cal's `BOOKING_CREATED` webhook with `CAL_WEBHOOK_SECRET` and point it at `/api/webhooks/cal`.
 
 Contact and email-verification requests call the private `FUNNEL_RATE_LIMIT_SERVICE` binding with a hashed IP key. The bound Worker owns Cloudflare's native Rate Limiting binding and has no public `workers.dev` route. `pnpm start` launches both configurations locally. Preview and production use separate Pages projects and private rate-limiter Workers.
 
