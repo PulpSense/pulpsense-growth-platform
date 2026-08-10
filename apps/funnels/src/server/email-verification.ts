@@ -16,6 +16,7 @@ type BusinessEmailVerification =
       diagnostic:
         | "api_key_missing"
         | "provider_http_error"
+        | "provider_unknown"
         | "provider_request_failed"
         | "provider_unexpected_result";
       result: "provider_error";
@@ -70,6 +71,16 @@ export const verifyBusinessEmail = async (
     }
     if (verification.result === "catch_all") {
       return { status: "unverified", result: "catch_all" };
+    }
+    if (verification.result === "unknown") {
+      console.warn("PulpSense email verification failed", {
+        reason: "provider_unknown",
+      });
+      return {
+        status: "unverified",
+        result: "provider_error",
+        diagnostic: "provider_unknown",
+      };
     }
 
     console.warn("PulpSense email verification failed", {

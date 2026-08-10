@@ -1258,6 +1258,40 @@ describe("POST /api/verify-email", () => {
     });
   });
 
+  it("reports an unknown verifier result distinctly from a provider failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(Response.json({ result: "unknown", free: false })),
+    );
+    const request = new Request(
+      "https://preview.pulpsense.com/api/verify-email",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://preview.pulpsense.com",
+        },
+        body: JSON.stringify({ email: "maya@brand.com" }),
+      },
+    );
+
+    const response = await handleVerifyEmail(request, {
+      ...allowingRateLimit,
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+    });
+
+    await expect(response.json()).resolves.toEqual({
+      valid: true,
+      status: "unverified",
+      result: "provider_error",
+    });
+    expect(response.headers.get("x-pulpsense-email-verification")).toBe(
+      "provider_unknown",
+    );
+  });
+
   it("fails closed for an email the verifier identifies as invalid", async () => {
     vi.stubGlobal(
       "fetch",
