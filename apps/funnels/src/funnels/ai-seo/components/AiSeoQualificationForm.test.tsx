@@ -101,18 +101,19 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
     expect(getSubmitButton().disabled).toBe(false);
   });
 
-  it("keeps submission disabled until Turnstile supplies a token", async () => {
+  it("keeps the background Turnstile check out of the form UI", async () => {
     await renderForm();
 
     const submitButton = getSubmitButton();
 
     expect(submitButton).toBeInstanceOf(HTMLButtonElement);
     expect(submitButton.disabled).toBe(true);
-    expect(document.body.textContent).toContain("Running security check");
+    expect(document.body.textContent).not.toContain("Running security check");
+    expect(document.body.textContent).not.toContain("Security check complete");
     expect(submission.submitContact).not.toHaveBeenCalled();
   });
 
-  it("shows a recoverable error and accepts a later retry token", async () => {
+  it("keeps a recoverable Turnstile failure out of the form UI", async () => {
     let options: TurnstileOptions | undefined;
     const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
     window.turnstile = {
@@ -128,11 +129,9 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
     const callbacks = options as TurnstileOptions;
 
     await act(async () => callbacks["error-callback"]?.("110200"));
-    expect(getSubmitButton().disabled).toBe(true);
-    expect(document.body.textContent).toContain(
-      "The security check could not start",
-    );
-    expect(document.body.textContent).toContain("Retry security check");
+    expect(getSubmitButton().disabled).toBe(false);
+    expect(document.body.textContent).not.toContain("security check");
+    expect(document.body.textContent).not.toContain("Retry security check");
     expect(warn).toHaveBeenCalledWith("PulpSense Turnstile failed", {
       funnelId: "ai-seo",
       status: "error",
