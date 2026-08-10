@@ -397,71 +397,6 @@ describe("POST /api/funnel-events", () => {
     });
   });
 
-  it("allows an AI SEO booking when the email verifier is unavailable", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        Response.json({
-          success: true,
-          action: "contact_submit",
-          hostname: "preview.pulpsense.com",
-        }),
-      )
-      .mockRejectedValueOnce(new Error("email verifier unavailable"))
-      .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
-      .mockResolvedValueOnce(Response.json({ id: "run_application" }));
-    vi.stubGlobal("fetch", fetchMock);
-    const env = {
-      ...allowingRateLimit,
-      TURNSTILE_SECRET_KEY: "turnstile-secret",
-      MILLION_VERIFIER_API_KEY: "million-verifier-key",
-      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
-      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
-      PULPSENSE_ENVIRONMENT: "preview" as const,
-    };
-
-    const contactResponse = await handleFunnelEvent(
-      requestWithBody({
-        schemaVersion: 1,
-        eventType: "contact_submitted",
-        funnelId: "ai-seo",
-        attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
-        turnstileToken: "turnstile-token",
-        payload: {
-          firstName: "Maya",
-          email: "maya@brand.com",
-          phone: "+1 (555) 123-4567",
-        },
-        attribution: { firstTouch: {}, lastTouch: {} },
-        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
-      }),
-      env,
-    );
-    const contact = (await contactResponse.json()) as {
-      submissionId: string;
-      retry: { submissionId: string; token: string };
-    };
-
-    const applicationResponse = await handleFunnelEvent(
-      requestWithBody({
-        schemaVersion: 1,
-        eventType: "application_submitted",
-        funnelId: "ai-seo",
-        identity: contact.retry,
-        payload: { businessOwner: "yes" },
-        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
-      }),
-      env,
-    );
-
-    await expect(applicationResponse.json()).resolves.toMatchObject({
-      accepted: true,
-      qualificationStatus: "qualified",
-      nextStep: "booking",
-      bookingIdentity: { submissionId: contact.submissionId },
-    });
-  });
-
   it("calculates an unqualified application on the server before allowing navigation", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -1100,7 +1035,7 @@ describe("POST /api/webhooks/cal", () => {
     );
   });
 
-  it("withholds booking from a qualified applicant whose email is catch-all", async () => {
+  it("withholds booking from a qualified applicant whose email is unverified", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -1110,7 +1045,7 @@ describe("POST /api/webhooks/cal", () => {
           hostname: "preview.pulpsense.com",
         }),
       )
-      .mockResolvedValueOnce(Response.json({ result: "catch_all" }))
+      .mockRejectedValueOnce(new Error("verifier offline"))
       .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
       .mockResolvedValueOnce(Response.json({ id: "run_application" }));
     vi.stubGlobal("fetch", fetchMock);
