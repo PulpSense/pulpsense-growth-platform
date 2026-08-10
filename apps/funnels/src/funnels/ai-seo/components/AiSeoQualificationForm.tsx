@@ -44,7 +44,7 @@ declare global {
 }
 
 type Step = "owner" | "contact" | "calendar" | "not-owner";
-type EmailStatus = "idle" | "verifying" | "valid" | "invalid";
+type EmailStatus = "idle" | "verifying" | "valid" | "unverified" | "invalid";
 type TurnstileStatus =
   | "loading"
   | "rendering"
@@ -305,11 +305,14 @@ export function AiSeoQualificationForm({
         body: JSON.stringify({ email }),
         signal: controller.signal,
       });
-      const result = (await response.json()) as { valid?: boolean };
+      const result = (await response.json()) as {
+        valid?: boolean;
+        status?: "verified" | "unverified" | "invalid";
+      };
       if (controller.signal.aborted) return;
       lastVerifiedEmail.current = email;
       if (result.valid) {
-        setEmailStatus("valid");
+        setEmailStatus(result.status === "verified" ? "valid" : "unverified");
         setErrors((current) => {
           const next = { ...current };
           delete next.email;
@@ -569,6 +572,12 @@ export function AiSeoQualificationForm({
                   )}
                   {emailStatus === "valid" && (
                     <span className="pr-tf-legend">Email verified</span>
+                  )}
+                  {emailStatus === "unverified" && (
+                    <span className="pr-tf-legend">
+                      We couldn&apos;t verify your email automatically, but you
+                      can continue.
+                    </span>
                   )}
                   {errors.email && (
                     <span className="pr-tf-error">{errors.email}</span>
