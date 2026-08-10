@@ -40,6 +40,43 @@ describe("resolveMetaEnvironment", () => {
     });
   });
 
+  it("uses an isolated dentist Meta destination", () => {
+    expect(
+      resolveMetaEnvironment(
+        {
+          META_PIXEL_ID_AI_SEO_L: "lawyer-pixel",
+          META_CAPI_ACCESS_TOKEN_AI_SEO_L: "lawyer-token",
+          META_TEST_EVENT_CODE_AI_SEO_L: "LAWYER",
+          META_PIXEL_ID_AI_SEO_D: "dentist-pixel",
+          META_CAPI_ACCESS_TOKEN_AI_SEO_D: "dentist-token",
+          META_TEST_EVENT_CODE_AI_SEO_D: "DENTIST",
+        },
+        "ai-seo-dentists",
+      ),
+    ).toEqual({
+      META_PIXEL_ID: "dentist-pixel",
+      META_CAPI_ACCESS_TOKEN: "dentist-token",
+      META_TEST_EVENT_CODE: "DENTIST",
+    });
+  });
+
+  it("does not fall back to the lawyers CAPI destination for dentists", () => {
+    expect(
+      resolveMetaEnvironment(
+        {
+          META_PIXEL_ID_AI_SEO_L: "lawyer-pixel",
+          META_CAPI_ACCESS_TOKEN_AI_SEO_L: "lawyer-token",
+          META_TEST_EVENT_CODE_AI_SEO_L: "LAWYER",
+        },
+        "ai-seo-dentists",
+      ),
+    ).toEqual({
+      META_PIXEL_ID: undefined,
+      META_CAPI_ACCESS_TOKEN: undefined,
+      META_TEST_EVENT_CODE: undefined,
+    });
+  });
+
   it("keeps the legacy funnel on its existing destination", () => {
     expect(
       resolveMetaEnvironment(

@@ -25,7 +25,8 @@ The `Production` environment must allow only `master`, require the project owner
 - secret `CLOUDFLARE_API_TOKEN`;
 - secret `TRIGGER_ACCESS_TOKEN`;
 - variables `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_PAGES_PROJECT`, and `CLOUDFLARE_PAGES_BRANCH`;
-- variables `PUBLIC_META_PIXEL_ID_AI_SEO_L`, `PUBLIC_POSTHOG_KEY`, `PUBLIC_POSTHOG_HOST`, `PUBLIC_CAL_LINK`, `PUBLIC_CAL_NAMESPACE`, and `PUBLIC_TURNSTILE_SITE_KEY`.
+- variable `PUBLIC_AI_SEO_VERTICAL` and the matching `PUBLIC_META_PIXEL_ID_AI_SEO_L` or `PUBLIC_META_PIXEL_ID_AI_SEO_D`;
+- variables `PUBLIC_POSTHOG_KEY`, `PUBLIC_POSTHOG_HOST`, `PUBLIC_CAL_LINK`, `PUBLIC_CAL_NAMESPACE`, and `PUBLIC_TURNSTILE_SITE_KEY`.
 
 The project must be `pulpsense-funnels`, its production branch must be `master`, and it must have no custom domain until owner approval.
 
@@ -41,8 +42,8 @@ Deploy the qualified automation version and confirm the Production environment c
 
 - `PULPSENSE_AUTOMATION_ENVIRONMENT=production`;
 - `TWENTY_API_ORIGIN`, `TWENTY_API_KEY`, `TWENTY_QUALIFIED_STAGE_VALUE`, `TWENTY_CALL_BOOKED_STAGE_VALUE`, and `TWENTY_CLOSED_STAGE_VALUES` for the production Twenty workspace;
-- `META_PIXEL_ID_AI_SEO_L`, `META_CAPI_ACCESS_TOKEN_AI_SEO_L`, and `META_GRAPH_API_VERSION` for the lawyers production dataset;
-- no `META_TEST_EVENT_CODE_AI_SEO_L` during live delivery;
+- the matching `META_PIXEL_ID_AI_SEO_L` and `META_CAPI_ACCESS_TOKEN_AI_SEO_L` for lawyers, or `_AI_SEO_D` variables for dentists, plus `META_GRAPH_API_VERSION`;
+- no matching `META_TEST_EVENT_CODE_AI_SEO_L` or `META_TEST_EVENT_CODE_AI_SEO_D` during live delivery;
 - `POSTHOG_PROJECT_KEY` and the region-correct `POSTHOG_HOST`;
 - `SLACK_FAILURE_WEBHOOK_URL` for the production reliability channel.
 
@@ -86,7 +87,7 @@ An implementation request, merged pull request, workflow approval from an earlie
 ## Cutover and live smoke test
 
 1. Record the current `go.pulpsense.com` DNS/custom-domain state and the approved preview deployment ID.
-2. From `master`, dispatch **Cloudflare Pages** with `deploy_production=true`, approve the protected `Production` job, and confirm it deploys the approved SHA.
+2. Merge the approved SHA to `master`, approve the automatically started protected `Production` job, and confirm it deploys that exact SHA. Use the manual `deploy_production=true` dispatch only to recover or retry when needed.
 3. On the production project's immutable `pages.dev` URL, repeat the non-mutating route/crawler checks and confirm the build exposes the approved public Meta, PostHog, Cal, and Turnstile destinations. Stop and roll back if the SHA or configuration differs from the approval record.
 4. Attach `go.pulpsense.com` to `pulpsense-funnels`; do not change the apex or unrelated DNS records.
 5. Start the rollback clock when Cloudflare reports the custom domain active.

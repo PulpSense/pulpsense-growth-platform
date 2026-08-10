@@ -72,6 +72,34 @@ describe("funnel event contract", () => {
     });
   });
 
+  it("accepts the dentist AI SEO identity with the shared AI SEO payload", () => {
+    const dentistContact = contactSubmittedEventSchema.parse({
+      ...acceptedEvent,
+      funnelId: "ai-seo-dentists",
+      requestContext: {
+        ...acceptedEvent.requestContext,
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
+      },
+    });
+
+    expect(
+      applicationSubmittedEventSchema.parse({
+        ...dentistContact,
+        eventType: "application_submitted",
+        eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+        payload: {
+          ...dentistContact.payload,
+          application: { businessOwner: "yes" },
+        },
+        qualificationStatus: "qualified",
+        companyDomain: "brand.com",
+      }),
+    ).toMatchObject({
+      funnelId: "ai-seo-dentists",
+      payload: { application: { businessOwner: "yes" } },
+    });
+  });
+
   it("rejects unsupported schema versions at task execution", () => {
     expect(
       contactSubmittedEventSchema.safeParse({

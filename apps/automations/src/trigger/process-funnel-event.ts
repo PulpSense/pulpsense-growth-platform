@@ -685,9 +685,9 @@ const recordTwentyApplication = async (
     {
       ...(attemptOpportunityId ? { id: attemptOpportunityId } : {}),
       name:
-        event.funnelId === "ai-seo"
-          ? `AI SEO – ${event.companyDomain}`
-          : `Creative Multiplier Sprint – ${event.companyDomain}`,
+        event.funnelId === "creative-multiplier-sprint"
+          ? `Creative Multiplier Sprint – ${event.companyDomain}`
+          : `AI SEO – ${event.companyDomain}`,
       ...(openOpportunity ? {} : { stage }),
       pointOfContactId: personId,
       ...(companyId ? { companyId } : {}),

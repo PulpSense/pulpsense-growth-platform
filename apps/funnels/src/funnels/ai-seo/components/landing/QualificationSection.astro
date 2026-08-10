@@ -1,13 +1,15 @@
 ---
 import { AiSeoQualificationForm } from "@/funnels/ai-seo/components/AiSeoQualificationForm";
+import type { AiSeoFunnelId } from "@/funnels/ai-seo/meta-destination";
 
 type Props = {
+  funnelId: AiSeoFunnelId;
   calLink: string;
   calNamespace?: string;
   turnstileSiteKey?: string;
 };
 
-const { calLink, calNamespace, turnstileSiteKey } = Astro.props;
+const { funnelId, calLink, calNamespace, turnstileSiteKey } = Astro.props;
 ---
 
 <section class="pr-section pr-section-gray" id="pr-funnel-form">
@@ -24,6 +26,7 @@ const { calLink, calNamespace, turnstileSiteKey } = Astro.props;
     <div class="pr-funnel-layout">
       <AiSeoQualificationForm
         client:visible
+        funnelId={funnelId}
         calLink={calLink}
         calNamespace={calNamespace}
         turnstileSiteKey={turnstileSiteKey}

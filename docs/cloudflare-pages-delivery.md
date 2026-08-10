@@ -21,6 +21,8 @@ Configure the `Preview` GitHub environment with:
 | Variable | `CLOUDFLARE_ACCOUNT_ID`         | The PulpSense Cloudflare account ID                                       |
 | Variable | `CLOUDFLARE_PAGES_PROJECT`      | `pulpsense-funnels-preview`                                               |
 | Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_L` | The non-production lawyers Meta dataset used by the AI SEO funnel         |
+| Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_D` | The non-production dentist Meta dataset used by a dentist AI SEO build   |
+| Variable | `PUBLIC_AI_SEO_VERTICAL`         | `lawyers` (default) or `dentists`; selects the matching browser and CAPI destination |
 | Variable | `PUBLIC_POSTHOG_KEY`            | The public PostHog project key used for privacy-allowlisted funnel events |
 | Variable | `PUBLIC_POSTHOG_HOST`           | The region-appropriate PostHog ingestion host                             |
 | Variable | `PUBLIC_CAL_LINK`               | The non-production Cal event link                                         |
@@ -39,7 +41,7 @@ A push to `master` reruns verification and then enters the GitHub `Production` e
 - the project owner as a required reviewer; and
 - prevention of self-review when a second authorized reviewer is available.
 
-The job cannot read its Cloudflare or Trigger.dev tokens or deploy until the environment is approved. A push to `master` verifies the candidate but does not create a production deployment. After release qualification and SHA-specific owner approval, dispatch the workflow from `master` with `deploy_production` enabled. The job validates the required Pages secret and Trigger.dev Production variable names without displaying their values, builds with production public configuration, and deploys through `wrangler.production.toml` so the production Pages project cannot bind the preview rate limiter.
+The job cannot read its Cloudflare or Trigger.dev tokens or deploy until the environment is approved. A push to `master` runs verification and automatically starts the protected production job. After SHA-specific owner approval, the job validates the required Pages secret and Trigger.dev Production variable names without displaying their values, builds with production public configuration, and deploys through `wrangler.production.toml` so the production Pages project cannot bind the preview rate limiter. `workflow_dispatch` with `deploy_production` remains available as a manual recovery path.
 
 Once approved for launch, configure the same secret and public variables as Preview, plus:
 
@@ -48,7 +50,7 @@ Once approved for launch, configure the same secret and public variables as Prev
 | Variable | `CLOUDFLARE_PAGES_BRANCH`  | Production branch configured on the selected Pages project |
 | Variable | `CLOUDFLARE_PAGES_PROJECT` | Production Pages project name                              |
 
-Production is started from **Actions → Cloudflare Pages → Run workflow** on `master` with `deploy_production` enabled. The protected environment approval still applies. Follow [`release-runbook.md`](./release-runbook.md) for qualification, the exact approval statement, live checks, and the 30-minute rollback window.
+Production starts automatically after a verified push to `master` and waits at the protected `Production` environment for approval. Follow [`release-runbook.md`](./release-runbook.md) for qualification, the exact approval statement, live checks, and the 30-minute rollback window.
 
 ## Required repository check
 
@@ -70,6 +72,7 @@ pnpm test
 pnpm check-types
 pnpm lint
 PUBLIC_PULPSENSE_ENVIRONMENT=preview \
+PUBLIC_AI_SEO_VERTICAL=lawyers \
 PUBLIC_META_PIXEL_ID_AI_SEO_L=<sandbox-lawyers-dataset> \
 PUBLIC_POSTHOG_KEY=<project-key> \
 PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \

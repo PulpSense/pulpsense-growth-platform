@@ -10,6 +10,7 @@ import {
   stripPhoneToDigits,
 } from "@/components/ui/phone";
 import { COUNTRIES, type Country } from "@/components/ui/phoneCountries";
+import type { AiSeoFunnelId } from "@/funnels/ai-seo/meta-destination";
 import { useFunnelSubmission } from "@/lib/funnel/use-funnel-submission";
 import { isBusinessEmail } from "@/utils/businessEmail";
 import { getBrowserCookie } from "@/utils/browserCookie";
@@ -52,6 +53,7 @@ type ContactData = {
 };
 
 type Props = {
+  funnelId: AiSeoFunnelId;
   calLink: string;
   calNamespace?: string;
   turnstileSiteKey?: string;
@@ -67,6 +69,7 @@ const initialContact: ContactData = {
 };
 
 export function AiSeoQualificationForm({
+  funnelId,
   calLink,
   calNamespace,
   turnstileSiteKey,
@@ -95,18 +98,18 @@ export function AiSeoQualificationForm({
   const emailAbortRef = useRef<AbortController | undefined>(undefined);
   const lastVerifiedEmail = useRef("");
   const { submitContact, submitApplication, resetContactIdentity } =
-    useFunnelSubmission("ai-seo");
+    useFunnelSubmission(funnelId);
 
   useEffect(() => {
     measurement.current = captureFunnelAttribution({
-      funnelId: "ai-seo",
+      funnelId,
       href: window.location.href,
       referrer: document.referrer,
       storage: window.localStorage,
       createAnalyticsId: () => crypto.randomUUID(),
     });
     trackFunnelEvent("funnel_step_viewed", { step: "qualification" });
-  }, []);
+  }, [funnelId]);
 
   useEffect(() => {
     const funnelRoot = document.getElementById("pr-funnel");
@@ -311,7 +314,7 @@ export function AiSeoQualificationForm({
       trackFunnelEvent("funnel_step_completed", { step: "contact" });
       trackMetaEvent(
         "Lead",
-        { content_name: "AI SEO Contact Step", funnel_id: "ai-seo" },
+        { content_name: "AI SEO Contact Step", funnel_id: funnelId },
         {
           email: contact.email,
           phone: `${phoneCountry.code} ${contact.phone}`,

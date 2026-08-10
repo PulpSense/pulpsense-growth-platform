@@ -19,7 +19,7 @@ describe("production deployment isolation", () => {
     expect(config).not.toContain("rate-limiter-preview");
   });
 
-  it("uses the production config only for the gated deployment", async () => {
+  it("starts the gated production deployment on a master push", async () => {
     const workflow = await readFile(
       repositoryFile(".github/workflows/cloudflare-pages.yml"),
       "utf8",
@@ -35,8 +35,9 @@ describe("production deployment isolation", () => {
     expect(productionJob).not.toContain("--config=");
     const gate = productionJob.split("    runs-on:")[0];
     expect(gate).toContain("github.ref == 'refs/heads/master'");
+    expect(gate).toContain("github.event_name == 'push'");
     expect(gate).toContain("github.event_name == 'workflow_dispatch'");
-    expect(gate).not.toContain("github.event_name == 'push'");
+    expect(gate).toContain("inputs.deploy_production");
 
     const validation = productionJob.split(
       "      - name: Validate Production Pages secrets",
@@ -54,10 +55,21 @@ describe("production deployment isolation", () => {
     expect(validation).toContain(
       "PUBLIC_META_PIXEL_ID_AI_SEO_L: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_L }}",
     );
+    expect(validation).toContain(
+      "PUBLIC_META_PIXEL_ID_AI_SEO_D: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_D }}",
+    );
+    expect(validation).toContain(
+      "PUBLIC_AI_SEO_VERTICAL: ${{ vars.PUBLIC_AI_SEO_VERTICAL || 'lawyers' }}",
+    );
     expect(validation).not.toContain(
       "PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}",
     );
-    expect(productionJob).toContain("META_PIXEL_ID_AI_SEO_L");
-    expect(productionJob).toContain("META_CAPI_ACCESS_TOKEN_AI_SEO_L");
+    expect(productionJob).toContain('dentists) meta_destination_suffix="D"');
+    expect(productionJob).toContain(
+      '"META_PIXEL_ID_AI_SEO_$meta_destination_suffix"',
+    );
+    expect(productionJob).toContain(
+      '"META_CAPI_ACCESS_TOKEN_AI_SEO_$meta_destination_suffix"',
+    );
   });
 });

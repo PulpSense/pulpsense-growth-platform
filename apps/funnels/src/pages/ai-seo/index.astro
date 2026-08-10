@@ -15,7 +15,7 @@ import QualificationSection from "@/funnels/ai-seo/components/landing/Qualificat
 import ResultsSection from "@/funnels/ai-seo/components/landing/ResultsSection.astro";
 import ReviewsSection from "@/funnels/ai-seo/components/landing/ReviewsSection.astro";
 import StickyCta from "@/funnels/ai-seo/components/landing/StickyCta.astro";
-import { AI_SEO_LAWYERS_PRODUCTION_PIXEL_ID } from "@/funnels/ai-seo/meta-destination";
+import { resolveAiSeoVariant } from "@/funnels/ai-seo/meta-destination";
 import "@/funnels/ai-seo/styles/landing.css";
 import {
   createBrowserTrackingConfig,
@@ -27,10 +27,15 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 const deploymentEnvironment = parseDeploymentEnvironment(
   import.meta.env.PUBLIC_PULPSENSE_ENVIRONMENT,
 );
+const variant = resolveAiSeoVariant({
+  vertical: import.meta.env.PUBLIC_AI_SEO_VERTICAL,
+  lawyersMetaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_L,
+  dentistsMetaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_D,
+});
 const pixels = createBrowserTrackingConfig({
   environment: deploymentEnvironment,
-  metaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_L,
-  productionMetaPixelId: AI_SEO_LAWYERS_PRODUCTION_PIXEL_ID,
+  metaPixelId: variant.metaPixelId,
+  productionMetaPixelId: variant.productionMetaPixelId,
 });
 const cal = resolveCalConfig({
   environment: deploymentEnvironment,
@@ -54,7 +59,7 @@ const cal = resolveCalConfig({
     client:interaction="idle"
     apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
     host={import.meta.env.PUBLIC_POSTHOG_HOST}
-    funnelId="ai-seo"
+    funnelId={variant.funnelId}
     page="landing"
   />
   <TrackingPixels client:interaction="idle" pixels={pixels} interactionReady />
@@ -73,6 +78,7 @@ const cal = resolveCalConfig({
       <FaqSection />
       <ReviewsSection />
       <QualificationSection
+        funnelId={variant.funnelId}
         calLink={cal.calLink}
         calNamespace={cal.namespace}
         turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}
