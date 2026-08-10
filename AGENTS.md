@@ -8,7 +8,7 @@ Guidance for Codex when working in the PulpSense growth platform monorepo.
 pnpm dev                 # Start the Astro funnel app
 pnpm dev:automations     # Start the Trigger.dev worker
 pnpm build               # Production-build the funnel app
-pnpm lint                # Lint the funnel app
+pnpm lint                # Lint every workspace package
 pnpm check-types         # Type-check every workspace package
 pnpm format              # Format the funnel app and workspace JSON/YAML
 ```
