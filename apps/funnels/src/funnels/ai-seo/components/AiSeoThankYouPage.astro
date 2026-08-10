@@ -404,6 +404,15 @@ const pixels = createBrowserTrackingConfig({
         <div id="vidalytics_embed_dGbnl06gi2mzBXc7" class="video-embed"></div>
       </div>
       <script type="text/javascript" is:inline>
+        var vidalyticsCustomSettings = {
+          playback: {
+            autoplay: {
+              enabled: false,
+              mobile: false,
+              onlyMuted: true,
+            },
+          },
+        };
         (function (v, i, d, a, l, y, t, c, s) {
           y = "_" + d.toLowerCase();
           c = d + "L";
@@ -459,7 +468,7 @@ const pixels = createBrowserTrackingConfig({
             vli.loadScript(l + "player.min.js", function () {
               var vec = v[d][ve];
               t = new vec();
-              t.run(a);
+              t.run(a, vidalyticsCustomSettings);
             });
           });
         })(

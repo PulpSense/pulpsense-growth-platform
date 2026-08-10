@@ -152,6 +152,11 @@ try {
       /<meta name="robots" content="noindex, nofollow"/,
       `${route.path} should retain noindex metadata`,
     );
+    assert.match(
+      html,
+      /autoplay:\s*\{\s*enabled:\s*false,\s*mobile:\s*false/,
+      `${route.path} should keep Vidalytics autoplay disabled`,
+    );
 
     for (const marker of route.markers) {
       assert.ok(

@@ -1290,6 +1290,15 @@ const cal = resolveCalConfig({
         >
         </div>
         <script type="text/javascript" is:inline>
+          var vidalyticsCustomSettings = {
+            playback: {
+              autoplay: {
+                enabled: false,
+                mobile: false,
+                onlyMuted: true,
+              },
+            },
+          };
           (function (v, i, d, a, l, y, t, c, s) {
             y = "_" + d.toLowerCase();
             c = d + "L";
@@ -1345,7 +1354,7 @@ const cal = resolveCalConfig({
               vli.loadScript(l + "player.min.js", function () {
                 var vec = v[d][ve];
                 t = new vec();
-                t.run(a);
+                t.run(a, vidalyticsCustomSettings);
               });
             });
           })(
