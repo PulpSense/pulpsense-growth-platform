@@ -35,6 +35,10 @@ export const applicationSubmissionRequestSchema = z.discriminatedUnion(
       funnelId: z.literal("ai-seo"),
       payload: aiSeoApplicationAnswersSchema,
     }),
+    applicationSubmissionRequestBase.extend({
+      funnelId: z.literal("ai-seo-dentists"),
+      payload: aiSeoApplicationAnswersSchema,
+    }),
   ],
 );
 

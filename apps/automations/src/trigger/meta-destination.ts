@@ -12,6 +12,11 @@ const metaEnvironmentKeysByFunnel = {
     accessToken: "META_CAPI_ACCESS_TOKEN_AI_SEO_L",
     testEventCode: "META_TEST_EVENT_CODE_AI_SEO_L",
   },
+  "ai-seo-dentists": {
+    pixelId: "META_PIXEL_ID_AI_SEO_D",
+    accessToken: "META_CAPI_ACCESS_TOKEN_AI_SEO_D",
+    testEventCode: "META_TEST_EVENT_CODE_AI_SEO_D",
+  },
   "creative-multiplier-sprint": {
     pixelId: "META_PIXEL_ID",
     accessToken: "META_CAPI_ACCESS_TOKEN",

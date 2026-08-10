@@ -5,7 +5,11 @@ export const CONTACT_SUBMITTED_EVENT = "contact_submitted" as const;
 export const APPLICATION_SUBMITTED_EVENT = "application_submitted" as const;
 export const BOOKING_COMPLETED_EVENT = "booking_completed" as const;
 
-export const funnelIdSchema = z.enum(["ai-seo", "creative-multiplier-sprint"]);
+export const funnelIdSchema = z.enum([
+  "ai-seo",
+  "ai-seo-dentists",
+  "creative-multiplier-sprint",
+]);
 
 export type FunnelId = z.infer<typeof funnelIdSchema>;
 
@@ -150,6 +154,13 @@ export const applicationSubmittedEventSchema = z.discriminatedUnion(
     }),
     applicationSubmittedEventBase.extend({
       funnelId: z.literal("ai-seo"),
+      payload: verifiedContactPayloadSchema.extend({
+        application: aiSeoApplicationAnswersSchema,
+      }),
+      qualificationStatus: z.literal("qualified"),
+    }),
+    applicationSubmittedEventBase.extend({
+      funnelId: z.literal("ai-seo-dentists"),
       payload: verifiedContactPayloadSchema.extend({
         application: aiSeoApplicationAnswersSchema,
       }),

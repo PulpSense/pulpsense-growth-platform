@@ -12,12 +12,12 @@ import { createBookingToken, readRetryToken } from "./submission-identity";
 import { createRequestContext } from "./request-context";
 
 const determineQualificationStatus = (request: ApplicationSubmissionRequest) =>
-  request.funnelId === "ai-seo"
-    ? ("qualified" as const)
-    : request.payload.paidSocialSpend === "Less than $20k/month" ||
-        request.payload.winnerStatus === "No proven winner yet"
+  request.funnelId === "creative-multiplier-sprint"
+    ? request.payload.paidSocialSpend === "Less than $20k/month" ||
+      request.payload.winnerStatus === "No proven winner yet"
       ? ("unqualified" as const)
-      : ("qualified" as const);
+      : ("qualified" as const)
+    : ("qualified" as const);
 
 export async function processApplicationSubmission(
   body: unknown,

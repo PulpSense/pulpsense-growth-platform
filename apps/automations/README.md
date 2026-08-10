@@ -19,7 +19,7 @@ Twenty and Meta operations retry independently inside that one public task. Succ
 
 Preview deployments must set `PULPSENSE_AUTOMATION_ENVIRONMENT=preview` and use only sandbox Twenty and Meta credentials. The task rejects an event whose environment does not match its configured destinations.
 
-Meta destinations are selected explicitly by funnel. The active `ai-seo` funnel uses the lawyers-specific `META_PIXEL_ID_AI_SEO_L`, `META_CAPI_ACCESS_TOKEN_AI_SEO_L`, and optional `META_TEST_EVENT_CODE_AI_SEO_L` variables. A new vertical must add its own destination mapping and credentials; it must not fall back to the lawyers dataset. Set test event codes only while validating against Meta Events Manager's Test Events view.
+Meta destinations are selected explicitly by funnel identity. `ai-seo` uses the lawyers-specific `META_PIXEL_ID_AI_SEO_L`, `META_CAPI_ACCESS_TOKEN_AI_SEO_L`, and optional `META_TEST_EVENT_CODE_AI_SEO_L` variables. `ai-seo-dentists` uses the corresponding `_AI_SEO_D` variables and never falls back to the lawyers dataset. Set test event codes only while validating against Meta Events Manager's Test Events view.
 
 Set `POSTHOG_PROJECT_KEY` and the region-appropriate `POSTHOG_HOST` to emit the redacted `funnel_contact_submitted`, `funnel_application_submitted`, and authoritative `funnel_booking_completed` lifecycle. The adapter uses the anonymous browser analytics ID when available, excludes contact and application-answer payloads, and logs a redacted delivery failure without failing the lifecycle run.
 
