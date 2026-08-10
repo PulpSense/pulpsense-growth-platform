@@ -51,7 +51,7 @@ type QualifyField = {
 
 export type CalStep = {
   type: "cal";
-  /** Cal.com link e.g. "santileoni/growth-mapping-funnel" */
+  /** Cal.com link e.g. "santileoni/funnel" */
   calLink: string;
   /** Cal.com namespace */
   namespace?: string;

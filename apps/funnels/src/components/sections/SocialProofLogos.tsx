@@ -1,5 +1,3 @@
-import Image from 'next/image';
-
 import { Marquee } from '@/components/ui';
 
 export type SocialProofLogosProps = {
@@ -24,12 +22,14 @@ const SocialProofLogos = ({
       <div className="mx-auto max-w-5xl px-4">
         <Marquee pauseOnHover className="[--duration:20s] [--gap:3rem]">
           {logos.map((logo, index) => (
-            <Image
+            <img
               key={index}
               src={logo.src}
               alt={logo.alt}
               width={logo.width || 120}
               height={logo.height || 40}
+              loading="lazy"
+              decoding="async"
               className={`h-8 w-auto object-contain transition-all ${
                 invertLogos
                   ? 'brightness-0 opacity-60 hover:opacity-80'

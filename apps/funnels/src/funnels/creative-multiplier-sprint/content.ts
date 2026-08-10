@@ -100,11 +100,11 @@ const baseFormConfig: MultiStepFormConfig = {
     },
     {
       type: 'cal',
-      calLink: 'santileoni/growth-mapping-funnel',
-      namespace: 'growth-mapping-funnel',
+      calLink: 'santileoni/funnel',
+      namespace: 'funnel',
       title: 'Pick a time for your Creative Multiplier Sprint call.',
       subtitle:
-        "In 15 minutes we'll review fit, look at your winning ad, and map what the 10 avatar variations should preserve. No full brief needed before booking.",
+        "In 25 minutes we'll review fit, look at your winning ad, and map what the 10 avatar variations should preserve. No full brief needed before booking.",
     },
   ],
 };

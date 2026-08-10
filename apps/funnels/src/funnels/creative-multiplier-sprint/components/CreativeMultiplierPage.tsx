@@ -1,7 +1,5 @@
 import { Suspense, type ReactNode } from "react";
 
-import { TrackingPixels } from "@/components/ui";
-import type { PixelConfig } from "@/components/ui";
 import { trackFunnelEvent } from "@/utils/funnelAnalytics";
 import { formConfig } from "../content";
 
@@ -12,11 +10,6 @@ import { MobileStickyCta } from "./MobileStickyCta";
 import { ProofVideoPlayer } from "./ProofVideoPlayer";
 
 const CALL_URL = "#apply";
-
-export const creativeMultiplierPixels = {
-  facebookPixelId: "828948073514575",
-  facebookEvents: [{ name: "PageView", type: "standard" }],
-} satisfies PixelConfig;
 
 const exampleVideos = [
   {
@@ -396,7 +389,7 @@ export function CreativeMultiplierPage({
 }: CreativeMultiplierPageProps = {}) {
   return (
     <>
-      {tracking ?? <TrackingPixels pixels={creativeMultiplierPixels} />}
+      {tracking}
       <main className="min-h-screen bg-[#010102] text-[#F7F8F8] [font-feature-settings:'cv01','ss03']">
         <section id="hero" className="relative overflow-hidden bg-[#010102]">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_12%,rgba(255,107,26,0.22),transparent_32%),radial-gradient(circle_at_78%_10%,rgba(113,112,255,0.18),transparent_30%)]" />

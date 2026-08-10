@@ -10,10 +10,6 @@ coverage/
 lighthouse-*.report.html
 lighthouse-*.report.json
 
-# next.js
-.next/
-out/
-
 # astro / cloudflare local state
 .astro/
 .wrangler/
@@ -45,7 +41,6 @@ yarn-error.log*
 local
 
 # deployment and build metadata
-.vercel/
 *.tsbuildinfo
 
 # claude code

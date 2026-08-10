@@ -1,6 +1,6 @@
 # PulpSense Funnels
 
-The Creative Multiplier Sprint is rendered as a static Astro site for Cloudflare Pages. Existing React components provide narrowly scoped carousel, form, video, tracking, and sticky-CTA islands; the transitional Next.js route tree remains as a rollback reference.
+The Creative Multiplier Sprint is rendered as a static Astro site for Cloudflare Pages. React components provide narrowly scoped carousel, form, video, tracking, and sticky-CTA islands. Cloudflare deployment history is the application rollback mechanism.
 
 ## Tech stack
 
@@ -32,8 +32,6 @@ Open <http://localhost:4321/creative-multiplier-sprint/>.
 | `pnpm check-types`    | Check Astro and TypeScript                                                      |
 | `pnpm lint`           | Lint source and function files                                                  |
 | `pnpm deploy:preview` | Manually deploy the `issue-81` fallback preview; PR previews use GitHub Actions |
-| `pnpm dev:next`       | Start the transitional Next.js rollback reference                               |
-| `pnpm build:next`     | Build the transitional Next.js rollback reference                               |
 
 ## Project structure
 
@@ -43,8 +41,9 @@ public/                     # Assets, robots.txt, _headers, and _redirects
 src/
 ├── pages/                  # Active Astro routes
 ├── layouts/                # Static HTML shell and crawler metadata
-├── server/                 # Runtime-neutral API behavior shared with rollback routes
-├── app/                    # Funnel content/components plus Next.js rollback routes
+├── server/                 # Runtime-neutral Pages Function behavior
+├── funnels/                # Funnel-specific content and React components
+├── styles/                 # Global application styles
 └── components/             # Shared React primitives and explicit islands
 ```
 
@@ -60,9 +59,9 @@ Contact and application lifecycle events are accepted through `/api/funnel-event
 
 The Cal embed is loaded as a separate lazy chunk only after the server returns a signed booking identity for a qualified applicant with a verified business email. Hero video playback waits until page load plus browser idle time, and proof videos attach sources only near their viewport. Configure Cal's `BOOKING_CREATED` webhook with `CAL_WEBHOOK_SECRET` and point it at `/api/webhooks/cal`.
 
-Contact and email-verification requests call the private `FUNNEL_RATE_LIMIT_SERVICE` binding with a hashed IP key. The bound Worker owns Cloudflare's native Rate Limiting binding and has no public `workers.dev` route. `pnpm start` launches both configurations locally. This repository currently targets the isolated preview Pages project and preview rate-limiter service; production must receive a separate configuration during #87.
+Contact and email-verification requests call the private `FUNNEL_RATE_LIMIT_SERVICE` binding with a hashed IP key. The bound Worker owns Cloudflare's native Rate Limiting binding and has no public `workers.dev` route. `pnpm start` launches both configurations locally. Preview and production use separate Pages projects and private rate-limiter Workers.
 
-See [`../../docs/astro-cloudflare-preview.md`](../../docs/astro-cloudflare-preview.md) for deployment and rollback details.
+See [`../../docs/astro-cloudflare-preview.md`](../../docs/astro-cloudflare-preview.md) for preview details and [`../../docs/release-runbook.md`](../../docs/release-runbook.md) for production deployment and rollback.
 
 ## License
 

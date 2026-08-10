@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "check-types": "tsc --noEmit",
-    "deploy:preview": "wrangler deploy"
+    "deploy:preview": "wrangler deploy",
+    "deploy:production": "wrangler deploy --config wrangler.production.toml"
   },
   "devDependencies": {
     "typescript": "^5.7.0",

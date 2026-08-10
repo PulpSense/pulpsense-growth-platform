@@ -1,0 +1,8 @@
+name = "pulpsense-funnels"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-08-08"
+
+[[services]]
+binding = "FUNNEL_RATE_LIMIT_SERVICE"
+service = "pulpsense-funnel-rate-limiter"
+environment = "production"

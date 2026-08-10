@@ -23,6 +23,11 @@ export function createBrowserTrackingConfig({
   ) {
     throw new Error("Preview builds cannot use the production Meta dataset.");
   }
+  if (configuredPixelId && !/^\d{5,30}$/u.test(configuredPixelId)) {
+    throw new Error(
+      "PUBLIC_META_PIXEL_ID must be a valid numeric Meta Pixel ID.",
+    );
+  }
   if (!configuredPixelId) return {};
 
   return {

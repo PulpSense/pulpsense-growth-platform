@@ -14,4 +14,14 @@ Authenticate Wrangler for the preview Cloudflare account, then deploy the servic
 pnpm --filter @pulpsense/rate-limiter deploy:preview
 ```
 
-The Pages preview configuration binds `FUNNEL_RATE_LIMIT_SERVICE` to `pulpsense-funnel-rate-limiter-preview`. Production must use a separately named service and rate-limit namespace.
+The Pages preview configuration binds `FUNNEL_RATE_LIMIT_SERVICE` to `pulpsense-funnel-rate-limiter-preview`.
+
+## Production deployment
+
+After the production Cloudflare account and destination are validated, deploy the isolated production Worker:
+
+```bash
+pnpm --filter @pulpsense/rate-limiter deploy:production
+```
+
+`wrangler.production.toml` deploys `pulpsense-funnel-rate-limiter` with a separate rate-limit namespace. The production Pages config binds only that service. Keep both Workers private and never point a preview Pages deployment at the production service, or a production deployment at the preview service.

@@ -10,7 +10,7 @@ pnpm --filter @pulpsense/funnels start
 pnpm --filter @pulpsense/funnels check-parity
 ```
 
-The start and parity commands explicitly disable Wrangler's automatic `.env` loading. Copy `.dev.vars.example` to the ignored `.dev.vars` file only when sandbox runtime credentials are needed. With no local bindings, email verification fails open as unverified with `provider_error`, lifecycle delivery returns an accepted sandbox response, and browser Meta tracking is disabled. Set browser-facing `PUBLIC_*` values in the Astro build environment; `.dev.vars` supplies Pages Function runtime values, not the already-built client bundle.
+The start command explicitly disables Wrangler's automatic `.env` loading. The parity harness also overrides vendor credentials with empty command-line bindings so its fallback checks stay deterministic and never call configured providers, even when an ignored `.dev.vars` exists. Copy `.dev.vars.example` to `.dev.vars` only when sandbox runtime credentials are needed for interactive local development. Set browser-facing `PUBLIC_*` values in the Astro build environment; `.dev.vars` supplies Pages Function runtime values, not the already-built client bundle.
 
 ## Rendering boundary
 
@@ -40,7 +40,7 @@ PUBLIC_CAL_NAMESPACE=<preview-embed-namespace> \
 pnpm --filter @pulpsense/funnels deploy:preview
 ```
 
-`PUBLIC_META_PIXEL_ID`, `PUBLIC_POSTHOG_KEY`, and `PUBLIC_CAL_LINK` are mandatory in the GitHub preview deployment. The build rejects the known production Meta dataset, and the required Cal link prevents the preview from silently booking into the committed production destination. `PUBLIC_POSTHOG_HOST` defaults to the US ingestion host, and `PUBLIC_CAL_NAMESPACE` is optional when the preview event intentionally shares the default embed namespace.
+`PUBLIC_META_PIXEL_ID`, `PUBLIC_POSTHOG_KEY`, and `PUBLIC_CAL_LINK` are mandatory in the GitHub preview deployment. The build requires a numeric Pixel ID and rejects the known production Meta dataset; the required Cal link prevents the preview from silently booking into the committed production destination. `PUBLIC_POSTHOG_HOST` defaults to the US ingestion host, and `PUBLIC_CAL_NAMESPACE` is optional when the preview event intentionally shares the default embed namespace.
 
 The command targets project `pulpsense-funnels-preview` and branch `issue-81`. Do not attach a custom production domain or add production credentials to that project. Configure Pages Function secrets separately in the Pages preview environment; the public build values above are not secrets.
 
@@ -54,4 +54,4 @@ See [`cloudflare-pages-delivery.md`](./cloudflare-pages-delivery.md) for GitHub 
 
 ## Rollback reference
 
-The transitional Next.js route tree remains under `src/app/`. Use `dev:next`, `build:next`, and `start:next` only for rollback comparison until the final launch ticket removes it.
+The funnel has one runtime path: Astro on Cloudflare Pages. Use the last verified Cloudflare deployment and the corresponding git commit for rollback; there is no parallel framework runtime.

@@ -1,7 +1,3 @@
-'use client';
-
-import Script from 'next/script';
-
 type WistiaPlayerProps = {
   mediaId: string;
   aspect?: number;
@@ -13,17 +9,20 @@ const WistiaPlayer = ({
   aspect = 1.7777777777777777,
   priority,
 }: WistiaPlayerProps) => {
-  const strategy = priority ? 'afterInteractive' : 'lazyOnload';
-
   return (
     <div
       className="relative w-full"
       style={{ aspectRatio: aspect }}
     >
-      <Script src="https://fast.wistia.com/player.js" strategy={strategy} />
-      <Script
+      <script
+        src="https://fast.wistia.com/player.js"
+        async={!priority}
+        defer
+      />
+      <script
         src={`https://fast.wistia.com/embed/${mediaId}.js`}
-        strategy={strategy}
+        async={!priority}
+        defer
         type="module"
       />
       <style
