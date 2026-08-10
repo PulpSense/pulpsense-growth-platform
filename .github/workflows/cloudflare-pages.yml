@@ -227,6 +227,9 @@ jobs:
           PUBLIC_TURNSTILE_SITE_KEY: ${{ vars.PUBLIC_TURNSTILE_SITE_KEY }}
         run: pnpm --filter @pulpsense/funnels build
 
+      - name: Select Production Pages config
+        run: cp apps/funnels/wrangler.production.toml apps/funnels/wrangler.toml
+
       - name: Deploy Production
         id: deploy
         uses: cloudflare/wrangler-action@v3
@@ -237,7 +240,7 @@ jobs:
           packageManager: pnpm
           workingDirectory: apps/funnels
           wranglerVersion: "4.120.0"
-          command: pages deploy dist --config=wrangler.production.toml --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=${{ vars.CLOUDFLARE_PAGES_BRANCH }}
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }} --branch=${{ vars.CLOUDFLARE_PAGES_BRANCH }}
 
       - name: Publish Production URL
         env:
