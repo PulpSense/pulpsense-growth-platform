@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   applicationSubmittedEventSchema,
+  bookingCancelledEventSchema,
   bookingCompletedEventSchema,
+  bookingRescheduledEventSchema,
   contactSubmittedEventSchema,
   funnelEventSchema,
 } from "./funnel-events.js";
@@ -146,6 +148,8 @@ describe("funnel event contract", () => {
           title: "Creative Multiplier Sprint Fit Call",
           startTime: "2026-08-10T14:00:00.000Z",
           endTime: "2026-08-10T14:15:00.000Z",
+          attendeeTimeZone: "America/New_York",
+          meetingUrl: "https://meet.example.com/cal_booking_123",
         },
       },
       qualificationStatus: "qualified",
@@ -161,5 +165,44 @@ describe("funnel event contract", () => {
         eventId: "booking_completed:different_booking",
       }).success,
     ).toBe(false);
+
+    const rescheduledEvent = {
+      ...bookingEvent,
+      eventType: "booking_rescheduled",
+      eventId: "booking_rescheduled:cal_booking_456",
+      payload: {
+        ...bookingEvent.payload,
+        booking: {
+          ...bookingEvent.payload.booking,
+          uid: "cal_booking_456",
+          previousUid: "cal_booking_123",
+          previousStartTime: bookingEvent.payload.booking.startTime,
+          previousEndTime: bookingEvent.payload.booking.endTime,
+          startTime: "2026-08-11T14:00:00.000Z",
+          endTime: "2026-08-11T14:15:00.000Z",
+        },
+      },
+    } as const;
+    expect(bookingRescheduledEventSchema.parse(rescheduledEvent)).toEqual(
+      rescheduledEvent,
+    );
+    expect(funnelEventSchema.parse(rescheduledEvent)).toEqual(rescheduledEvent);
+
+    const cancelledEvent = {
+      ...bookingEvent,
+      eventType: "booking_cancelled",
+      eventId: "booking_cancelled:cal_booking_123",
+      payload: {
+        ...bookingEvent.payload,
+        booking: {
+          ...bookingEvent.payload.booking,
+          cancellationReason: "No longer available",
+        },
+      },
+    } as const;
+    expect(bookingCancelledEventSchema.parse(cancelledEvent)).toEqual(
+      cancelledEvent,
+    );
+    expect(funnelEventSchema.parse(cancelledEvent)).toEqual(cancelledEvent);
   });
 });

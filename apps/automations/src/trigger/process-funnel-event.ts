@@ -3,15 +3,26 @@ import {
   type ApplicationAnswers,
   type ApplicationSubmittedEvent,
   type BookingCompletedEvent,
+  type BookingRescheduledEvent,
   type ContactSubmittedEvent,
   type FunnelEvent,
 } from "@pulpsense/contracts";
 import { logger, retry, schemaTask } from "@trigger.dev/sdk";
 
+import {
+  postSlackBooking,
+  postSlackLead,
+  publishBrevoLifecycle,
+  type BrevoLifecycleEvent,
+} from "./lifecycle-destinations.js";
+import {
+  scheduleMeetingReminders,
+  sendMeetingReminderTask,
+} from "./meeting-reminders.js";
 import { createPostHogLifecycleCapture } from "./posthog-lifecycle.js";
 import { resolveMetaEnvironment } from "./meta-destination.js";
 
-type AdapterDestination = "twenty" | "meta" | "slack";
+type AdapterDestination = "twenty" | "meta" | "slack" | "brevo" | "trigger";
 
 type AdapterOperation =
   | "upsert_person"
@@ -20,7 +31,12 @@ type AdapterOperation =
   | "deliver_lead"
   | "deliver_application"
   | "deliver_schedule"
-  | "alert_twenty_failure";
+  | "deliver_slack_lead"
+  | "deliver_slack_booking"
+  | "publish_brevo_lifecycle"
+  | "schedule_meeting_reminders"
+  | "alert_twenty_failure"
+  | "alert_destination_failure";
 
 type AdapterExecutionContext = {
   destination: AdapterDestination;
@@ -61,12 +77,40 @@ type ProcessorDependencies = {
   sendMetaSchedule?(
     event: BookingCompletedEvent,
   ): Promise<{ eventsReceived: number }>;
+  postSlackLead?(event: ContactSubmittedEvent): Promise<unknown>;
+  postSlackBooking?(event: BookingCompletedEvent): Promise<unknown>;
+  publishBrevoLifecycle?(event: BrevoLifecycleEvent): Promise<unknown>;
+  scheduleMeetingReminders?(
+    event: BookingCompletedEvent | BookingRescheduledEvent,
+  ): Promise<unknown>;
   capturePostHogLifecycle?(event: FunnelEvent): Promise<void>;
   executeAdapter?: AdapterExecutor;
   alertTwentyFailure?(context: TwentyFailureContext): Promise<void>;
   log: {
     info(message: string, data?: Record<string, unknown>): void;
   };
+};
+
+const runIndependent = async <
+  Operations extends Record<string, Promise<unknown>>,
+>(
+  operations: Operations,
+) => {
+  const entries = Object.entries(operations);
+  const settled = await Promise.allSettled(entries.map(([, value]) => value));
+  const errors = settled.flatMap((result) =>
+    result.status === "rejected" ? [result.reason] : [],
+  );
+  if (errors.length === 1) throw errors[0];
+  if (errors.length > 1) {
+    throw new AggregateError(errors, "Multiple funnel destinations failed");
+  }
+  return Object.fromEntries(
+    settled.map((result, index) => [
+      entries[index]![0],
+      result.status === "fulfilled" ? result.value : undefined,
+    ]),
+  ) as { [Key in keyof Operations]: Awaited<Operations[Key]> };
 };
 
 const executeAdapter = <Result>(
@@ -134,6 +178,37 @@ export async function processFunnelEvent(
   dependencies: ProcessorDependencies,
 ) {
   dependencies.assertEnvironment?.(event.environment);
+  if (event.eventType === "booking_rescheduled") {
+    dependencies.log.info("Processing verified booking reschedule", {
+      submissionId: event.submissionId,
+      eventId: event.eventId,
+      bookingUid: event.payload.booking.uid,
+      previousBookingUid: event.payload.booking.previousUid,
+      environment: event.environment,
+    });
+    await runIndependent({
+      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      reminders:
+        dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
+      measurement: capturePostHogSafely(event, dependencies),
+    });
+    return { ok: true as const, bookingUid: event.payload.booking.uid };
+  }
+
+  if (event.eventType === "booking_cancelled") {
+    dependencies.log.info("Processing verified booking cancellation", {
+      submissionId: event.submissionId,
+      eventId: event.eventId,
+      bookingUid: event.payload.booking.uid,
+      environment: event.environment,
+    });
+    await runIndependent({
+      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      measurement: capturePostHogSafely(event, dependencies),
+    });
+    return { ok: true as const, bookingUid: event.payload.booking.uid };
+  }
+
   if (event.eventType === "booking_completed") {
     if (!dependencies.recordTwentyBooking || !dependencies.sendMetaSchedule) {
       throw new Error("Booking processing is not configured");
@@ -146,24 +221,34 @@ export async function processFunnelEvent(
       environment: event.environment,
     });
 
-    const { personId } = await executeTwenty(
-      event,
-      dependencies,
-      "upsert_person",
-      () => dependencies.upsertTwentyPerson(event),
-    );
-    const booking = await executeTwenty(
-      event,
-      dependencies,
-      "record_booking",
-      () => dependencies.recordTwentyBooking!(event, personId),
-    );
-    const { eventsReceived } = await executeAdapter(
-      dependencies,
-      { destination: "meta", operation: "deliver_schedule" },
-      () => dependencies.sendMetaSchedule!(event),
-    );
-    await capturePostHogSafely(event, dependencies);
+    const destinations = await runIndependent({
+      core: (async () => {
+        const { personId } = await executeTwenty(
+          event,
+          dependencies,
+          "upsert_person",
+          () => dependencies.upsertTwentyPerson(event),
+        );
+        const booking = await executeTwenty(
+          event,
+          dependencies,
+          "record_booking",
+          () => dependencies.recordTwentyBooking!(event, personId),
+        );
+        const { eventsReceived } = await executeAdapter(
+          dependencies,
+          { destination: "meta", operation: "deliver_schedule" },
+          () => dependencies.sendMetaSchedule!(event),
+        );
+        return { personId, booking, eventsReceived };
+      })(),
+      slack: dependencies.postSlackBooking?.(event) ?? Promise.resolve(),
+      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      reminders:
+        dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
+      measurement: capturePostHogSafely(event, dependencies),
+    });
+    const { personId, booking, eventsReceived } = destinations.core;
 
     dependencies.log.info("Processed verified funnel booking", {
       submissionId: event.submissionId,
@@ -199,24 +284,31 @@ export async function processFunnelEvent(
       qualificationStatus: event.qualificationStatus,
     });
 
-    const { personId } = await executeTwenty(
-      event,
-      dependencies,
-      "upsert_person",
-      () => dependencies.upsertTwentyPerson(event),
-    );
-    const application = await executeTwenty(
-      event,
-      dependencies,
-      "record_application",
-      () => dependencies.recordTwentyApplication!(event, personId),
-    );
-    const { eventsReceived } = await executeAdapter(
-      dependencies,
-      { destination: "meta", operation: "deliver_application" },
-      () => dependencies.sendMetaApplication!(event),
-    );
-    await capturePostHogSafely(event, dependencies);
+    const destinations = await runIndependent({
+      core: (async () => {
+        const { personId } = await executeTwenty(
+          event,
+          dependencies,
+          "upsert_person",
+          () => dependencies.upsertTwentyPerson(event),
+        );
+        const application = await executeTwenty(
+          event,
+          dependencies,
+          "record_application",
+          () => dependencies.recordTwentyApplication!(event, personId),
+        );
+        const { eventsReceived } = await executeAdapter(
+          dependencies,
+          { destination: "meta", operation: "deliver_application" },
+          () => dependencies.sendMetaApplication!(event),
+        );
+        return { personId, application, eventsReceived };
+      })(),
+      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      measurement: capturePostHogSafely(event, dependencies),
+    });
+    const { personId, application, eventsReceived } = destinations.core;
 
     dependencies.log.info("Processed funnel application", {
       submissionId: event.submissionId,
@@ -248,18 +340,25 @@ export async function processFunnelEvent(
     emailVerificationStatus: event.payload.emailVerification.status,
   });
 
-  const { personId } = await executeTwenty(
-    event,
-    dependencies,
-    "upsert_person",
-    () => dependencies.upsertTwentyPerson(event),
-  );
-  const { eventsReceived } = await executeAdapter(
-    dependencies,
-    { destination: "meta", operation: "deliver_lead" },
-    () => dependencies.sendMetaLead(event),
-  );
-  await capturePostHogSafely(event, dependencies);
+  const destinations = await runIndependent({
+    core: (async () => {
+      const { personId } = await executeTwenty(
+        event,
+        dependencies,
+        "upsert_person",
+        () => dependencies.upsertTwentyPerson(event),
+      );
+      const { eventsReceived } = await executeAdapter(
+        dependencies,
+        { destination: "meta", operation: "deliver_lead" },
+        () => dependencies.sendMetaLead(event),
+      );
+      return { personId, eventsReceived };
+    })(),
+    slack: dependencies.postSlackLead?.(event) ?? Promise.resolve(),
+    measurement: capturePostHogSafely(event, dependencies),
+  });
+  const { personId, eventsReceived } = destinations.core;
 
   dependencies.log.info("Processed funnel contact", {
     submissionId: event.submissionId,
@@ -288,6 +387,12 @@ type ProcessorEnvironment = {
   POSTHOG_PROJECT_KEY?: string;
   POSTHOG_HOST?: string;
   SLACK_FAILURE_WEBHOOK_URL?: string;
+  SLACK_BOT_TOKEN?: string;
+  SLACK_LEADS_CHANNEL_ID?: string;
+  CAL_INTERNAL_BOOKING_BASE_URL?: string;
+  BREVO_API_KEY?: string;
+  BREVO_ADS_LIST_ID?: string;
+  CAL_API_KEY?: string;
   PULPSENSE_AUTOMATION_ENVIRONMENT?: FunnelEvent["environment"];
 };
 
@@ -892,6 +997,43 @@ export function createProcessorDependencies(
     environment.SLACK_FAILURE_WEBHOOK_URL,
     "SLACK_FAILURE_WEBHOOK_URL",
   );
+  const slackConfig =
+    environment.SLACK_BOT_TOKEN && environment.SLACK_LEADS_CHANNEL_ID
+      ? {
+          botToken: environment.SLACK_BOT_TOKEN,
+          channelId: environment.SLACK_LEADS_CHANNEL_ID,
+          internalBookingBaseUrl: environment.CAL_INTERNAL_BOOKING_BASE_URL,
+        }
+      : undefined;
+  if (
+    Boolean(environment.SLACK_BOT_TOKEN) !==
+    Boolean(environment.SLACK_LEADS_CHANNEL_ID)
+  ) {
+    throw new Error(
+      "SLACK_BOT_TOKEN and SLACK_LEADS_CHANNEL_ID must be configured together",
+    );
+  }
+  if (
+    Boolean(environment.BREVO_API_KEY) !==
+    Boolean(environment.BREVO_ADS_LIST_ID)
+  ) {
+    throw new Error(
+      "BREVO_API_KEY and BREVO_ADS_LIST_ID must be configured together",
+    );
+  }
+  const brevoAdsListId = environment.BREVO_ADS_LIST_ID
+    ? Number(environment.BREVO_ADS_LIST_ID)
+    : undefined;
+  if (
+    brevoAdsListId !== undefined &&
+    (!Number.isInteger(brevoAdsListId) || brevoAdsListId <= 0)
+  ) {
+    throw new Error("BREVO_ADS_LIST_ID must be a positive integer");
+  }
+  const brevoConfig =
+    environment.BREVO_API_KEY && brevoAdsListId
+      ? { apiKey: environment.BREVO_API_KEY, adsListId: brevoAdsListId }
+      : undefined;
   const twentyClient: TwentyClient = {
     fetch: runtime.fetch,
     origin: twentyOrigin,
@@ -961,6 +1103,39 @@ export function createProcessorDependencies(
       },
     );
   };
+  const alertDestinationFailure = async (
+    event: BrevoLifecycleEvent,
+    operation: AdapterOperation,
+  ) => {
+    const runReference = runtime.run
+      ? `<${runtime.run.url}|${runtime.run.id}>`
+      : "unavailable";
+    await executeWithRetry(
+      { destination: "slack", operation: "alert_destination_failure" },
+      async () => {
+        const response = await runtime.fetch(slackFailureWebhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            text: [
+              ":rotating_light: Lifecycle destination exhausted retries",
+              `Environment: ${event.environment}`,
+              `Destination: brevo`,
+              `Operation: ${operation}`,
+              `Lead Journey: ${event.submissionId}`,
+              ...("booking" in event.payload
+                ? [`Cal UID: ${event.payload.booking.uid}`]
+                : []),
+              `Trigger.dev run: ${runReference}`,
+            ].join("\n"),
+          }),
+        });
+        if (!response.ok) {
+          throw new Error(`Slack alert delivery failed (${response.status})`);
+        }
+      },
+    );
+  };
 
   return {
     assertEnvironment: (eventEnvironment) => {
@@ -1012,6 +1187,62 @@ export function createProcessorDependencies(
         metaToken,
         metaTestEventCode,
       ),
+    ...(slackConfig
+      ? {
+          postSlackLead: (event: ContactSubmittedEvent) =>
+            executeWithRetry(
+              { destination: "slack", operation: "deliver_slack_lead" },
+              () => postSlackLead(event, slackConfig, runtime.fetch),
+            ),
+          postSlackBooking: (event: BookingCompletedEvent) =>
+            executeWithRetry(
+              { destination: "slack", operation: "deliver_slack_booking" },
+              () => postSlackBooking(event, slackConfig, runtime.fetch),
+            ),
+        }
+      : {}),
+    ...(brevoConfig
+      ? {
+          publishBrevoLifecycle: async (event: BrevoLifecycleEvent) => {
+            try {
+              return await executeWithRetry(
+                {
+                  destination: "brevo",
+                  operation: "publish_brevo_lifecycle",
+                },
+                () => publishBrevoLifecycle(event, brevoConfig, runtime.fetch),
+              );
+            } catch (error) {
+              try {
+                await alertDestinationFailure(event, "publish_brevo_lifecycle");
+              } catch {
+                runtime.log.info("Brevo failure alert delivery failed", {
+                  submissionId: event.submissionId,
+                  eventId: event.eventId,
+                });
+              }
+              throw error;
+            }
+          },
+        }
+      : {}),
+    ...(environment.CAL_API_KEY
+      ? {
+          scheduleMeetingReminders: (
+            event: BookingCompletedEvent | BookingRescheduledEvent,
+          ) =>
+            executeWithRetry(
+              {
+                destination: "trigger",
+                operation: "schedule_meeting_reminders",
+              },
+              () =>
+                scheduleMeetingReminders(event, (payload, options) =>
+                  sendMeetingReminderTask.trigger(payload, options),
+                ),
+            ),
+        }
+      : {}),
     executeAdapter: executeWithRetry,
     alertTwentyFailure,
     ...(capturePostHogLifecycle ? { capturePostHogLifecycle } : {}),
@@ -1047,6 +1278,13 @@ export const processFunnelEventTask = schemaTask({
           POSTHOG_PROJECT_KEY: process.env.POSTHOG_PROJECT_KEY,
           POSTHOG_HOST: process.env.POSTHOG_HOST,
           SLACK_FAILURE_WEBHOOK_URL: process.env.SLACK_FAILURE_WEBHOOK_URL,
+          SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+          SLACK_LEADS_CHANNEL_ID: process.env.SLACK_LEADS_CHANNEL_ID,
+          CAL_INTERNAL_BOOKING_BASE_URL:
+            process.env.CAL_INTERNAL_BOOKING_BASE_URL,
+          BREVO_API_KEY: process.env.BREVO_API_KEY,
+          BREVO_ADS_LIST_ID: process.env.BREVO_ADS_LIST_ID,
+          CAL_API_KEY: process.env.CAL_API_KEY,
           PULPSENSE_AUTOMATION_ENVIRONMENT: process.env
             .PULPSENSE_AUTOMATION_ENVIRONMENT as
             | FunnelEvent["environment"]

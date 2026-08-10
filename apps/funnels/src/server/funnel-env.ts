@@ -11,6 +11,7 @@ export type FunnelEnv = {
   PULPSENSE_TRIGGER_API_ORIGIN?: string;
   PULPSENSE_TRIGGER_SECRET_KEY?: string;
   CAL_WEBHOOK_SECRET?: string;
+  CAL_BOOKING_LINK?: string;
   META_PIXEL_ID?: string;
   META_CAPI_ACCESS_TOKEN?: string;
 };

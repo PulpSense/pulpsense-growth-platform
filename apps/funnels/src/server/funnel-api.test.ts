@@ -938,7 +938,9 @@ describe("POST /api/webhooks/cal", () => {
       .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
       .mockResolvedValueOnce(Response.json({ id: "run_application" }))
       .mockResolvedValueOnce(Response.json({ id: "run_booking" }))
-      .mockResolvedValueOnce(Response.json({ id: "run_booking" }));
+      .mockResolvedValueOnce(Response.json({ id: "run_booking" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_reschedule" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_cancel" }));
     vi.stubGlobal("fetch", fetchMock);
     const env = {
       ...allowingRateLimit,
@@ -982,10 +984,11 @@ describe("POST /api/webhooks/cal", () => {
         title: "Creative Multiplier Sprint Fit Call",
         startTime: "2026-08-10T14:00:00.000Z",
         endTime: "2026-08-10T14:15:00.000Z",
-        attendees: [{ email: "maya@brand.com" }],
+        attendees: [{ email: "maya@brand.com", timeZone: "America/New_York" }],
         metadata: {
           pulpsenseSubmissionId: application.bookingIdentity?.submissionId,
           pulpsenseBookingToken: application.bookingIdentity?.token,
+          videoCallUrl: "https://meet.example.com/cal_booking_123",
         },
       },
     });
@@ -1018,7 +1021,11 @@ describe("POST /api/webhooks/cal", () => {
         payload: {
           email: "maya@brand.com",
           emailVerification: { status: "verified", result: "business" },
-          booking: { uid: "cal_booking_123" },
+          booking: {
+            uid: "cal_booking_123",
+            attendeeTimeZone: "America/New_York",
+            meetingUrl: "https://meet.example.com/cal_booking_123",
+          },
         },
       },
       options: { idempotencyKey: "booking_completed:cal_booking_123" },
@@ -1033,6 +1040,110 @@ describe("POST /api/webhooks/cal", () => {
     expect(duplicateTriggerBody.payload.eventId).toBe(
       triggerBody.payload.eventId,
     );
+
+    const rescheduleBody = JSON.stringify({
+      triggerEvent: "BOOKING_RESCHEDULED",
+      createdAt: "2026-08-09T13:00:00.000Z",
+      payload: {
+        type: "funnel",
+        status: "ACCEPTED",
+        uid: "cal_booking_456",
+        title: "Creative Multiplier Sprint Fit Call",
+        startTime: "2026-08-11T14:00:00.000Z",
+        endTime: "2026-08-11T14:15:00.000Z",
+        rescheduleUid: "cal_booking_123",
+        rescheduleStartTime: "2026-08-10T14:00:00.000Z",
+        rescheduleEndTime: "2026-08-10T14:15:00.000Z",
+        attendees: [{ email: "maya@brand.com", timeZone: "America/New_York" }],
+        metadata: {
+          pulpsenseSubmissionId: application.bookingIdentity?.submissionId,
+          pulpsenseBookingToken: application.bookingIdentity?.token,
+          videoCallUrl: "https://meet.example.com/cal_booking_456",
+        },
+      },
+    });
+    const rescheduleResponse = await handleCalWebhook(
+      new Request("https://preview.pulpsense.com/api/webhooks/cal", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-cal-signature-256": await signCalBody(
+            rescheduleBody,
+            env.CAL_WEBHOOK_SECRET,
+          ),
+        },
+        body: rescheduleBody,
+      }),
+      env,
+    );
+    expect(rescheduleResponse.status).toBe(200);
+    const rescheduleTrigger = JSON.parse(
+      String(fetchMock.mock.calls[6]?.[1]?.body),
+    );
+    expect(rescheduleTrigger).toMatchObject({
+      payload: {
+        eventType: "booking_rescheduled",
+        eventId: "booking_rescheduled:cal_booking_456",
+        payload: {
+          booking: {
+            uid: "cal_booking_456",
+            previousUid: "cal_booking_123",
+          },
+        },
+      },
+      options: { idempotencyKey: "booking_rescheduled:cal_booking_456" },
+    });
+
+    const cancellationBody = JSON.stringify({
+      triggerEvent: "BOOKING_CANCELLED",
+      createdAt: "2026-08-09T14:00:00.000Z",
+      payload: {
+        type: "funnel",
+        status: "CANCELLED",
+        uid: "cal_booking_456",
+        title: "Creative Multiplier Sprint Fit Call",
+        startTime: "2026-08-11T14:00:00.000Z",
+        endTime: "2026-08-11T14:15:00.000Z",
+        cancellationReason: "No longer available",
+        attendees: [{ email: "maya@brand.com", timeZone: "America/New_York" }],
+        metadata: {
+          pulpsenseSubmissionId: application.bookingIdentity?.submissionId,
+          pulpsenseBookingToken: application.bookingIdentity?.token,
+          videoCallUrl: "https://meet.example.com/cal_booking_456",
+        },
+      },
+    });
+    const cancellationResponse = await handleCalWebhook(
+      new Request("https://preview.pulpsense.com/api/webhooks/cal", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-cal-signature-256": await signCalBody(
+            cancellationBody,
+            env.CAL_WEBHOOK_SECRET,
+          ),
+        },
+        body: cancellationBody,
+      }),
+      env,
+    );
+    expect(cancellationResponse.status).toBe(200);
+    const cancellationTrigger = JSON.parse(
+      String(fetchMock.mock.calls[7]?.[1]?.body),
+    );
+    expect(cancellationTrigger).toMatchObject({
+      payload: {
+        eventType: "booking_cancelled",
+        eventId: "booking_cancelled:cal_booking_456",
+        payload: {
+          booking: {
+            uid: "cal_booking_456",
+            cancellationReason: "No longer available",
+          },
+        },
+      },
+      options: { idempotencyKey: "booking_cancelled:cal_booking_456" },
+    });
   });
 
   it("allows booking for a qualified applicant when the email verifier fails", async () => {
@@ -1122,10 +1233,11 @@ describe("POST /api/webhooks/cal", () => {
         title: "Creative Multiplier Sprint Fit Call",
         startTime: "2026-08-10T14:00:00.000Z",
         endTime: "2026-08-10T14:15:00.000Z",
-        attendees: [{ email: "maya@brand.com" }],
+        attendees: [{ email: "maya@brand.com", timeZone: "America/New_York" }],
         metadata: {
           pulpsenseSubmissionId: contact.submissionId,
           pulpsenseBookingToken: contact.retry.token,
+          videoCallUrl: "https://meet.example.com/cal_booking_forged",
         },
       },
     });
