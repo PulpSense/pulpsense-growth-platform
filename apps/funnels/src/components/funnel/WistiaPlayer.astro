@@ -1,0 +1,60 @@
+---
+type Props = {
+  mediaId: string;
+  aspect?: number;
+  label?: string;
+};
+
+const { mediaId, aspect = 16 / 9, label = "Video player" } = Astro.props;
+
+if (!/^[a-z0-9]{1,64}$/u.test(mediaId)) {
+  throw new Error(`Invalid Wistia media ID: ${mediaId}`);
+}
+if (!Number.isFinite(aspect) || aspect <= 0) {
+  throw new Error(`Invalid Wistia aspect ratio: ${aspect}`);
+}
+
+const mediaScript = `https://fast.wistia.com/embed/${mediaId}.js`;
+const swatch = `https://fast.wistia.com/embed/medias/${mediaId}/swatch`;
+---
+
+<script is:inline define:vars={{ mediaId }}>
+  (function configureWistiaPlayer() {
+    var options = window.wistiaOptions || {};
+    options[mediaId] = Object.assign({}, options[mediaId], {
+      autoPlay: false,
+    });
+    window.wistiaOptions = options;
+  })();
+</script>
+<script src="https://fast.wistia.com/player.js" async is:inline></script>
+<script src={mediaScript} async type="module" is:inline></script>
+
+<div class="wistia-player-shell" style={`aspect-ratio: ${aspect}`}>
+  <wistia-player
+    media-id={mediaId}
+    aspect={String(aspect)}
+    aria-label={label}
+    style={`background: center / contain no-repeat url('${swatch}')`}
+  >
+  </wistia-player>
+</div>
+
+<style>
+  .wistia-player-shell {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    background: #111;
+  }
+
+  wistia-player {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  wistia-player:not(:defined) {
+    filter: blur(5px);
+  }
+</style>

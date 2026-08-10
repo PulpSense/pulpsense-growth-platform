@@ -46,19 +46,12 @@ const isolatedFallbackBindings = [
 
 const publicRoutes = [
   {
-    path: "/creative-multiplier-sprint/",
-    markers: ["Turn one winning ad into", "Apply now"],
+    path: "/ai-seo/",
+    markers: ["45 New Calls", "See If You Qualify"],
   },
   {
-    path: "/creative-multiplier-sprint/thank-you/",
-    markers: [
-      "Your Creative Multiplier Sprint call is booked.",
-      "Call confirmed",
-    ],
-  },
-  {
-    path: "/creative-multiplier-sprint/unqualified/",
-    markers: ["Thanks for applying.", "Application received"],
+    path: "/ai-seo/thank-you/",
+    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
   },
 ];
 let landerHtml = "";
@@ -142,7 +135,7 @@ try {
   for (const route of publicRoutes) {
     const response = await fetch(`${origin}${route.path}`);
     const html = await response.text();
-    if (route.path === "/creative-multiplier-sprint/") landerHtml = html;
+    if (route.path === "/ai-seo/") landerHtml = html;
 
     assert.equal(response.status, 200, `${route.path} should return 200`);
     assert.ok(
@@ -158,6 +151,21 @@ try {
       html,
       /<meta name="robots" content="noindex, nofollow"/,
       `${route.path} should retain noindex metadata`,
+    );
+    assert.match(
+      html,
+      /media-id="8py8vigtf1"/,
+      `${route.path} should embed the configured Wistia media`,
+    );
+    assert.match(
+      html,
+      /autoPlay:\s*false/,
+      `${route.path} should keep Wistia autoplay disabled`,
+    );
+    assert.doesNotMatch(
+      html,
+      /vidalytics/iu,
+      `${route.path} should not load Vidalytics`,
     );
 
     for (const marker of route.markers) {
@@ -178,12 +186,9 @@ try {
   );
 
   const landerIslands = [
-    "DslCarousel",
-    "VideoExamplesSection",
-    "ApplicationFormIsland",
-    "MobileStickyCta",
+    "AiSeoQualificationForm",
+    "FunnelAnalytics",
     "TrackingPixels",
-    "DeferredLoopVideo",
   ];
   for (const island of landerIslands) {
     assert.ok(
@@ -191,10 +196,6 @@ try {
       `lander should hydrate the ${island} island`,
     );
   }
-  assert.ok(
-    !landerHtml.includes('component-export="CreativeMultiplierPage"'),
-    "lander shell should remain static HTML",
-  );
   assert.ok(
     !landerHtml.includes("828948073514575"),
     "preview output should not include the production Pixel ID",
@@ -221,22 +222,6 @@ try {
       result: "provider_error",
     });
 
-    const unknownEventResponse = await postJson("/api/form-submit", {
-      event: "unknown",
-    });
-    assert.equal(unknownEventResponse.status, 400);
-
-    const sandboxEventResponse = await postJson("/api/form-submit", {
-      event: "contact_submitted",
-      data: { funnelId: "creative-multiplier-sprint" },
-    });
-    assert.equal(sandboxEventResponse.status, 202);
-    assert.deepEqual(await sandboxEventResponse.json(), {
-      ok: false,
-      skipped: true,
-      reason: "Trigger not configured",
-    });
-
     const sandboxMetaResponse = await postJson("/api/meta-capi", {});
     assert.equal(sandboxMetaResponse.status, 500);
     assert.deepEqual(await sandboxMetaResponse.json(), {
@@ -245,7 +230,7 @@ try {
   }
 
   console.log(
-    `Parity check passed for ${publicRoutes.length} public routes, ${landerIslands.length} React island exports, ${externalOrigin ? "non-mutating preview checks" : "three API fallbacks"}, and robots.txt.`,
+    `Parity check passed for ${publicRoutes.length} public routes, ${landerIslands.length} React island exports, ${externalOrigin ? "non-mutating preview checks" : "two API fallbacks"}, and robots.txt.`,
   );
 } finally {
   server?.kill("SIGTERM");

@@ -5,22 +5,35 @@ import { useEffect } from "react";
 
 import { trackFunnelEvent } from "@/utils/funnelAnalytics";
 
-import type { CalStep } from "./MultiStepForm";
-
 type CalBookingStepProps = {
-  step: CalStep;
-  formData: Readonly<Record<string, string | string[]>>;
+  calLink: string;
+  namespace?: string;
+  prefill: Readonly<{
+    firstName: string;
+    lastName?: string;
+    email: string;
+  }>;
   bookingIdentity: { submissionId: string; token: string };
   onBookingSuccessful(): void;
 };
 
 export function CalBookingStep({
-  step,
-  formData,
+  calLink,
+  namespace = "default",
+  prefill,
   bookingIdentity,
   onBookingSuccessful,
 }: CalBookingStepProps) {
-  const namespace = step.namespace ?? "default";
+  const config: Record<string, string> = {
+    layout: "month_view",
+    theme: "dark",
+    useSlotsViewOnSmallScreen: "true",
+    firstName: prefill.firstName,
+    email: prefill.email,
+    "metadata[pulpsenseSubmissionId]": bookingIdentity.submissionId,
+    "metadata[pulpsenseBookingToken]": bookingIdentity.token,
+  };
+  if (prefill.lastName) config.lastName = prefill.lastName;
 
   useEffect(() => {
     trackFunnelEvent("booking_interaction", { action: "widget_viewed" });
@@ -45,27 +58,9 @@ export function CalBookingStep({
   return (
     <Cal
       namespace={namespace}
-      calLink={step.calLink}
+      calLink={calLink}
       style={{ width: "100%", height: "100%", overflow: "scroll" }}
-      config={Object.fromEntries(
-        Object.entries({
-          layout: "month_view",
-          theme: "dark",
-          useSlotsViewOnSmallScreen: "true",
-          firstName: formData.firstName as string,
-          lastName: formData.lastName as string,
-          email: formData.email as string,
-          brandUrl: formData.brandUrl as string,
-          paidSocialSpend: formData.paidSocialSpend as string,
-          winnerStatus: formData.winnerStatus as string,
-          platforms: Array.isArray(formData.platforms)
-            ? formData.platforms.join(", ")
-            : "",
-          deliveryTimeline: formData.deliveryTimeline as string,
-          "metadata[pulpsenseSubmissionId]": bookingIdentity.submissionId,
-          "metadata[pulpsenseBookingToken]": bookingIdentity.token,
-        }).filter(([, value]) => Boolean(value)),
-      )}
+      config={config}
     />
   );
 }

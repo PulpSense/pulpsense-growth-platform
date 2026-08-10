@@ -1,5 +1,6 @@
 import {
   funnelEventSchema,
+  type ApplicationAnswers,
   type ApplicationSubmittedEvent,
   type BookingCompletedEvent,
   type ContactSubmittedEvent,
@@ -8,6 +9,7 @@ import {
 import { logger, retry, schemaTask } from "@trigger.dev/sdk";
 
 import { createPostHogLifecycleCapture } from "./posthog-lifecycle.js";
+import { resolveMetaEnvironment } from "./meta-destination.js";
 
 type AdapterDestination = "twenty" | "meta" | "slack";
 
@@ -289,23 +291,6 @@ type ProcessorEnvironment = {
   PULPSENSE_AUTOMATION_ENVIRONMENT?: FunnelEvent["environment"];
 };
 
-export const resolveMetaEnvironment = (
-  environment: Readonly<Record<string, string | undefined>>,
-): {
-  META_PIXEL_ID?: string;
-  META_CAPI_ACCESS_TOKEN?: string;
-  META_TEST_EVENT_CODE?: string;
-} => ({
-  META_PIXEL_ID:
-    environment.META_PIXEL_ID_AI_SEO_L || environment.META_PIXEL_ID,
-  META_CAPI_ACCESS_TOKEN:
-    environment.META_CAPI_ACCESS_TOKEN_AI_SEO_L ||
-    environment.META_CAPI_ACCESS_TOKEN,
-  META_TEST_EVENT_CODE:
-    environment.META_TEST_EVENT_CODE_AI_SEO_L ||
-    environment.META_TEST_EVENT_CODE,
-});
-
 const required = (value: string | undefined, name: string) => {
   if (!value) throw new Error(`${name} is not configured`);
   return value;
@@ -520,8 +505,6 @@ const deterministicUuid = async (identity: string) => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 
-type ApplicationAnswers = ApplicationSubmittedEvent["payload"]["application"];
-
 const paidSocialSpendValues = {
   "Less than $20k/month": "LESS_THAN_20K_MONTH",
   "$20k - $50k/month": "FROM_20K_TO_50K_MONTH",
@@ -701,11 +684,16 @@ const recordTwentyApplication = async (
     client,
     {
       ...(attemptOpportunityId ? { id: attemptOpportunityId } : {}),
-      name: `Creative Multiplier Sprint – ${event.companyDomain}`,
+      name:
+        event.funnelId === "ai-seo"
+          ? `AI SEO – ${event.companyDomain}`
+          : `Creative Multiplier Sprint – ${event.companyDomain}`,
       ...(openOpportunity ? {} : { stage }),
       pointOfContactId: personId,
       ...(companyId ? { companyId } : {}),
-      ...twentyOpportunityProjection(event.payload.application),
+      ...(event.funnelId === "creative-multiplier-sprint"
+        ? twentyOpportunityProjection(event.payload.application)
+        : {}),
     },
     openOpportunity?.id,
   );
@@ -1054,7 +1042,7 @@ export const processFunnelEventTask = schemaTask({
           TWENTY_CALL_BOOKED_STAGE_VALUE:
             process.env.TWENTY_CALL_BOOKED_STAGE_VALUE,
           TWENTY_CLOSED_STAGE_VALUES: process.env.TWENTY_CLOSED_STAGE_VALUES,
-          ...resolveMetaEnvironment(process.env),
+          ...resolveMetaEnvironment(process.env, event.funnelId),
           META_GRAPH_API_VERSION: process.env.META_GRAPH_API_VERSION,
           POSTHOG_PROJECT_KEY: process.env.POSTHOG_PROJECT_KEY,
           POSTHOG_HOST: process.env.POSTHOG_HOST,

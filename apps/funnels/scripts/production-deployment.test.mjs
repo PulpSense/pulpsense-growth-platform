@@ -44,14 +44,20 @@ describe("production deployment isolation", () => {
     expect(validation).toContain(
       'test "$CLOUDFLARE_PAGES_PROJECT" = "pulpsense-funnels"',
     );
-    expect(validation).toContain(
-      'test "$CLOUDFLARE_PAGES_BRANCH" = "master"',
-    );
+    expect(validation).toContain('test "$CLOUDFLARE_PAGES_BRANCH" = "master"');
     expect(validation).toContain(
       "PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}",
     );
     expect(validation).toContain(
       "PUBLIC_CAL_NAMESPACE: ${{ vars.PUBLIC_CAL_NAMESPACE }}",
     );
+    expect(validation).toContain(
+      "PUBLIC_META_PIXEL_ID_AI_SEO_L: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_L }}",
+    );
+    expect(validation).not.toContain(
+      "PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}",
+    );
+    expect(productionJob).toContain("META_PIXEL_ID_AI_SEO_L");
+    expect(productionJob).toContain("META_CAPI_ACCESS_TOKEN_AI_SEO_L");
   });
 });

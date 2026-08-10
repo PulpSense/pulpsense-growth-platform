@@ -2,6 +2,7 @@ import {
   CONTACT_SUBMITTED_EVENT,
   FUNNEL_EVENT_SCHEMA_VERSION,
   contactPayloadSchema,
+  funnelIdSchema,
   funnelAttributionSchema,
 } from "@pulpsense/contracts";
 import { z } from "zod";
@@ -17,7 +18,7 @@ export const contactSubmissionRequestSchema = z
   .object({
     schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
     eventType: z.literal(CONTACT_SUBMITTED_EVENT),
-    funnelId: z.literal("creative-multiplier-sprint"),
+    funnelId: funnelIdSchema,
     attemptId: z.uuid(),
     turnstileToken: z.string().min(1).max(4096),
     retry: retryIdentitySchema.optional(),
