@@ -1318,6 +1318,9 @@ describe("POST /api/verify-email", () => {
       status: "unverified",
       result: "provider_error",
     });
+    expect(response.headers.get("x-pulpsense-email-verification")).toBe(
+      "provider_request_failed",
+    );
   });
 
   it("fails open when the verifier responds with an infrastructure error", async () => {
@@ -1351,5 +1354,8 @@ describe("POST /api/verify-email", () => {
       status: "unverified",
       result: "provider_error",
     });
+    expect(response.headers.get("x-pulpsense-email-verification")).toBe(
+      "provider_http_error",
+    );
   });
 });
