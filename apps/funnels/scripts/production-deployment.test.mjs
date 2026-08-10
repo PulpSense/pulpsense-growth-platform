@@ -7,6 +7,35 @@ const repositoryFile = (path) =>
   fileURLToPath(new URL(`../../../${path}`, import.meta.url));
 
 describe("production deployment isolation", () => {
+  it("loads Turnstile from the document head before the contact step mounts", async () => {
+    const [layout, landingPage, form] = await Promise.all([
+      readFile(
+        repositoryFile("apps/funnels/src/layouts/BaseLayout.astro"),
+        "utf8",
+      ),
+      readFile(
+        repositoryFile("apps/funnels/src/pages/[campaign]/index.astro"),
+        "utf8",
+      ),
+      readFile(
+        repositoryFile(
+          "apps/funnels/src/funnels/ai-seo/components/AiSeoQualificationForm.tsx",
+        ),
+        "utf8",
+      ),
+    ]);
+
+    expect(landingPage).toContain("loadTurnstile");
+    expect(layout).toContain(
+      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
+    );
+    expect(layout).toContain("data-pulpsense-turnstile");
+    expect(layout).toContain("defer");
+    expect(layout).toContain('data-status="loading"');
+    expect(layout).toContain("pulpsense:turnstile-script-state");
+    expect(form).not.toContain('document.createElement("script")');
+  });
+
   it("binds Pages to a production-only rate-limiter service", async () => {
     const config = await readFile(
       repositoryFile("apps/funnels/wrangler.production.toml"),
