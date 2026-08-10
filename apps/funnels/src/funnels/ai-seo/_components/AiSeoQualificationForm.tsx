@@ -10,7 +10,7 @@ import {
   stripPhoneToDigits,
 } from "@/components/ui/phone";
 import { COUNTRIES, type Country } from "@/components/ui/phoneCountries";
-import { useFunnelSubmission } from "@/funnels/use-funnel-submission";
+import { useFunnelSubmission } from "@/lib/funnel/use-funnel-submission";
 import { isBusinessEmail } from "@/utils/businessEmail";
 import { getBrowserCookie } from "@/utils/browserCookie";
 import {

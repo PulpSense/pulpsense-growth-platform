@@ -42,7 +42,8 @@ src/
 ├── pages/                  # Active Astro routes
 ├── layouts/                # Static HTML shell and crawler metadata
 ├── server/                 # Runtime-neutral Pages Function behavior
-├── funnels/                # Funnel-specific content and React components
+├── funnels/                # Funnel-owned content, sections, and styles
+├── lib/funnel/             # Shared funnel runtime and submission machinery
 ├── styles/                 # Global application styles
 └── components/             # Shared React primitives and explicit islands
 ```
