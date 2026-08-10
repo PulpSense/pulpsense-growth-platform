@@ -53,7 +53,7 @@ composition shell:
 
 ```text
 src/funnels/ai-seo/
-├── _components/
+├── components/
 │   ├── landing/            # Landing-page sections and interactions
 │   └── thank-you/          # Confirmation-page sections and interactions
 └── styles/                 # Route-specific funnel stylesheets

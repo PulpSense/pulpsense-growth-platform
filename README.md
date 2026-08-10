@@ -21,7 +21,7 @@ The deployment seam is intentional: request-time validation and attribution stay
 pnpm dev                 # Start the funnel app
 pnpm dev:automations     # Start the Trigger.dev worker
 pnpm build               # Build the funnel app
-pnpm lint                # Lint the funnel app
+pnpm lint                # Lint every workspace package
 pnpm check-types         # Type-check every workspace package
 ```
 

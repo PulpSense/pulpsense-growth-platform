@@ -15,17 +15,23 @@
     "build-prod": "pnpm --filter @pulpsense/funnels build-prod",
     "check-parity": "pnpm --filter @pulpsense/funnels check-parity",
     "start": "pnpm --filter @pulpsense/funnels start",
-    "lint": "pnpm --filter @pulpsense/funnels lint",
+    "lint": "eslint apps packages",
     "test": "vitest run",
     "qualify:release": "pnpm test && pnpm check-types && pnpm lint && pnpm build && pnpm check-parity && pnpm --filter @pulpsense/funnels check-release-performance",
     "format": "pnpm --filter @pulpsense/funnels format && prettier '**/*.{json,yaml,yml}' '!pnpm-lock.yaml' --write --ignore-path .gitignore",
+    "format:check": "pnpm --filter @pulpsense/funnels format:check && prettier '**/*.{json,yaml,yml}' '!pnpm-lock.yaml' --check --ignore-path .gitignore",
     "check-types": "pnpm -r check-types",
     "prepare": "husky"
   },
   "devDependencies": {
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "husky": "^9.1.0",
     "lint-staged": "^15.3.0",
     "prettier": "^3.4.0",
+    "typescript-eslint": "^8.18.0",
     "vitest": "^4.0.18"
   }
 }

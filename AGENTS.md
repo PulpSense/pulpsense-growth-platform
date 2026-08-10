@@ -8,7 +8,7 @@ Guidance for Codex when working in the PulpSense growth platform monorepo.
 pnpm dev                 # Start the Astro funnel app
 pnpm dev:automations     # Start the Trigger.dev worker
 pnpm build               # Production-build the funnel app
-pnpm lint                # Lint the funnel app
+pnpm lint                # Lint every workspace package
 pnpm check-types         # Type-check every workspace package
 pnpm format              # Format the funnel app and workspace JSON/YAML
 ```
@@ -44,7 +44,7 @@ The app follows props-driven layering:
 1. Astro pages in `apps/funnels/src/pages/[funnel-name]/` compose server-rendered page shells and explicit client islands.
 2. Funnel content and React components live under `apps/funnels/src/funnels/[funnel-name]/`.
 3. Funnel primitives in `apps/funnels/src/components/funnel/` provide reusable shells, sections, CTAs, checklists, marquees, video grids, and legal footers.
-4. Funnel-specific sections live under each funnel's `_components` directory.
+4. Funnel-specific sections live under each funnel's `components` directory.
 5. Shared UI modules live in `apps/funnels/src/components/ui/`.
 
 Keep funnel-specific assets under `apps/funnels/public/[funnel-name]/` and shared assets under `apps/funnels/public/assets/`.
