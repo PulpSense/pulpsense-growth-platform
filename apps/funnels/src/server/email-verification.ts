@@ -14,10 +14,15 @@ type BusinessEmailVerification =
   | { result: "catch_all" | "provider_error"; status: "unverified" }
   | { result: "invalid"; status: "invalid" };
 
+const INTERNAL_EMAIL_BYPASS = "santi@pulpsense.com";
+
 export const verifyBusinessEmail = async (
   email: string,
   apiKey: string | undefined,
 ): Promise<BusinessEmailVerification> => {
+  if (email.trim().toLowerCase() === INTERNAL_EMAIL_BYPASS) {
+    return { status: "verified", result: "business" };
+  }
   if (!apiKey) return { status: "unverified", result: "provider_error" };
 
   try {
