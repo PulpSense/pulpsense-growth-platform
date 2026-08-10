@@ -33,6 +33,15 @@ describe("production deployment isolation", () => {
       "pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }}",
     );
     expect(productionJob).not.toContain("--config=");
+    expect(productionJob).toContain(
+      "Point Production hostname at Pages",
+    );
+    expect(productionJob).toContain(
+      "content: target",
+    );
+    expect(productionJob).toContain(
+      'test "$CLOUDFLARE_PAGES_HOSTNAME" = "go.pulpsense.com"',
+    );
 
     const gate = productionJob.split("    runs-on:")[0];
     expect(gate).toContain("github.ref == 'refs/heads/master'");
