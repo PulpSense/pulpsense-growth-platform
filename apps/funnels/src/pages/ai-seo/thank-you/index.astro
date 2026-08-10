@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <!-- YouTube embeds require a non-null Referer; avoids Error 153 in many setups -->
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <link rel="preconnect" href="https://t.leadoracle.ai" crossorigin />
+    <link rel="preconnect" href="https://connect.facebook.net" crossorigin />
+    <link rel="preconnect" href="https://fast.vidalytics.com" crossorigin />
+    <link rel="preconnect" href="https://www.youtube-nocookie.com" />
+    <title>You're Booked — Lead Oracle AI</title>
+    <!--
+      Post-booking confirmation page (local-contractor funnel). Same visual shell as
+      the electrician confirm page. GHL calendar redirects here after a booking:
+        /ai-seo/thank-you/?email={{contact.email}}&phone={{contact.phone}}
+      email/phone arrive on the query string so Hyros + Meta can match identity.
+      Fires: Hyros base (!clicked), Meta PageView + Schedule.
+    -->
+    <script is:inline>
+      // Identity passed by the GHL redirect, for tracking match quality.
+      var PR_PARAMS = new URLSearchParams(location.search);
+      var PR_EMAIL = (PR_PARAMS.get('email') || '').trim();
+      var PR_PHONE = (PR_PARAMS.get('phone') || '').trim();
+    </script>
+
+    <!-- Hyros base pixel (every pageview) -->
+    <script is:inline>
+      (function () {
+        var s = document.createElement('script');
+        s.type = 'text/javascript';
+        s.src =
+          'https://t.leadoracle.ai/v1/lst/universal-script?ph=2bda9dc716c049aebc7d7f1b4bcc69851cc12fbc2f38ea9a0393641d147cf09d&tag=!clicked&ref_url=' +
+          encodeURI(document.URL);
+        document.head.appendChild(s);
+      })();
+    </script>
+
+    <!-- Meta Pixel — PageView + Schedule (the booking conversion), with advanced matching -->
+    <script is:inline>
+      !(function (f, b, e, v, n, t, s) {
+        if (f.fbq) return;
+        n = f.fbq = function () {
+          n.callMethod
+            ? n.callMethod.apply(n, arguments)
+            : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n;
+        n.loaded = !0;
+        n.version = '2.0';
+        n.queue = [];
+        t = b.createElement(e);
+        t.async = !0;
+        t.src = v;
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(
+        window,
+        document,
+        'script',
+        'https://connect.facebook.net/en_US/fbevents.js',
+      );
+      var PR_AM = {};
+      if (PR_EMAIL) PR_AM.em = PR_EMAIL;
+      if (PR_PHONE) PR_AM.ph = PR_PHONE;
+      fbq('init', '904765275600928', PR_AM);
+      fbq('track', 'PageView');
+      fbq('track', 'Schedule');
+    </script>
+    <noscript
+      ><img
+        height="1"
+        width="1"
+        style="display: none"
+        src="https://www.facebook.com/tr?id=904765275600928&ev=Schedule&noscript=1"
+    /></noscript>
+    <!-- PostHog funnel analytics — first-party via /ph proxy (Pages Function).
+         Fires 'booked' (the funnel's end event) and stitches identity via the
+         email/phone the GHL redirect appends, matching the landing-page identify. -->
+    <script is:inline>
+      !(function (t, e) {
+        var o, n, p, r;
+        e.__SV ||
+          ((window.posthog = e),
+          (e._i = []),
+          (e.init = function (i, s, a) {
+            function g(t, e) {
+              var o = e.split('.');
+              2 == o.length && ((t = t[o[0]]), (e = o[1])),
+                (t[e] = function () {
+                  t.push([e].concat(Array.prototype.slice.call(arguments, 0)));
+                });
+            }
+            ((p = t.createElement('script')).type = 'text/javascript'),
+              (p.crossOrigin = 'anonymous'),
+              (p.async = !0),
+              (p.src =
+                s.api_host.replace('.i.posthog.com', '-assets.i.posthog.com') +
+                '/static/array.js'),
+              (r = t.getElementsByTagName('script')[0]).parentNode.insertBefore(
+                p,
+                r,
+              );
+            var u = e;
+            for (
+              void 0 !== a ? (u = e[a] = []) : (a = 'posthog'),
+                u.people = u.people || [],
+                u.toString = function (t) {
+                  var e = 'posthog';
+                  return 'posthog' !== a && (e += '.' + a), t || (e += ' (stub)'), e;
+                },
+                u.people.toString = function () {
+                  return u.toString(1) + '.people (stub)';
+                },
+                o =
+                  'init capture register register_once unregister identify setPersonProperties reset get_distinct_id alias set_config startSessionRecording stopSessionRecording opt_in_capturing opt_out_capturing debug'.split(
+                    ' ',
+                  ),
+                n = 0;
+              n < o.length;
+              n++
+            )
+              g(u, o[n]);
+            e._i.push([i, s, a]);
+          }),
+          (e.__SV = 1));
+      })(document, window.posthog || []);
+      posthog.init('phc_yiC8ajZWfT59iX6miCStD5mGkmzzoNRKDEC5rXjv98Fm', {
+        api_host: 'https://local.leadoracle.ai/ph',
+        ui_host: 'https://us.posthog.com',
+        autocapture: false,
+        person_profiles: 'identified_only',
+      });
+      if (PR_EMAIL) {
+        posthog.identify(PR_EMAIL, { email: PR_EMAIL, phone: PR_PHONE });
+      }
+      posthog.capture('booked');
+    </script>
+  </head>
+  <body style="margin: 0; background: #f8fafc">
+    <style>
+      html {
+        scroll-behavior: smooth;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        overflow-x: clip;
+      }
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: clip;
+      }
+    </style>
+    <style>
+      #pr-ghl-funnel,
+      #pr-ghl-funnel * {
+        box-sizing: border-box;
+      }
+      #pr-ghl-funnel {
+        position: relative;
+        width: 100vw;
+        max-width: 100vw;
+        margin-left: calc(50% - 50vw);
+        overflow-x: clip;
+        --pr-blue: #0080ff;
+        --pr-blue-dark: #0066cc;
+        --pr-text: #111827;
+        --pr-muted: #6b7280;
+        --pr-soft: #f3f4f6;
+        --pr-border: #e5e7eb;
+        font-family:
+          system-ui,
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        color: var(--pr-text);
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      #pr-ghl-funnel .pr-main {
+        min-height: 100vh;
+        background: linear-gradient(
+          to bottom,
+          #eff6ff 0%,
+          #fff 40%,
+          rgba(239, 246, 255, 0.35) 100%
+        );
+      }
+      #pr-ghl-funnel .pr-bar {
+        width: 100%;
+        box-sizing: border-box;
+        background: var(--pr-blue);
+        color: #fff;
+        text-align: center;
+        padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem
+          max(1rem, env(safe-area-inset-left));
+        font-size: 0.875rem;
+        font-weight: 500;
+      }
+      #pr-ghl-funnel .pr-container {
+        width: 100%;
+        max-width: 72rem;
+        margin-left: auto;
+        margin-right: auto;
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+      #pr-ghl-funnel .pr-container-md {
+        max-width: 56rem;
+      }
+      #pr-ghl-funnel .pr-center {
+        text-align: center;
+      }
+      #pr-ghl-funnel .pr-confirm-hero {
+        padding: 2rem 1rem 0.5rem;
+      }
+      #pr-ghl-funnel .pr-confirm-h1 {
+        margin: 0 auto 0.75rem;
+        max-width: 22ch;
+        font-size: clamp(1.5rem, 5vw, 2.125rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        line-height: 1.15;
+        color: var(--pr-text);
+      }
+      #pr-ghl-funnel .pr-confirm-sub {
+        margin: 0 auto 1rem;
+        max-width: 36rem;
+        font-size: clamp(1rem, 2.8vw, 1.1875rem);
+        font-weight: 600;
+        color: #374151;
+        line-height: 1.45;
+      }
+      #pr-ghl-funnel .video-wrap {
+        max-width: 700px;
+        margin: 0 auto 0.25rem;
+        padding: 12px 16px 4px;
+      }
+      #pr-ghl-funnel .video-alert {
+        width: 100%;
+        box-sizing: border-box;
+        background: #f44336;
+        color: #fff;
+        font-weight: 700;
+        text-align: center;
+        padding: 6px 8px;
+        font-size: 18px;
+        line-height: 1.25;
+        border-radius: 10px 10px 0 0;
+        margin: 0;
+      }
+      @media (max-width: 480px) {
+        #pr-ghl-funnel .video-alert {
+          font-size: 12px;
+          padding: 6px 8px;
+        }
+      }
+      #pr-ghl-funnel .video-embed {
+        width: 100%;
+        position: relative;
+        padding-top: 56.25%;
+        margin: 0;
+        display: block;
+      }
+      #pr-ghl-funnel .pr-step-card {
+        max-width: 36rem;
+        margin: 0 auto 2.5rem;
+        text-align: left;
+        background: #fff;
+        border: 1px solid var(--pr-border);
+        border-radius: 12px;
+        padding: 1.25rem 1.35rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      }
+      #pr-ghl-funnel .pr-step-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--pr-blue);
+        margin-bottom: 0.35rem;
+      }
+      #pr-ghl-funnel .pr-step-card h2 {
+        margin: 0 0 0.5rem;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--pr-text);
+      }
+      #pr-ghl-funnel .pr-step-card p {
+        margin: 0;
+        font-size: 0.9375rem;
+        color: var(--pr-muted);
+        line-height: 1.55;
+      }
+      #pr-ghl-funnel .pr-step-card strong {
+        color: var(--pr-text);
+      }
+      #pr-ghl-funnel .pr-inbox-guide {
+        margin: 1.25rem 0 0;
+      }
+      #pr-ghl-funnel .pr-inbox-guide-img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 10px;
+        border: 1px solid var(--pr-border);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      }
+      #pr-ghl-funnel .pr-reviews {
+        margin: 0 0 2.5rem;
+      }
+      #pr-ghl-funnel .pr-reviews-track {
+        display: flex;
+        gap: 1rem;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+        -webkit-overflow-scrolling: touch;
+        padding: 0.25rem 0.25rem 0.75rem;
+        scrollbar-width: thin;
+      }
+      #pr-ghl-funnel .pr-review-card {
+        flex: 0 0 85%;
+        max-width: 24rem;
+        margin: 0;
+        scroll-snap-align: center;
+        background: #fff;
+        border: 1px solid var(--pr-border);
+        border-radius: 12px;
+        padding: 0.75rem;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+        align-self: flex-start;
+      }
+      @media (min-width: 768px) {
+        #pr-ghl-funnel .pr-review-card {
+          flex-basis: calc((100% - 2rem) / 3);
+        }
+      }
+      #pr-ghl-funnel .pr-review-card {
+        position: relative;
+        cursor: zoom-in;
+      }
+      #pr-ghl-funnel .pr-review-card img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-radius: 8px;
+      }
+      #pr-ghl-funnel .pr-review-zoom {
+        position: absolute;
+        bottom: 1.1rem;
+        right: 1.1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        background: rgba(17, 24, 39, 0.78);
+        color: #fff;
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 0.3rem 0.55rem;
+        border-radius: 999px;
+        pointer-events: none;
+      }
+      .pr-lightbox {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        background: rgba(17, 24, 39, 0.88);
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        overflow-y: auto;
+        padding: 1.25rem 1rem 2rem;
+        cursor: zoom-out;
+      }
+      .pr-lightbox[hidden] {
+        display: none;
+      }
+      .pr-lightbox img {
+        width: min(94vw, 720px);
+        height: auto;
+        margin: auto;
+        border-radius: 10px;
+        background: #fff;
+        display: block;
+      }
+      .pr-lightbox-close {
+        position: fixed;
+        top: 0.75rem;
+        right: 0.75rem;
+        width: 2.5rem;
+        height: 2.5rem;
+        border: none;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.92);
+        color: #111827;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+      }
+      #pr-ghl-funnel .pr-reviews-link {
+        margin: 0.5rem 0 0;
+        text-align: center;
+        font-size: 0.875rem;
+      }
+      #pr-ghl-funnel .pr-reviews-link a {
+        color: #00b67a;
+        font-weight: 700;
+        text-decoration: none;
+      }
+      #pr-ghl-funnel .pr-reviews-link a:hover {
+        text-decoration: underline;
+      }
+      #pr-ghl-funnel .pr-audit-frame {
+        display: block;
+        width: 100%;
+        height: 900px;
+        margin-top: 1rem;
+        border: 1px solid var(--pr-border);
+        border-radius: 10px;
+        background: #fff;
+      }
+      #pr-ghl-funnel .pr-videos-head {
+        text-align: center;
+        margin: 0 0 1.25rem;
+        font-size: clamp(1.2rem, 3.5vw, 1.5rem);
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      #pr-ghl-funnel .pr-video-grid {
+        display: grid;
+        gap: 2rem;
+        padding: 0 0 3rem;
+      }
+      @media (min-width: 640px) {
+        #pr-ghl-funnel .pr-video-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+      @media (min-width: 960px) {
+        #pr-ghl-funnel .pr-video-grid {
+          grid-template-columns: repeat(3, 1fr);
+        }
+      }
+      #pr-ghl-funnel .pr-video-card h3 {
+        margin: 0 0 0.65rem;
+        font-size: 0.9375rem;
+        font-weight: 700;
+        line-height: 1.35;
+        color: var(--pr-text);
+      }
+      #pr-ghl-funnel .pr-video-frame {
+        position: relative;
+        width: 100%;
+        padding-bottom: 56.25%;
+        height: 0;
+        overflow: hidden;
+        border-radius: 10px;
+        background: #111;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+      }
+      #pr-ghl-funnel .pr-video-frame iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border: 0;
+      }
+      #pr-ghl-funnel .pr-video-frame--portrait {
+        max-width: 240px;
+        margin: 0 auto;
+        padding-bottom: 0;
+        height: auto;
+        aspect-ratio: 9 / 16;
+      }
+      @media (max-width: 767px) {
+        #pr-ghl-funnel .pr-confirm-hero {
+          padding-top: 1.25rem;
+        }
+        #pr-ghl-funnel .pr-video-grid {
+          padding-left: 0;
+          padding-right: 0;
+        }
+      }
+      #pr-ghl-funnel .pr-footer {
+        background: var(--pr-soft);
+        border-top: 1px solid var(--pr-border);
+        padding: 2rem 1rem;
+        font-size: 0.75rem;
+        color: #6b7280;
+        line-height: 1.6;
+      }
+      #pr-ghl-funnel .pr-footer strong {
+        color: #374151;
+        display: block;
+        margin-bottom: 0.25rem;
+      }
+    </style>
+
+    <div id="pr-ghl-funnel">
+      <main class="pr-main">
+        <div class="pr-bar">
+          👷 Proudly Serving Local Contractors Nationwide
+        </div>
+
+        <header class="pr-confirm-hero pr-center">
+          <h1 class="pr-confirm-h1">
+            ONE LAST THING: Complete these required steps ✅
+          </h1>
+          <p class="pr-confirm-sub">
+            👇 Watch this video on next steps, what we do, and FAQs 👇
+          </p>
+          <div class="video-wrap">
+            <div
+              id="vidalytics_embed_dGbnl06gi2mzBXc7"
+              class="video-embed"
+            ></div>
+          </div>
+          <script type="text/javascript" is:inline>
+            (function (v, i, d, a, l, y, t, c, s) {
+              y = '_' + d.toLowerCase();
+              c = d + 'L';
+              if (!v[d]) {
+                v[d] = {};
+              }
+              if (!v[c]) {
+                v[c] = {};
+              }
+              if (!v[y]) {
+                v[y] = {};
+              }
+              var vl = 'Loader',
+                vli = v[y][vl],
+                vsl = v[c][vl + 'Script'],
+                vlf = v[c][vl + 'Loaded'],
+                ve = 'Embed';
+              if (!vsl) {
+                vsl = function (u, cb) {
+                  if (t) {
+                    cb();
+                    return;
+                  }
+                  s = i.createElement('script');
+                  s.type = 'text/javascript';
+                  s.async = 1;
+                  s.src = u;
+                  if (s.readyState) {
+                    s.onreadystatechange = function () {
+                      if (
+                        s.readyState === 'loaded' ||
+                        s.readyState === 'complete'
+                      ) {
+                        s.onreadystatechange = null;
+                        vlf = 1;
+                        cb();
+                      }
+                    };
+                  } else {
+                    s.onload = function () {
+                      vlf = 1;
+                      cb();
+                    };
+                  }
+                  i.getElementsByTagName('head')[0].appendChild(s);
+                };
+              }
+              vsl(l + 'loader.min.js', function () {
+                if (!vli) {
+                  var vlc = v[c][vl];
+                  vli = new vlc();
+                }
+                vli.loadScript(l + 'player.min.js', function () {
+                  var vec = v[d][ve];
+                  t = new vec();
+                  t.run(a);
+                });
+              });
+            })(
+              window,
+              document,
+              'Vidalytics',
+              'vidalytics_embed_dGbnl06gi2mzBXc7',
+              'https://fast.vidalytics.com/embeds/7iPzxmKE/dGbnl06gi2mzBXc7/',
+            );
+          </script>
+        </header>
+
+        <div class="pr-container pr-container-md">
+          <div class="pr-step-card">
+            <div class="pr-step-label">Step 1</div>
+            <h2>Confirm your calendar invite</h2>
+            <p>
+              Search your inbox and spam for an email with the subject
+              <strong>&quot;Rank #1 on Google &amp; AI&quot;</strong>. Open it
+              and click <strong>&quot;Yes&quot;</strong> on the calendar
+              invitation so we know you&apos;re locked in for your call.
+            </p>
+            <figure class="pr-inbox-guide">
+              <img
+                class="pr-inbox-guide-img"
+                src="/ai-seo/images/calendar-confirmation.webp"
+                alt="Google Calendar invitation email: tap Yes to confirm your discovery call"
+                loading="lazy"
+                decoding="async"
+              />
+            </figure>
+          </div>
+
+          <h2 class="pr-videos-head">Step 2: Watch the videos below</h2>
+
+          <div class="pr-video-grid">
+            <article class="pr-video-card">
+              <h3>Hear It From a Client: Gator Pools</h3>
+              <div class="pr-video-frame">
+                <iframe
+                  src="https://www.youtube-nocookie.com/embed/E6GAwsPM8Fs?rel=0&amp;modestbranding=1&amp;playsinline=1&amp;enablejsapi=1"
+                  title="Gator Pools Testimonial"
+                  allow="
+                    accelerometer;
+                    autoplay;
+                    clipboard-write;
+                    encrypted-media;
+                    gyroscope;
+                    picture-in-picture;
+                    web-share;
+                    fullscreen;
+                  "
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  allowfullscreen
+                  loading="lazy"
+                ></iframe>
+              </div>
+            </article>
+            <article class="pr-video-card">
+              <h3>Pool Builder in Dallas — 2 to 3x the Leads</h3>
+              <div class="pr-video-frame pr-video-frame--portrait">
+                <iframe
+                  src="https://www.youtube-nocookie.com/embed/rWgYJ1ZicaU?rel=0&amp;modestbranding=1&amp;playsinline=1&amp;enablejsapi=1"
+                  title="Pool Builder in Dallas - 2 to 3x the leads"
+                  allow="
+                    accelerometer;
+                    autoplay;
+                    clipboard-write;
+                    encrypted-media;
+                    gyroscope;
+                    picture-in-picture;
+                    web-share;
+                    fullscreen;
+                  "
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  allowfullscreen
+                  loading="lazy"
+                ></iframe>
+              </div>
+            </article>
+            <article class="pr-video-card">
+              <h3>
+                I analyzed 100 local businesses and found the #1 ranking factor
+              </h3>
+              <div class="pr-video-frame">
+                <iframe
+                  src="https://www.youtube-nocookie.com/embed/rGK91DNCqVw?rel=0&amp;modestbranding=1&amp;playsinline=1&amp;enablejsapi=1"
+                  title="YouTube video player"
+                  allow="
+                    accelerometer;
+                    autoplay;
+                    clipboard-write;
+                    encrypted-media;
+                    gyroscope;
+                    picture-in-picture;
+                    web-share;
+                    fullscreen;
+                  "
+                  referrerpolicy="strict-origin-when-cross-origin"
+                  allowfullscreen
+                  loading="lazy"
+                ></iframe>
+              </div>
+            </article>
+          </div>
+
+          <section class="pr-reviews" aria-label="Trustpilot reviews">
+            <h2 class="pr-videos-head">What Local Businesses Say About Us</h2>
+            <div class="pr-reviews-track" id="pr-reviews-track">
+              <figure class="pr-review-card">
+                <img
+                  src="/ai-seo/images/review-barb.webp"
+                  alt="Five-star Trustpilot review from Barb: went through 4 other marketing companies and lost thousands, then Norman delivered — &quot;He saved me and my business.&quot;"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="pr-review-zoom" aria-hidden="true">🔍 Tap to enlarge</span>
+              </figure>
+              <figure class="pr-review-card">
+                <img
+                  src="/ai-seo/images/review-georgia.webp"
+                  alt="Five-star Trustpilot review from Georgia Pond &amp; Waterfall: started invisible on Google Maps with 0 reviews, ranked #2 in their city's map pack 2 weeks in."
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="pr-review-zoom" aria-hidden="true">🔍 Tap to enlarge</span>
+              </figure>
+              <figure class="pr-review-card">
+                <img
+                  src="/ai-seo/images/review-connor.webp"
+                  alt="Five-star Trustpilot review from Connor Kaplan, residential painter: burnt by agencies and Angi before, now ranked page 1 on multiple keywords with consistent leads."
+                  loading="lazy"
+                  decoding="async"
+                />
+                <span class="pr-review-zoom" aria-hidden="true">🔍 Tap to enlarge</span>
+              </figure>
+            </div>
+            <p class="pr-reviews-link">
+              <a
+                href="https://www.trustpilot.com/review/leadoracle.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Read all reviews on Trustpilot ★</a
+              >
+            </p>
+          </section>
+
+          <div class="pr-step-card">
+            <div class="pr-step-label">Step 3</div>
+            <h2>Fill out your free SEO audit</h2>
+            <p>
+              Complete this quick audit <strong>before your call</strong> so we
+              can review exactly where your business ranks on Google &amp; AI
+              and come prepared with a game plan.
+            </p>
+            <iframe
+              class="pr-audit-frame"
+              src="https://getyourseoaudit.com/campaign/3eb824da5c069d0d"
+              title="Free SEO audit form"
+              loading="lazy"
+            ></iframe>
+          </div>
+
+        </div>
+      </main>
+
+      <section class="pr-footer">
+        <div class="pr-container pr-container-md">
+          <div>
+            <strong>Important Disclosures</strong>
+            <p style="margin: 0.25rem 0 0">
+              All testimonials, statistics, and case study results referenced on
+              this site reflect specific client outcomes. Individual results
+              vary based on industry, market, current online presence, and
+              execution. Past results do not guarantee future performance. Lead
+              Oracle AI makes no representation that you will achieve the same
+              or similar results.
+            </p>
+          </div>
+          <div
+            style="
+              margin-top: 1rem;
+              padding-top: 1rem;
+              border-top: 1px solid var(--pr-border);
+            "
+          >
+            This site is not a part of the Facebook™ website or Facebook™ Inc.
+            Additionally, this site is NOT endorsed by Facebook™ in any way.
+            FACEBOOK™ is a trademark of FACEBOOK™, Inc.
+          </div>
+        </div>
+      </section>
+    </div>
+    <div class="pr-lightbox" id="pr-lightbox" hidden>
+      <button class="pr-lightbox-close" id="pr-lightbox-close" aria-label="Close enlarged review">
+        ×
+      </button>
+      <img id="pr-lightbox-img" src="" alt="" />
+    </div>
+    <script is:inline>
+      /* Review lightbox — tap a card to view the screenshot at reading size. */
+      (function () {
+        var box = document.getElementById('pr-lightbox');
+        var boxImg = document.getElementById('pr-lightbox-img');
+        var closeBtn = document.getElementById('pr-lightbox-close');
+        if (!box || !boxImg || !closeBtn) return;
+        function open(img) {
+          /* Serve a higher-res render for reading (r_800 grid thumb → r_1200). */
+          boxImg.src = img.src.replace('/r_800/', '/r_1200/');
+          boxImg.alt = img.alt;
+          box.hidden = false;
+          document.body.style.overflow = 'hidden';
+        }
+        function close() {
+          box.hidden = true;
+          boxImg.src = '';
+          document.body.style.overflow = '';
+        }
+        document
+          .querySelectorAll('.pr-review-card img')
+          .forEach(function (img) {
+            img.closest('.pr-review-card').addEventListener('click', function () {
+              open(img);
+            });
+          });
+        box.addEventListener('click', function (e) {
+          if (e.target !== boxImg) close();
+        });
+        closeBtn.addEventListener('click', close);
+        document.addEventListener('keydown', function (e) {
+          if (e.key === 'Escape' && !box.hidden) close();
+        });
+      })();
+    </script>
+    <script is:inline>
+      /* Review carousel auto-advance — only when cards overflow (mobile);
+         hands control back permanently on any user interaction. */
+      (function () {
+        var track = document.getElementById('pr-reviews-track');
+        if (!track) return;
+        var stopped = false;
+        var idx = 0;
+        ['pointerdown', 'wheel', 'touchstart', 'keydown'].forEach(function (ev) {
+          track.addEventListener(
+            ev,
+            function () {
+              stopped = true;
+            },
+            { passive: true },
+          );
+        });
+        setInterval(function () {
+          if (stopped || track.scrollWidth <= track.clientWidth + 8) return;
+          var cards = track.children;
+          if (!cards.length) return;
+          idx = (idx + 1) % cards.length;
+          track.scrollTo({
+            left: cards[idx].offsetLeft - cards[0].offsetLeft,
+            behavior: 'smooth',
+          });
+        }, 4000);
+      })();
+    </script>
+  </body>
+</html>
+
