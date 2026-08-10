@@ -18,13 +18,24 @@ export const verifyBusinessEmail = async (
   email: string,
   apiKey: string | undefined,
 ): Promise<BusinessEmailVerification> => {
-  if (!apiKey) return { status: "unverified", result: "provider_error" };
+  if (!apiKey) {
+    console.warn("PulpSense email verification failed", {
+      reason: "api_key_missing",
+    });
+    return { status: "unverified", result: "provider_error" };
+  }
 
   try {
     const response = await fetch(
       `https://api.millionverifier.com/api/v3/?api=${apiKey}&email=${encodeURIComponent(email)}&timeout=10`,
     );
-    if (!response.ok) throw new Error("Verifier request failed");
+    if (!response.ok) {
+      console.warn("PulpSense email verification failed", {
+        reason: "provider_http_error",
+        status: response.status,
+      });
+      return { status: "unverified", result: "provider_error" };
+    }
 
     const verification = (await response.json()) as {
       result?: string;
@@ -44,8 +55,16 @@ export const verifyBusinessEmail = async (
       return { status: "unverified", result: "catch_all" };
     }
 
+    console.warn("PulpSense email verification failed", {
+      reason: "provider_unexpected_result",
+      result: verification.result ?? "missing",
+    });
     return { status: "unverified", result: "provider_error" };
-  } catch {
+  } catch (error) {
+    console.warn("PulpSense email verification failed", {
+      reason: "provider_request_failed",
+      error: error instanceof Error ? error.name : "unknown",
+    });
     return { status: "unverified", result: "provider_error" };
   }
 };
