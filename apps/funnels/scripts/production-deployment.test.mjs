@@ -25,11 +25,15 @@ describe("production deployment isolation", () => {
       "utf8",
     );
 
-    expect(workflow).toContain(
-      "pages deploy dist --config=wrangler.production.toml --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }}",
-    );
-
     const productionJob = workflow.split("  deploy-production:")[1];
+    expect(productionJob).toContain(
+      "cp apps/funnels/wrangler.production.toml apps/funnels/wrangler.toml",
+    );
+    expect(productionJob).toContain(
+      "pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }}",
+    );
+    expect(productionJob).not.toContain("--config=");
+
     const gate = productionJob.split("    runs-on:")[0];
     expect(gate).toContain("github.ref == 'refs/heads/master'");
     expect(gate).toContain("github.event_name == 'workflow_dispatch'");
