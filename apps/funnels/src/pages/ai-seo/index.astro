@@ -1,6 +1,42 @@
 ---
-import AiSeoPage from "@/funnels/ai-seo/components/AiSeoPage.astro";
+import { FunnelAnalytics, TrackingPixels } from "@/components/ui";
+import DisclosureFooter from "@/funnels/ai-seo/_components/DisclosureFooter.astro";
+import BenefitsSection from "@/funnels/ai-seo/_components/landing/BenefitsSection.astro";
+import ComparisonSection from "@/funnels/ai-seo/_components/landing/ComparisonSection.astro";
+import EducationSection from "@/funnels/ai-seo/_components/landing/EducationSection.astro";
+import FaqSection from "@/funnels/ai-seo/_components/landing/FaqSection.astro";
+import GuaranteeSection from "@/funnels/ai-seo/_components/landing/GuaranteeSection.astro";
+import HeroSection from "@/funnels/ai-seo/_components/landing/HeroSection.astro";
+import LandingInteractions from "@/funnels/ai-seo/_components/landing/LandingInteractions.astro";
+import MarketShiftSection from "@/funnels/ai-seo/_components/landing/MarketShiftSection.astro";
+import PricingSection from "@/funnels/ai-seo/_components/landing/PricingSection.astro";
+import ProcessSection from "@/funnels/ai-seo/_components/landing/ProcessSection.astro";
+import QualificationSection from "@/funnels/ai-seo/_components/landing/QualificationSection.astro";
+import ResultsSection from "@/funnels/ai-seo/_components/landing/ResultsSection.astro";
+import ReviewsSection from "@/funnels/ai-seo/_components/landing/ReviewsSection.astro";
+import StickyCta from "@/funnels/ai-seo/_components/landing/StickyCta.astro";
+import "@/funnels/ai-seo/styles/landing.css";
+import {
+  createBrowserTrackingConfig,
+  parseDeploymentEnvironment,
+  resolveCalConfig,
+} from "@/funnels/runtime-config";
 import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const deploymentEnvironment = parseDeploymentEnvironment(
+  import.meta.env.PUBLIC_PULPSENSE_ENVIRONMENT,
+);
+const pixels = createBrowserTrackingConfig({
+  environment: deploymentEnvironment,
+  metaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID,
+  productionMetaPixelId: "828948073514575",
+});
+const cal = resolveCalConfig({
+  environment: deploymentEnvironment,
+  calLink: import.meta.env.PUBLIC_CAL_LINK,
+  calNamespace: import.meta.env.PUBLIC_CAL_NAMESPACE,
+  localFallback: "santileoni/funnel",
+});
 ---
 
 <BaseLayout
@@ -13,5 +49,37 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     href="https://fast.wistia.com"
     crossorigin
   />
-  <AiSeoPage />
+  <FunnelAnalytics
+    client:interaction="idle"
+    apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
+    host={import.meta.env.PUBLIC_POSTHOG_HOST}
+    funnelId="ai-seo"
+    page="landing"
+  />
+  <TrackingPixels client:interaction="idle" pixels={pixels} interactionReady />
+
+  <div id="pr-funnel">
+    <main class="pr-main">
+      <HeroSection />
+      <BenefitsSection />
+      <MarketShiftSection />
+      <ComparisonSection />
+      <EducationSection />
+      <ResultsSection />
+      <ProcessSection />
+      <PricingSection />
+      <GuaranteeSection />
+      <FaqSection />
+      <ReviewsSection />
+      <QualificationSection
+        calLink={cal.calLink}
+        calNamespace={cal.namespace}
+        turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}
+      />
+    </main>
+
+    <DisclosureFooter />
+    <StickyCta />
+  </div>
+  <LandingInteractions />
 </BaseLayout>

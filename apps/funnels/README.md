@@ -47,6 +47,17 @@ src/
 └── components/             # Shared React primitives and explicit islands
 ```
 
+Each funnel owns its sections and page styles while the route remains the
+composition shell:
+
+```text
+src/funnels/ai-seo/
+├── _components/
+│   ├── landing/            # Landing-page sections and interactions
+│   └── thank-you/          # Confirmation-page sections and interactions
+└── styles/                 # Route-specific funnel stylesheets
+```
+
 ## Runtime isolation
 
 Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` copied from `.dev.vars.example`, with sandbox values only. Local builds may omit browser Meta tracking. Preview builds require a non-production `PUBLIC_META_PIXEL_ID` and a non-production `PUBLIC_CAL_LINK`; the build fails if either is absent or if the known production Meta dataset is supplied.

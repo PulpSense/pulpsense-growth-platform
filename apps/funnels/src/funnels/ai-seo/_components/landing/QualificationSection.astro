@@ -1,0 +1,153 @@
+---
+import { AiSeoQualificationForm } from "@/funnels/ai-seo/_components/AiSeoQualificationForm";
+
+type Props = {
+  calLink: string;
+  calNamespace?: string;
+  turnstileSiteKey?: string;
+};
+
+const { calLink, calNamespace, turnstileSiteKey } = Astro.props;
+---
+
+<section class="pr-section pr-section-gray" id="pr-funnel-form">
+  <div class="pr-container pr-center">
+    <h2 class="pr-h2" style="font-size: clamp(1.35rem, 3vw, 1.9rem)">
+      <span style="color: var(--pr-blue)">45 New Calls</span> in 90 Days for <span
+        style="color: var(--pr-blue)">$297/mo</span
+      > — If We Don&apos;t Deliver, We Work for Free Until We Do.
+    </h2>
+    <p class="pr-sub pr-form-intro">
+      Answer a few quick questions to see if your contracting business qualifies
+      for the guarantee.
+    </p>
+    <div class="pr-funnel-layout">
+      <AiSeoQualificationForm
+        client:visible
+        calLink={calLink}
+        calNamespace={calNamespace}
+        turnstileSiteKey={turnstileSiteKey}
+        qualifiedRedirect="/ai-seo/thank-you/"
+      />
+      <aside class="pr-expect">
+        <h3 class="pr-expect-title">What to expect on our call</h3>
+        <ul class="pr-expect-list">
+          <li class="pr-expect-item">
+            <span class="pr-expect-check" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </span>
+            <p>
+              <strong>No pressure, ever.</strong> We run your Google &amp; AI visibility
+              audit live on the call — you walk away with real findings whether we
+              work together or not.
+            </p>
+          </li>
+          <li class="pr-expect-item">
+            <span class="pr-expect-check" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </span>
+            <p>
+              We <strong>pull up your live rankings</strong> on the call and show
+              you exactly where you stand against the contractors ranking above you
+              in Google Maps, AI Overviews, and ChatGPT.
+            </p>
+          </li>
+          <li class="pr-expect-item">
+            <span class="pr-expect-check" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </span>
+            <p>
+              We estimate{" "}
+              <strong>how much revenue you&apos;re losing every month</strong>{
+                " "
+              }
+              to the competitors your customers are calling first.
+            </p>
+          </li>
+          <li class="pr-expect-item">
+            <span class="pr-expect-check" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              >
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </span>
+            <p>
+              We map the exact 3 signals (Google Business Profile, Maps &amp; AI
+              search citations) that move you into the{" "}
+              <strong>Top 3</strong>.
+            </p>
+          </li>
+        </ul>
+        <div class="pr-expect-callout">
+          <strong>Most local contractors have no idea</strong> their next customer
+          just went to a competitor that Google or ChatGPT recommended first. On the
+          call, you&apos;ll see exactly who&apos;s getting picked ahead of you — and
+          what it&apos;s costing you.
+        </div>
+        <div class="pr-expect-proof">
+          <span class="pr-stars" aria-hidden="true">
+            <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+              ></path>
+            </svg>
+            <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+              ></path>
+            </svg>
+            <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+              ></path>
+            </svg>
+            <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+              ></path>
+            </svg>
+            <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
+              <path
+                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+              ></path>
+            </svg>
+          </span>
+          <span><strong>4.9/5</strong> from 500+ local contractors</span>
+        </div>
+      </aside>
+    </div>
+  </div>
+</section>

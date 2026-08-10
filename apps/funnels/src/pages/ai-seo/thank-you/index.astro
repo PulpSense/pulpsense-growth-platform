@@ -1,6 +1,27 @@
 ---
-import AiSeoThankYouPage from "@/funnels/ai-seo/components/AiSeoThankYouPage.astro";
+import { FunnelAnalytics, TrackingPixels } from "@/components/ui";
+import DisclosureFooter from "@/funnels/ai-seo/_components/DisclosureFooter.astro";
+import CalendarConfirmationStep from "@/funnels/ai-seo/_components/thank-you/CalendarConfirmationStep.astro";
+import ConfirmationHero from "@/funnels/ai-seo/_components/thank-you/ConfirmationHero.astro";
+import ReviewsSection from "@/funnels/ai-seo/_components/thank-you/ReviewsSection.astro";
+import SeoAuditStep from "@/funnels/ai-seo/_components/thank-you/SeoAuditStep.astro";
+import TestimonialVideosSection from "@/funnels/ai-seo/_components/thank-you/TestimonialVideosSection.astro";
+import ThankYouInteractions from "@/funnels/ai-seo/_components/thank-you/ThankYouInteractions.astro";
+import "@/funnels/ai-seo/styles/thank-you.css";
+import {
+  createBrowserTrackingConfig,
+  parseDeploymentEnvironment,
+} from "@/funnels/runtime-config";
 import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const deploymentEnvironment = parseDeploymentEnvironment(
+  import.meta.env.PUBLIC_PULPSENSE_ENVIRONMENT,
+);
+const pixels = createBrowserTrackingConfig({
+  environment: deploymentEnvironment,
+  metaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID,
+  productionMetaPixelId: "828948073514575",
+});
 ---
 
 <BaseLayout
@@ -15,5 +36,27 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
     crossorigin
   />
   <link slot="head" rel="preconnect" href="https://www.youtube-nocookie.com" />
-  <AiSeoThankYouPage />
+  <FunnelAnalytics
+    client:interaction="idle"
+    apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
+    host={import.meta.env.PUBLIC_POSTHOG_HOST}
+    funnelId="ai-seo"
+    page="qualified"
+  />
+  <TrackingPixels client:interaction="idle" pixels={pixels} interactionReady />
+
+  <div id="pr-funnel">
+    <main class="pr-main">
+      <ConfirmationHero />
+      <div class="pr-container pr-container-md">
+        <CalendarConfirmationStep />
+        <TestimonialVideosSection />
+        <ReviewsSection />
+        <SeoAuditStep />
+      </div>
+    </main>
+
+    <DisclosureFooter />
+  </div>
+  <ThankYouInteractions />
 </BaseLayout>
