@@ -75,7 +75,7 @@ const releaseRunCount = () => {
 async function run() {
   const origin = releaseOrigin();
   const runCount = releaseRunCount();
-  const target = new URL("/ai-seo/", origin).href;
+  const target = new URL("/local-growth-6732ef498c/", origin).href;
   const lighthouseBin = fileURLToPath(
     new URL("../node_modules/lighthouse/cli/index.js", import.meta.url),
   );

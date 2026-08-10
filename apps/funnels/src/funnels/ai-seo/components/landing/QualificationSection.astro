@@ -1,15 +1,17 @@
 ---
 import { AiSeoQualificationForm } from "@/funnels/ai-seo/components/AiSeoQualificationForm";
-import type { AiSeoFunnelId } from "@/funnels/ai-seo/meta-destination";
+import type { AiSeoFunnelId } from "@/funnels/ai-seo/campaigns";
 
 type Props = {
   funnelId: AiSeoFunnelId;
+  qualifiedRedirect: string;
   calLink: string;
   calNamespace?: string;
   turnstileSiteKey?: string;
 };
 
-const { funnelId, calLink, calNamespace, turnstileSiteKey } = Astro.props;
+const { funnelId, qualifiedRedirect, calLink, calNamespace, turnstileSiteKey } =
+  Astro.props;
 ---
 
 <section class="pr-section pr-section-gray" id="pr-funnel-form">
@@ -30,7 +32,7 @@ const { funnelId, calLink, calNamespace, turnstileSiteKey } = Astro.props;
         calLink={calLink}
         calNamespace={calNamespace}
         turnstileSiteKey={turnstileSiteKey}
-        qualifiedRedirect="/ai-seo/thank-you/"
+        qualifiedRedirect={qualifiedRedirect}
       />
       <aside class="pr-expect">
         <h3 class="pr-expect-title">What to expect on our call</h3>

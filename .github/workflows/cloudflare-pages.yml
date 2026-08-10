@@ -56,8 +56,8 @@ jobs:
 
       - name: Build Astro
         env:
-          PUBLIC_AI_SEO_VERTICAL: lawyers
           PUBLIC_PULPSENSE_ENVIRONMENT: preview
+          PUBLIC_META_PIXEL_ID_AI_SEO_D: "234567890123456"
           PUBLIC_META_PIXEL_ID_AI_SEO_L: "123456789012345"
           PUBLIC_POSTHOG_KEY: phc_ci-preview
           PUBLIC_POSTHOG_HOST: https://us.i.posthog.com
@@ -102,7 +102,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
           PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}
-          PUBLIC_AI_SEO_VERTICAL: ${{ vars.PUBLIC_AI_SEO_VERTICAL || 'lawyers' }}
           PUBLIC_META_PIXEL_ID_AI_SEO_D: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_D }}
           PUBLIC_META_PIXEL_ID_AI_SEO_L: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_L }}
           PUBLIC_POSTHOG_KEY: ${{ vars.PUBLIC_POSTHOG_KEY }}
@@ -111,18 +110,13 @@ jobs:
           test -n "$CLOUDFLARE_ACCOUNT_ID" || { echo "Preview CLOUDFLARE_ACCOUNT_ID is not configured"; exit 1; }
           test -n "$CLOUDFLARE_PAGES_PROJECT" || { echo "Preview CLOUDFLARE_PAGES_PROJECT is not configured"; exit 1; }
           test -n "$PUBLIC_CAL_LINK" || { echo "Preview PUBLIC_CAL_LINK is not configured"; exit 1; }
-          case "$PUBLIC_AI_SEO_VERTICAL" in
-            lawyers) selected_meta_pixel_id="$PUBLIC_META_PIXEL_ID_AI_SEO_L" ;;
-            dentists) selected_meta_pixel_id="$PUBLIC_META_PIXEL_ID_AI_SEO_D" ;;
-            *) echo "Preview PUBLIC_AI_SEO_VERTICAL must be lawyers or dentists"; exit 1 ;;
-          esac
-          test -n "$selected_meta_pixel_id" || { echo "Preview Meta Pixel ID is not configured for $PUBLIC_AI_SEO_VERTICAL"; exit 1; }
+          test -n "$PUBLIC_META_PIXEL_ID_AI_SEO_L" || { echo "Preview lawyers Meta Pixel ID is not configured"; exit 1; }
+          test -n "$PUBLIC_META_PIXEL_ID_AI_SEO_D" || { echo "Preview dentists Meta Pixel ID is not configured"; exit 1; }
           test -n "$PUBLIC_POSTHOG_KEY" || { echo "Preview PUBLIC_POSTHOG_KEY is not configured"; exit 1; }
           test -n "$PUBLIC_TURNSTILE_SITE_KEY" || { echo "Preview PUBLIC_TURNSTILE_SITE_KEY is not configured"; exit 1; }
 
       - name: Build Preview
         env:
-          PUBLIC_AI_SEO_VERTICAL: ${{ vars.PUBLIC_AI_SEO_VERTICAL || 'lawyers' }}
           PUBLIC_PULPSENSE_ENVIRONMENT: preview
           PUBLIC_META_PIXEL_ID_AI_SEO_D: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_D }}
           PUBLIC_META_PIXEL_ID_AI_SEO_L: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_L }}
@@ -188,7 +182,6 @@ jobs:
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
           PUBLIC_CAL_LINK: ${{ vars.PUBLIC_CAL_LINK }}
           PUBLIC_CAL_NAMESPACE: ${{ vars.PUBLIC_CAL_NAMESPACE }}
-          PUBLIC_AI_SEO_VERTICAL: ${{ vars.PUBLIC_AI_SEO_VERTICAL || 'lawyers' }}
           PUBLIC_META_PIXEL_ID_AI_SEO_D: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_D }}
           PUBLIC_META_PIXEL_ID_AI_SEO_L: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_L }}
           PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}
@@ -200,12 +193,8 @@ jobs:
           test "$CLOUDFLARE_PAGES_PROJECT" = "pulpsense-funnels" || { echo "Production CLOUDFLARE_PAGES_PROJECT must be pulpsense-funnels"; exit 1; }
           test -n "$PUBLIC_CAL_LINK" || { echo "Production PUBLIC_CAL_LINK is not configured"; exit 1; }
           test -n "$PUBLIC_CAL_NAMESPACE" || { echo "Production PUBLIC_CAL_NAMESPACE is not configured"; exit 1; }
-          case "$PUBLIC_AI_SEO_VERTICAL" in
-            lawyers) selected_meta_pixel_id="$PUBLIC_META_PIXEL_ID_AI_SEO_L" ;;
-            dentists) selected_meta_pixel_id="$PUBLIC_META_PIXEL_ID_AI_SEO_D" ;;
-            *) echo "Production PUBLIC_AI_SEO_VERTICAL must be lawyers or dentists"; exit 1 ;;
-          esac
-          test -n "$selected_meta_pixel_id" || { echo "Production Meta Pixel ID is not configured for $PUBLIC_AI_SEO_VERTICAL"; exit 1; }
+          test -n "$PUBLIC_META_PIXEL_ID_AI_SEO_L" || { echo "Production lawyers Meta Pixel ID is not configured"; exit 1; }
+          test -n "$PUBLIC_META_PIXEL_ID_AI_SEO_D" || { echo "Production dentists Meta Pixel ID is not configured"; exit 1; }
           test -n "$PUBLIC_POSTHOG_HOST" || { echo "Production PUBLIC_POSTHOG_HOST is not configured"; exit 1; }
           test -n "$PUBLIC_POSTHOG_KEY" || { echo "Production PUBLIC_POSTHOG_KEY is not configured"; exit 1; }
           test -n "$PUBLIC_TURNSTILE_SITE_KEY" || { echo "Production PUBLIC_TURNSTILE_SITE_KEY is not configured"; exit 1; }
@@ -226,16 +215,10 @@ jobs:
 
       - name: Validate Production automation variables
         env:
-          PUBLIC_AI_SEO_VERTICAL: ${{ vars.PUBLIC_AI_SEO_VERTICAL || 'lawyers' }}
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
         run: |
           configured_variables="$(pnpm --filter @pulpsense/automations exec trigger env list --env prod --skip-telemetry)"
-          case "$PUBLIC_AI_SEO_VERTICAL" in
-            lawyers) meta_destination_suffix="L" ;;
-            dentists) meta_destination_suffix="D" ;;
-            *) echo "Production PUBLIC_AI_SEO_VERTICAL must be lawyers or dentists"; exit 1 ;;
-          esac
-          for variable_name in "META_CAPI_ACCESS_TOKEN_AI_SEO_$meta_destination_suffix" "META_PIXEL_ID_AI_SEO_$meta_destination_suffix" META_GRAPH_API_VERSION POSTHOG_HOST POSTHOG_PROJECT_KEY PULPSENSE_AUTOMATION_ENVIRONMENT SLACK_FAILURE_WEBHOOK_URL TWENTY_API_KEY TWENTY_API_ORIGIN TWENTY_CALL_BOOKED_STAGE_VALUE TWENTY_CLOSED_STAGE_VALUES TWENTY_QUALIFIED_STAGE_VALUE; do
+          for variable_name in META_CAPI_ACCESS_TOKEN_AI_SEO_L META_PIXEL_ID_AI_SEO_L META_CAPI_ACCESS_TOKEN_AI_SEO_D META_PIXEL_ID_AI_SEO_D META_GRAPH_API_VERSION POSTHOG_HOST POSTHOG_PROJECT_KEY PULPSENSE_AUTOMATION_ENVIRONMENT SLACK_FAILURE_WEBHOOK_URL TWENTY_API_KEY TWENTY_API_ORIGIN TWENTY_CALL_BOOKED_STAGE_VALUE TWENTY_CLOSED_STAGE_VALUES TWENTY_QUALIFIED_STAGE_VALUE; do
             if ! grep -q -- "$variable_name" <<<"$configured_variables"; then
               echo "Trigger.dev Production variable $variable_name is not configured"
               exit 1
@@ -244,7 +227,6 @@ jobs:
 
       - name: Build Production
         env:
-          PUBLIC_AI_SEO_VERTICAL: ${{ vars.PUBLIC_AI_SEO_VERTICAL || 'lawyers' }}
           PUBLIC_PULPSENSE_ENVIRONMENT: production
           PUBLIC_META_PIXEL_ID_AI_SEO_D: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_D }}
           PUBLIC_META_PIXEL_ID_AI_SEO_L: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_L }}

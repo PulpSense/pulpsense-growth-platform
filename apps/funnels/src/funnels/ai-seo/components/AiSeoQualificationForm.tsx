@@ -10,7 +10,7 @@ import {
   stripPhoneToDigits,
 } from "@/components/ui/phone";
 import { COUNTRIES, type Country } from "@/components/ui/phoneCountries";
-import type { AiSeoFunnelId } from "@/funnels/ai-seo/meta-destination";
+import type { AiSeoFunnelId } from "@/funnels/ai-seo/campaigns";
 import { useFunnelSubmission } from "@/lib/funnel/use-funnel-submission";
 import { isBusinessEmail } from "@/utils/businessEmail";
 import { getBrowserCookie } from "@/utils/browserCookie";
@@ -57,7 +57,7 @@ type Props = {
   calLink: string;
   calNamespace?: string;
   turnstileSiteKey?: string;
-  qualifiedRedirect?: string;
+  qualifiedRedirect: string;
 };
 
 const initialContact: ContactData = {
@@ -73,7 +73,7 @@ export function AiSeoQualificationForm({
   calLink,
   calNamespace,
   turnstileSiteKey,
-  qualifiedRedirect = "/ai-seo/thank-you/",
+  qualifiedRedirect,
 }: Props) {
   const [step, setStep] = useState<Step>("owner");
   const [contact, setContact] = useState<ContactData>(initialContact);
