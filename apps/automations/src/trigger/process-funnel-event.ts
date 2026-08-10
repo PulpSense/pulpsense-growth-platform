@@ -1,5 +1,6 @@
 import {
   funnelEventSchema,
+  type ApplicationAnswers,
   type ApplicationSubmittedEvent,
   type BookingCompletedEvent,
   type ContactSubmittedEvent,
@@ -296,14 +297,9 @@ export const resolveMetaEnvironment = (
   META_CAPI_ACCESS_TOKEN?: string;
   META_TEST_EVENT_CODE?: string;
 } => ({
-  META_PIXEL_ID:
-    environment.META_PIXEL_ID_AI_SEO_L || environment.META_PIXEL_ID,
-  META_CAPI_ACCESS_TOKEN:
-    environment.META_CAPI_ACCESS_TOKEN_AI_SEO_L ||
-    environment.META_CAPI_ACCESS_TOKEN,
-  META_TEST_EVENT_CODE:
-    environment.META_TEST_EVENT_CODE_AI_SEO_L ||
-    environment.META_TEST_EVENT_CODE,
+  META_PIXEL_ID: environment.META_PIXEL_ID,
+  META_CAPI_ACCESS_TOKEN: environment.META_CAPI_ACCESS_TOKEN,
+  META_TEST_EVENT_CODE: environment.META_TEST_EVENT_CODE,
 });
 
 const required = (value: string | undefined, name: string) => {
@@ -520,8 +516,6 @@ const deterministicUuid = async (identity: string) => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 
-type ApplicationAnswers = ApplicationSubmittedEvent["payload"]["application"];
-
 const paidSocialSpendValues = {
   "Less than $20k/month": "LESS_THAN_20K_MONTH",
   "$20k - $50k/month": "FROM_20K_TO_50K_MONTH",
@@ -701,11 +695,16 @@ const recordTwentyApplication = async (
     client,
     {
       ...(attemptOpportunityId ? { id: attemptOpportunityId } : {}),
-      name: `Creative Multiplier Sprint – ${event.companyDomain}`,
+      name:
+        event.funnelId === "ai-seo"
+          ? `AI SEO – ${event.companyDomain}`
+          : `Creative Multiplier Sprint – ${event.companyDomain}`,
       ...(openOpportunity ? {} : { stage }),
       pointOfContactId: personId,
       ...(companyId ? { companyId } : {}),
-      ...twentyOpportunityProjection(event.payload.application),
+      ...(event.funnelId === "creative-multiplier-sprint"
+        ? twentyOpportunityProjection(event.payload.application)
+        : {}),
     },
     openOpportunity?.id,
   );

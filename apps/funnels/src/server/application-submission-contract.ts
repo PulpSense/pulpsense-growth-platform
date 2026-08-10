@@ -1,4 +1,7 @@
-import { applicationAnswersSchema } from "@pulpsense/contracts";
+import {
+  aiSeoApplicationAnswersSchema,
+  applicationAnswersSchema,
+} from "@pulpsense/contracts";
 import { z } from "zod";
 
 const submissionIdentitySchema = z
@@ -8,13 +11,11 @@ const submissionIdentitySchema = z
   })
   .strict();
 
-export const applicationSubmissionRequestSchema = z
+const applicationSubmissionRequestBase = z
   .object({
     schemaVersion: z.literal(1),
     eventType: z.literal("application_submitted"),
-    funnelId: z.literal("creative-multiplier-sprint"),
     identity: submissionIdentitySchema,
-    payload: applicationAnswersSchema,
     sourceUrl: z.url().max(2048),
     referrer: z.url().max(2048).optional(),
     fbp: z.string().max(255).optional(),
@@ -22,6 +23,20 @@ export const applicationSubmissionRequestSchema = z
     analyticsId: z.uuid().optional(),
   })
   .strict();
+
+export const applicationSubmissionRequestSchema = z.discriminatedUnion(
+  "funnelId",
+  [
+    applicationSubmissionRequestBase.extend({
+      funnelId: z.literal("creative-multiplier-sprint"),
+      payload: applicationAnswersSchema,
+    }),
+    applicationSubmissionRequestBase.extend({
+      funnelId: z.literal("ai-seo"),
+      payload: aiSeoApplicationAnswersSchema,
+    }),
+  ],
+);
 
 export type ApplicationSubmissionRequest = z.infer<
   typeof applicationSubmissionRequestSchema

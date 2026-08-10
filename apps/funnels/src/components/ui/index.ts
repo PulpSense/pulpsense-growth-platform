@@ -3,8 +3,6 @@ export { Background } from "./Background";
 export { ContentCard } from "./ContentCard";
 export { FormEmbed } from "./FormEmbed";
 export { FunnelAnalytics } from "./FunnelAnalytics";
-export { MultiStepForm } from "./MultiStepForm";
-export type { MultiStepFormConfig } from "./MultiStepForm";
 export { GradientButton } from "./GradientButton";
 export { HighlightBox } from "./HighlightBox";
 export { Logo } from "./Logo";

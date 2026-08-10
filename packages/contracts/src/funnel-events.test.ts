@@ -37,6 +37,41 @@ describe("funnel event contract", () => {
     );
   });
 
+  it("normalizes an omitted AI SEO last name and accepts its owner qualification", () => {
+    const aiSeoContact = contactSubmittedEventSchema.parse({
+      ...acceptedEvent,
+      funnelId: "ai-seo",
+      payload: {
+        firstName: "Maya",
+        email: "maya@brand.com",
+        phone: "+1 555 123 4567",
+        emailVerification: { status: "verified", result: "business" },
+      },
+      requestContext: {
+        ...acceptedEvent.requestContext,
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
+      },
+    });
+    expect(aiSeoContact.payload.lastName).toBe("");
+
+    expect(
+      applicationSubmittedEventSchema.parse({
+        ...aiSeoContact,
+        eventType: "application_submitted",
+        eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+        payload: {
+          ...aiSeoContact.payload,
+          application: { businessOwner: "yes" },
+        },
+        qualificationStatus: "qualified",
+        companyDomain: "brand.com",
+      }),
+    ).toMatchObject({
+      funnelId: "ai-seo",
+      payload: { application: { businessOwner: "yes" } },
+    });
+  });
+
   it("rejects unsupported schema versions at task execution", () => {
     expect(
       contactSubmittedEventSchema.safeParse({

@@ -1,7 +1,9 @@
 import {
   applicationSubmittedEventSchema,
   contactSubmittedEventSchema,
+  funnelIdSchema,
   type ContactSubmittedEvent,
+  type FunnelId,
   type FunnelEvent,
 } from "@pulpsense/contracts";
 import { isBusinessEmail } from "@/utils/businessEmail";
@@ -75,7 +77,7 @@ type RetryClaims = {
 
 export type BookingClaims = {
   submissionId: string;
-  funnelId: "creative-multiplier-sprint";
+  funnelId: FunnelId;
   qualificationStatus: "qualified";
   contact: ContactSubmittedEvent["payload"] & {
     emailVerification: { status: "verified"; result: "business" };
@@ -223,7 +225,7 @@ export const readBookingToken = async (
       !contactSubmittedEventSchema.shape.submissionId.safeParse(
         claims.submissionId,
       ).success ||
-      claims.funnelId !== "creative-multiplier-sprint" ||
+      !funnelIdSchema.safeParse(claims.funnelId).success ||
       claims.qualificationStatus !== "qualified" ||
       !contact.success ||
       contact.data.emailVerification.status !== "verified" ||
@@ -320,11 +322,14 @@ export async function handleFunnelEvent(request: Request, env: FunnelEnv) {
     }
 
     const qualificationStatus =
-      parsedApplication.data.payload.paidSocialSpend ===
-        "Less than $20k/month" ||
-      parsedApplication.data.payload.winnerStatus === "No proven winner yet"
-        ? "unqualified"
-        : "qualified";
+      parsedApplication.data.funnelId === "ai-seo"
+        ? "qualified"
+        : parsedApplication.data.payload.paidSocialSpend ===
+              "Less than $20k/month" ||
+            parsedApplication.data.payload.winnerStatus ===
+              "No proven winner yet"
+          ? "unqualified"
+          : "qualified";
     const submissionId = identity.submissionId;
     const eventId = `application_submitted:${submissionId}`;
     const emailDomain = identity.contact.email.split("@").at(-1);

@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { resolveMetaEnvironment } from "./process-funnel-event.js";
 
 describe("resolveMetaEnvironment", () => {
-  it("prefers the lawyer-scoped Meta variables", () => {
+  it("uses the shared funnel Meta variables", () => {
     expect(
       resolveMetaEnvironment({
         META_PIXEL_ID: "generic-pixel",
@@ -14,9 +14,9 @@ describe("resolveMetaEnvironment", () => {
         META_TEST_EVENT_CODE_AI_SEO_L: "LAWYER",
       }),
     ).toEqual({
-      META_PIXEL_ID: "lawyer-pixel",
-      META_CAPI_ACCESS_TOKEN: "lawyer-token",
-      META_TEST_EVENT_CODE: "LAWYER",
+      META_PIXEL_ID: "generic-pixel",
+      META_CAPI_ACCESS_TOKEN: "generic-token",
+      META_TEST_EVENT_CODE: "GENERIC",
     });
   });
 

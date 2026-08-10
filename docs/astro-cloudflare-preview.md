@@ -46,7 +46,7 @@ The command targets project `pulpsense-funnels-preview` and branch `issue-81`. D
 
 The issue #81 preview is available at:
 
-- <https://issue-81.pulpsense-funnels-preview.pages.dev/creative-multiplier-sprint/>
+- <https://issue-81.pulpsense-funnels-preview.pages.dev/ai-seo/>
 
 The Pages project's production branch is `never-production`, so the `issue-81` deployment remains a Preview deployment. No custom domain or production credentials are attached.
 

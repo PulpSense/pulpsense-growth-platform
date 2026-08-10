@@ -1,132 +1,79 @@
-# Creative Multiplier Sprint parity baseline
+# Funnel parity and architecture checklist
 
-This checklist captures the user-visible behavior of the transitional Next.js funnel at the monorepo checkpoint for issue #80. The Astro replacement must preserve these journeys unless a later ticket explicitly changes them.
-
-## Reproduce the checkpoint
-
-From the repository root:
-
-```bash
-pnpm install --frozen-lockfile
-pnpm --filter @pulpsense/funnels lint
-pnpm --filter @pulpsense/funnels check-types
-pnpm --filter @pulpsense/funnels build
-pnpm --filter @pulpsense/funnels check-parity
-pnpm --filter @pulpsense/automations check-types
-pnpm --filter @pulpsense/automations dev
-```
-
-The two applications have separate manifests and can be selected independently:
-
-```bash
-pnpm install --filter @pulpsense/funnels... --frozen-lockfile
-pnpm --filter @pulpsense/funnels dev
-
-pnpm install --filter @pulpsense/automations... --frozen-lockfile
-pnpm --filter @pulpsense/automations dev
-```
+This checklist protects the shared funnel platform while individual funnel copy,
+media, and section order evolve. AI SEO is the current visual reference for new
+funnels.
 
 ## Public routes
 
-All public funnel pages inherit the root `robots` metadata, the global `X-Robots-Tag` response header, and the disallow-all `robots.txt` policy.
+| Route                | Purpose                                        |
+| -------------------- | ---------------------------------------------- |
+| `/ai-seo/`           | AI SEO lander, qualification, contact, booking |
+| `/ai-seo/thank-you/` | Post-booking instructions and proof            |
 
-| Route                                      | Existing purpose                                                                         | Parity check                                                                                                                     |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `/creative-multiplier-sprint/`             | Lander, proof, offer details, fit guidance, application form, and qualified booking step | Page renders the current copy, media, section order, responsive layout, sticky mobile CTA, form, and footer.                     |
-| `/creative-multiplier-sprint/thank-you/`   | Qualified, successfully booked outcome                                                   | Shows “Call confirmed,” pre-call instructions, proof videos, and the legal footer.                                               |
-| `/creative-multiplier-sprint/unqualified/` | Completed but unqualified application outcome                                            | Shows “Application received,” explains the current fit threshold, and invites a later reapplication. No booking widget is shown. |
+For every public funnel route, confirm:
 
-For every route above, confirm:
+- HTML includes `noindex, nofollow` metadata;
+- responses include `X-Robots-Tag: noindex, nofollow, noarchive, noimageindex`;
+- `/robots.txt` disallows every crawler;
+- canonical routes retain trailing slashes;
+- static copy, media, responsive layout, and CTA placement match the approved
+  reference.
 
-- the HTML contains `noindex, nofollow` robots metadata;
-- the response contains `X-Robots-Tag: noindex, nofollow, noarchive, noimageindex`;
-- `/robots.txt` returns `User-agent: *` and `Disallow: /`;
-- the route keeps its trailing-slash behavior.
+## Source structure
 
-## Lander and responsive behavior
+- `src/pages/[funnel]/` contains only thin Astro route entrypoints.
+- Funnel-specific visual documents and islands live in `src/funnels/[funnel]/`.
+- Shared form, booking, tracking, and presentation primitives live in
+  `src/components/` or `src/funnels/` at the narrowest reusable seam.
+- New funnels use the AI SEO visual language without copying provider or account
+  identifiers into browser code.
 
-- The desktop headline is “Turn one winning ad into 10 avatar videos in 2 business days.” The small-screen headline is “10 avatar videos from one winning ad.”
-- Primary CTAs scroll to `#apply`; the secondary proof flow scrolls to `#proof`.
-- The hero output mockup is desktop-only, while the primary hero CTA is hidden on the smallest breakpoint and the sticky CTA supplies the mobile action.
-- The proof gallery retains 12 vertical examples and their current posters/videos.
-- The carousel, proof video controls, comparison, deliverables, fit guidance, testimonials, FAQ, application panel, disclaimer, and legal links retain their current content and order.
-- The application panel remains responsive inside its fixed page region. The embedded Cal.com booking view currently manages its own scroll area.
+## Contact and qualification
 
-## Application journey
+- Required fields are first name, business email, and phone; last name is
+  optional.
+- Email is checked client-side, synchronously verified by `/api/verify-email`,
+  and verified again by the funnel-host submission boundary.
+- Phone input uses the shared country rules, formatting, and digit validation.
+- Turnstile, same-origin checks, and Cloudflare rate limiting remain enabled.
+- The browser submits to `/api/funnel-events`; it never calls CRM or automation
+  provider webhooks directly.
+- Qualification is computed and signed by the funnel host before booking is
+  exposed.
 
-### Step 1 — contact
+## Lifecycle delivery
 
-- Required fields are first name, last name, business email, and phone.
-- Personal/free email domains fail client-side validation. On blur, an otherwise eligible email is checked through `/api/verify-email`.
-- MillionVerifier `ok` and `catch_all` results pass. Known invalid results fail. A missing API key or provider/network failure currently fails open.
-- Phone input uses a searchable country picker, country-specific length validation, and submits the country code with the formatted number.
-- Advancing sends `contact_submitted` to `/api/form-submit` and emits Meta `Lead` once per mounted form.
+- Accepted lifecycle events are durably enqueued to `process-funnel-event` with
+  their event ID as the idempotency key.
+- Trigger.dev owns Twenty upserts, opportunity/activity delivery, Meta CAPI,
+  PostHog lifecycle events, retries, and failure alerts.
+- Browser Meta events reuse server event IDs for deduplication and contain no
+  raw form answers in custom data.
+- Browser PostHog events use the shared environment-configured project and the
+  privacy allowlist.
 
-### Step 2 — qualification
+## Booking
 
-- Required fields are brand URL, monthly paid-social spend, winning-ad status, one or more target platforms, and delivery timeline.
-- The brand URL is normalized to `https://...` in the submitted form state.
-- A submission is unqualified when either:
-  - monthly paid-social spend is `Less than $20k/month`; or
-  - winning-ad status is `No proven winner yet`.
-- Advancing sends `application_submitted` with `qualified` and `qualificationStatus`, then emits Meta `SubmitApplication` once per mounted form.
-- An unqualified applicant is redirected immediately to `/creative-multiplier-sprint/unqualified` and never sees the booking step.
-- Only a server-qualified applicant with a verified business email receives the signed identity required to advance to the Cal.com step.
+- Cal is loaded only after the funnel host returns an encrypted booking identity.
+- The configured Cal link and namespace come from `PUBLIC_CAL_LINK` and
+  `PUBLIC_CAL_NAMESPACE`; preview must never fall back to production.
+- A browser `bookingSuccessful` event may navigate to the thank-you page for
+  immediate UX only.
+- Only a signed `BOOKING_CREATED` webhook with matching attendee and booking
+  identity may create `booking_completed`, advance Twenty, or emit Meta
+  `Schedule` and PostHog booking lifecycle events.
 
-### Step 3 — qualified booking
+## Release verification
 
-- The embedded event is `santileoni/funnel`, namespaced `funnel`, using the dark month view.
-- Contact and qualification answers prefill the booking widget where Cal.com accepts them.
-- A `bookingSuccessful` browser event redirects to `/creative-multiplier-sprint/thank-you` for immediate UX only.
-- Cal's signed `BOOKING_CREATED` webhook is the sole source of `booking_completed`, Twenty stage advancement, and Meta `Schedule`.
-- The booking UID determines the durable event ID and the idempotent Twenty booking activity identity.
-- The Back control returns to qualification without clearing the mounted form state.
+Run:
 
-## Attribution and tracking behavior
+```bash
+pnpm build
+pnpm check-types
+pnpm lint
+pnpm --filter @pulpsense/funnels check-parity
+```
 
-- First-touch and last-touch attribution retain campaign parameters, supported ad click IDs, query-free landing URLs, and query-free referrers across contact, application, and verified booking events.
-- Meta Pixel `828948073514575` loads after the first interaction or a two-second idle fallback and emits `PageView` on the lander.
-- Browser Pixel and durable CAPI use the same generated event ID for `Lead` and `SubmitApplication`; verified `Schedule` is server-only and uses `booking_completed:{calBookingUid}`.
-- Meta CAPI hashes email and phone, includes request IP/user agent plus `_fbc`/`_fbp` when available, and forwards custom event data.
-- As of this checkpoint, `SubmitApplication` custom data includes `qualification_status`, `paid_social_spend`, and `winner_status`. This is a parity fact, not an endorsement of the later target design.
-- `/api/funnel-events` accepts contact and application events. `/api/form-submit` rejects browser-submitted `booking_completed`, and `/api/meta-capi` rejects browser-originated `Schedule`.
-- `/api/webhooks/cal` verifies `x-cal-signature-256`, the signed qualified submission identity, environment, and attendee email before enqueueing a booking event.
-- PostHog receives allowlisted funnel-view, step, validation, qualification-outcome, CTA, media, and booking-interaction events after visitor interaction; lifecycle processing separately emits redacted contact, application, and verified-booking events under the same anonymous analytics ID.
-- PostHog payloads never include email, phone, names, free text, brand URLs, or raw application answers. Browser delivery failures raise `pulpsense:analytics-failure`; automation delivery failures produce redacted run logs without interrupting the journey.
-
-## Manual parity sign-off
-
-`pnpm check-parity` is the executable HTTP baseline. It starts the production build and asserts each public page's status, crawler controls, and stable journey copy markers, plus the disallow-all `robots.txt`. Visual and browser-only interactions remain manual checks.
-
-- [ ] Lander matches the checkpoint at desktop and mobile widths.
-- [ ] Contact validation and email-verification states match.
-- [ ] Qualified answers reach the Cal.com booking step.
-- [ ] Unqualified spend redirects to the unqualified page.
-- [ ] Missing winning-ad proof redirects to the unqualified page.
-- [ ] Successful booking reaches the qualified thank-you page.
-- [ ] Lifecycle payloads retain form fields, country-coded phone, timestamps, funnel ID, and captured UTM values.
-- [ ] PageView, Lead, and SubmitApplication fire at the same journey points; Schedule fires only after the authenticated Cal webhook with a booking-UID-derived event ID.
-- [ ] All three public pages and `robots.txt` retain crawler blocking.
-- [ ] No copy, qualification rule, redirect, booking link, media, or responsive interaction changed during the monorepo move.
-
-## Checkpoint verification — 2026-08-08
-
-- `pnpm install --frozen-lockfile`: passed for all workspace projects with pnpm 11.20.0.
-- Funnel lint, TypeScript, and Next.js production build: passed.
-- Executable production HTTP parity check: passed for all three public pages and `robots.txt`.
-- Automation TypeScript: passed.
-- Production response checks: all three public funnel routes returned 200 with the expected robots metadata and `X-Robots-Tag`; `/robots.txt` returned the disallow-all policy.
-- Trigger.dev Development worker: registered `health-check` in version `20260808.1`.
-- Harmless run `run_06fu42eqjmsg2p255dnedj4t01`: completed successfully in 5 ms with `ok: true` and message `Issue #80 checkpoint`.
-
-## Astro preview verification — 2026-08-08
-
-- Cloudflare Pages Preview: <https://issue-81.pulpsense-funnels-preview.pages.dev/creative-multiplier-sprint/>
-- Dedicated project: `pulpsense-funnels-preview`; production branch: `never-production`; deployed branch: `issue-81`.
-- The desktop and mobile lander matched the Next.js checkpoint in browser comparison.
-- Carousel controls, contact validation, qualified Cal.com progression, and unqualified redirects passed in-browser checks.
-- Proof video sources remained detached above the fold and attached near `#proof`; Cal.com stayed unmounted until the qualified booking step.
-- Browser console checks returned no errors or warnings.
-- The executable parity check passed against the public preview for all three routes, six narrow React island exports, three sandbox API fallbacks, and `robots.txt`.
-- The preview response includes `X-Robots-Tag: noindex, nofollow, noarchive, noimageindex`; each page includes noindex metadata; `robots.txt` disallows all crawling.
-- The historical deployment had no production Pixel ID or runtime credentials. Current preview builds instead require an explicit non-production `PUBLIC_META_PIXEL_ID` and `PUBLIC_CAL_LINK`, reject the known production Pixel ID, and exercise passive `PageView` loading through the idle fallback.
+Verify the immutable preview with sandbox PostHog, Meta, Cal, Turnstile,
+MillionVerifier, Trigger.dev, and Twenty destinations before production cutover.

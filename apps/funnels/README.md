@@ -1,6 +1,6 @@
 # PulpSense Funnels
 
-The Creative Multiplier Sprint is rendered as a static Astro site for Cloudflare Pages. React components provide narrowly scoped carousel, form, video, tracking, and sticky-CTA islands. Cloudflare deployment history is the application rollback mechanism.
+The AI SEO funnel is rendered as a static Astro site for Cloudflare Pages. Astro owns the visual document and React islands provide narrowly scoped form, booking, and tracking behavior. Cloudflare deployment history is the application rollback mechanism.
 
 ## Tech stack
 
@@ -19,7 +19,7 @@ pnpm install
 pnpm dev
 ```
 
-Open <http://localhost:4321/creative-multiplier-sprint/>.
+Open <http://localhost:4321/ai-seo/>.
 
 ## Scripts
 
