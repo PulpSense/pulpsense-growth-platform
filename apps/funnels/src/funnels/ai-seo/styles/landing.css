@@ -649,7 +649,7 @@ body {
     #pr-tf-step-calendar.pr-tf-step.is-active
     .pr-form-embed--booking
     iframe {
-    min-height: clamp(34rem, 68vh, 52rem);
+    min-height: clamp(32rem, 56vh, 42rem);
     overflow: auto;
   }
 }
