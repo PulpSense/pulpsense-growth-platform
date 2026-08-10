@@ -87,9 +87,8 @@ export async function processApplicationSubmission(
     const runId = await enqueueFunnelEvent(event, env);
     const bookingEligible =
       qualificationStatus === "qualified" &&
-      ((identity.emailVerification.status === "verified" &&
-        identity.emailVerification.result === "business") ||
-        identity.emailVerification.result === "provider_error");
+      identity.emailVerification.status === "verified" &&
+      identity.emailVerification.result === "business";
     const bookingIdentity = bookingEligible
       ? {
           submissionId,
