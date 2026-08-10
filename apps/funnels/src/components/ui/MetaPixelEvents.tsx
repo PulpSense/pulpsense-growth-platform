@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
+import { useEffect } from "react";
 
-import { trackMetaEvent } from '@/utils/metaCapi';
+import { trackMetaEvent } from "@/utils/metaCapi";
 
 type MetaPixelEventsProps = {
   events: string[];

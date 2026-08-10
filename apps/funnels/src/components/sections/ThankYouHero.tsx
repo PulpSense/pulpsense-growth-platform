@@ -1,6 +1,6 @@
-import { VideoEmbed } from '@/components/ui/VideoEmbed';
+import { VideoEmbed } from "@/components/ui/VideoEmbed";
 
-import type { ThankYouHeroProps } from './types';
+import type { ThankYouHeroProps } from "./types";
 
 const ThankYouHero = ({
   title,
@@ -10,7 +10,7 @@ const ThankYouHero = ({
   videoPlaceholder,
 }: ThankYouHeroProps) => {
   return (
-    <section className="px-4 pb-12 pt-8 text-center">
+    <section className="px-4 pt-8 pb-12 text-center">
       <h1 className="mb-3 text-3xl font-black text-white md:text-4xl">
         {title}
       </h1>
@@ -22,7 +22,7 @@ const ThankYouHero = ({
               {requiredLabel}
             </span>
           )}
-          {': '}
+          {": "}
           {subtitle}
         </h2>
       )}
@@ -36,11 +36,13 @@ const ThankYouHero = ({
 
       {/* Video area */}
       {videoPlaceholder && (
-        <div className={`mx-auto max-w-2xl overflow-hidden bg-black shadow-xl ${alertMessage ? 'rounded-b-lg' : 'rounded-lg'}`}>
+        <div
+          className={`mx-auto max-w-2xl overflow-hidden bg-black shadow-xl ${alertMessage ? "rounded-b-lg" : "rounded-lg"}`}
+        >
           {videoPlaceholder.provider ? (
             <VideoEmbed video={videoPlaceholder} priority />
           ) : (
-            <div className="flex aspect-video flex-col items-center justify-center bg-navy-800 text-white">
+            <div className="bg-navy-800 flex aspect-video flex-col items-center justify-center text-white">
               {videoPlaceholder.title && (
                 <p className="mb-2 text-lg font-bold md:text-xl">
                   {videoPlaceholder.title}

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { GradientButton, PillBadge } from '@/components/ui';
+import { GradientButton, PillBadge } from "@/components/ui";
 
-import type { FounderStoryImage, FounderStoryProps } from './types';
+import type { FounderStoryImage, FounderStoryProps } from "./types";
 
 const ImageWithCaption = ({ image }: { image: FounderStoryImage }) => {
   return (
@@ -46,7 +46,7 @@ const FounderStory = ({
             <PillBadge
               variant="light"
               icon={
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[12px] font-black leading-none text-white">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[12px] leading-none font-black text-white">
                   ?
                 </span>
               }
@@ -135,7 +135,7 @@ const FounderStory = ({
 
         {/* Quote */}
         {quote && (
-          <blockquote className="mb-12 border-l-4 border-orange-500 pl-6 text-xl italic text-black">
+          <blockquote className="mb-12 border-l-4 border-orange-500 pl-6 text-xl text-black italic">
             &ldquo;{quote}&rdquo;
           </blockquote>
         )}

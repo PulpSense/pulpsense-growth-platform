@@ -1,6 +1,6 @@
-import type { VideoConfig } from '@/components/sections/types';
+import type { VideoConfig } from "@/components/sections/types";
 
-import { VideoEmbed } from './VideoEmbed';
+import { VideoEmbed } from "./VideoEmbed";
 
 type VideoPlaceholderProps = {
   video?: VideoConfig;

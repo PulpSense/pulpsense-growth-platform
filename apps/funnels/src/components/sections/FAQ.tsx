@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
-import { GradientButton, PillBadge } from '@/components/ui';
+import { GradientButton, PillBadge } from "@/components/ui";
 
-import type { FAQProps } from './types';
+import type { FAQProps } from "./types";
 
 const FAQ = ({ headerLabel, header, items, cta }: FAQProps) => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -22,7 +22,7 @@ const FAQ = ({ headerLabel, header, items, cta }: FAQProps) => {
             <PillBadge
               variant="light"
               icon={
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[12px] font-black leading-none text-white">
+                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[12px] leading-none font-black text-white">
                   ?
                 </span>
               }
@@ -40,12 +40,12 @@ const FAQ = ({ headerLabel, header, items, cta }: FAQProps) => {
           {items.map((faq, index) => (
             <div
               key={index}
-              className="overflow-hidden rounded-lg bg-navy-700/50"
+              className="bg-navy-700/50 overflow-hidden rounded-lg"
             >
               <button
                 type="button"
                 onClick={() => toggleFaq(index)}
-                className="flex w-full items-center justify-between px-6 py-4 text-left transition-colors hover:bg-navy-700"
+                className="hover:bg-navy-700 flex w-full items-center justify-between px-6 py-4 text-left transition-colors"
                 aria-expanded={openIndex === index}
               >
                 <span className="pr-4 font-semibold text-white">
@@ -53,7 +53,7 @@ const FAQ = ({ headerLabel, header, items, cta }: FAQProps) => {
                 </span>
                 <svg
                   className={`size-5 shrink-0 text-gray-400 transition-transform ${
-                    openIndex === index ? 'rotate-180' : ''
+                    openIndex === index ? "rotate-180" : ""
                   }`}
                   fill="none"
                   stroke="currentColor"
@@ -69,7 +69,7 @@ const FAQ = ({ headerLabel, header, items, cta }: FAQProps) => {
                 </svg>
               </button>
               {openIndex === index && (
-                <div className="border-t border-navy-600 px-6 py-4">
+                <div className="border-navy-600 border-t px-6 py-4">
                   <p className="text-gray-300">{faq.answer}</p>
                 </div>
               )}

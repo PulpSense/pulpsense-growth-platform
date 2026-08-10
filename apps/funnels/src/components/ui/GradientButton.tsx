@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import className from 'classnames';
-import type { ReactNode } from 'react';
+import className from "classnames";
+import type { ReactNode } from "react";
 
 type GradientButtonProps = {
   xl?: boolean;
@@ -21,20 +21,20 @@ const GradientButton = ({
   const handleClick = () => {
     if (scrollTo) {
       const element = document.getElementById(scrollTo);
-      element?.scrollIntoView({ behavior: 'smooth' });
+      element?.scrollIntoView({ behavior: "smooth" });
     }
     onClick?.();
   };
 
   const btnClass = className(
-    'inline-block rounded-lg text-center text-white font-bold cursor-pointer border-none shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl',
+    "inline-block rounded-lg text-center text-white font-bold cursor-pointer border-none shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl",
     {
-      'text-xl py-5 px-10': xl,
-      'text-lg py-3 px-6': !xl,
+      "text-xl py-5 px-10": xl,
+      "text-lg py-3 px-6": !xl,
     },
   );
 
-  const style = { background: 'linear-gradient(90deg, #FF5B23, #F2BB06)' };
+  const style = { background: "linear-gradient(90deg, #FF5B23, #F2BB06)" };
 
   if (href) {
     return (

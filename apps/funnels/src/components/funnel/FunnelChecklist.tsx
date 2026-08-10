@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 type FunnelChecklistProps = {
   items: string[];
@@ -13,7 +13,7 @@ export function FunnelChecklist({
   className,
   itemClassName,
   markerClassName,
-  marker = '✓',
+  marker = "✓",
 }: FunnelChecklistProps) {
   return (
     <ul className={className}>

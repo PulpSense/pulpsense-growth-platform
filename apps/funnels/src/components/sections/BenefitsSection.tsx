@@ -1,18 +1,17 @@
-import { GradientButton } from '@/components/ui';
+import { GradientButton } from "@/components/ui";
 
-import type { BenefitsSectionProps } from './types';
+import type { BenefitsSectionProps } from "./types";
 
-const BenefitsSection = ({
-  headline,
-  benefits,
-  cta,
-}: BenefitsSectionProps) => {
+const BenefitsSection = ({ headline, benefits, cta }: BenefitsSectionProps) => {
   return (
     <section className="bg-navy-900 py-16">
       <div className="mx-auto max-w-5xl px-4">
         <h2 className="mb-8 text-center text-2xl font-bold text-white md:text-3xl">
-          {headline.split('\n').map((line, i) => (
-            <span key={i}>{i > 0 && <br />}{line}</span>
+          {headline.split("\n").map((line, i) => (
+            <span key={i}>
+              {i > 0 && <br />}
+              {line}
+            </span>
           ))}
         </h2>
         <ul className="mx-auto max-w-2xl space-y-4">

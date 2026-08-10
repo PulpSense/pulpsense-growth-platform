@@ -1,4 +1,4 @@
-import type { TestimonialsSectionProps } from './types';
+import type { TestimonialsSectionProps } from "./types";
 
 const StarIcon = () => (
   <svg
@@ -11,7 +11,7 @@ const StarIcon = () => (
 );
 
 const TestimonialsSection = ({
-  header = 'What Our Clients Say',
+  header = "What Our Clients Say",
   testimonials,
 }: TestimonialsSectionProps) => {
   return (
@@ -26,7 +26,7 @@ const TestimonialsSection = ({
           {testimonials.map((testimonial, index) => (
             <div
               key={index}
-              className="rounded-xl border-l-4 border-orange-500 bg-navy-800 p-6"
+              className="bg-navy-800 rounded-xl border-l-4 border-orange-500 p-6"
             >
               {/* Stars */}
               <div className="mb-4 flex gap-1">
@@ -36,7 +36,7 @@ const TestimonialsSection = ({
               </div>
 
               {/* Quote */}
-              <p className="mb-6 text-gray-300 leading-relaxed">
+              <p className="mb-6 leading-relaxed text-gray-300">
                 &quot;{testimonial.quote}&quot;
               </p>
 
@@ -53,7 +53,7 @@ const TestimonialsSection = ({
                     className="size-12 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="flex size-12 items-center justify-center rounded-full bg-navy-700 text-lg font-semibold text-gray-400">
+                  <div className="bg-navy-700 flex size-12 items-center justify-center rounded-full text-lg font-semibold text-gray-400">
                     {testimonial.name.charAt(0)}
                   </div>
                 )}

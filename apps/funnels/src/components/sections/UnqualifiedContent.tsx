@@ -1,4 +1,4 @@
-import type { UnqualifiedContentProps } from './types';
+import type { UnqualifiedContentProps } from "./types";
 
 const UnqualifiedContent = ({
   followUpMessage,
@@ -36,7 +36,7 @@ const UnqualifiedContent = ({
 
         {/* Reapply link */}
         <p className="text-center text-sm text-gray-500">
-          {reapplyText}{' '}
+          {reapplyText}{" "}
           <a
             href={reapplyHref}
             className="font-semibold text-orange-500 underline hover:text-orange-400"

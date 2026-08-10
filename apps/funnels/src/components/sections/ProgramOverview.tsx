@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { GradientButton } from '@/components/ui';
+import { GradientButton } from "@/components/ui";
 
-import type { ProgramOverviewProps } from './types';
+import type { ProgramOverviewProps } from "./types";
 
 const ProgramOverview = ({
   header,
@@ -17,7 +17,7 @@ const ProgramOverview = ({
         {/* Content card with subtle shadow */}
         <div className="rounded-2xl bg-white px-8 py-10 shadow-[0_4px_40px_rgba(0,0,0,0.08)] md:px-12">
           {/* Section header */}
-          <h2 className="mb-8 text-center text-2xl font-bold text-navy-900 md:text-3xl">
+          <h2 className="text-navy-900 mb-8 text-center text-2xl font-bold md:text-3xl">
             {header}
           </h2>
 
@@ -31,7 +31,7 @@ const ProgramOverview = ({
           {/* Highlight box */}
           {highlightBox && (
             <div className="mb-8 border-l-4 border-orange-500 bg-gray-50 px-6 py-4">
-              <p className="font-bold text-navy-900 underline decoration-orange-400 decoration-2 underline-offset-2">
+              <p className="text-navy-900 font-bold underline decoration-orange-400 decoration-2 underline-offset-2">
                 {highlightBox.title}
               </p>
               <p className="mt-2 text-gray-700">{highlightBox.content}</p>
@@ -60,7 +60,9 @@ const ProgramOverview = ({
                   </svg>
                 </div>
                 <div>
-                  <span className="font-bold text-navy-900">{feature.title}</span>
+                  <span className="text-navy-900 font-bold">
+                    {feature.title}
+                  </span>
                   {feature.text && (
                     <span className="text-gray-700"> — {feature.text}</span>
                   )}

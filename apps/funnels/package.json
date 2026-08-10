@@ -16,7 +16,8 @@
     "check-release-performance": "node scripts/check-release-performance.mjs",
     "clean": "rimraf .astro dist",
     "lint": "eslint .",
-    "format": "eslint . --fix && prettier 'src/**/*.astro' 'package.json' 'tsconfig.json' --write",
+    "format": "eslint . --fix && prettier 'src/**/*.{ts,tsx,astro}' 'package.json' 'tsconfig.json' --write",
+    "format:check": "prettier 'src/**/*.{ts,tsx,astro}' 'package.json' 'tsconfig.json' --check",
     "check-types": "astro check && tsc --noEmit --pretty"
   },
   "dependencies": {

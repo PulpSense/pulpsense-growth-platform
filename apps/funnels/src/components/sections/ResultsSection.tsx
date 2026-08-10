@@ -1,4 +1,4 @@
-import type { ResultsSectionProps } from './types';
+import type { ResultsSectionProps } from "./types";
 
 const ResultsSection = ({ header, stats }: ResultsSectionProps) => {
   return (

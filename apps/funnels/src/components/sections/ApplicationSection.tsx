@@ -1,6 +1,6 @@
-import { FormEmbed } from '@/components/ui';
+import { FormEmbed } from "@/components/ui";
 
-import type { ApplicationSectionProps } from './types';
+import type { ApplicationSectionProps } from "./types";
 
 const ApplicationSection = ({
   header,
@@ -12,7 +12,7 @@ const ApplicationSection = ({
     <section className="bg-white py-16">
       <div className="mx-auto max-w-3xl px-4">
         {/* Section header */}
-        <h2 className="mb-4 text-center text-2xl font-bold text-navy-900 md:text-3xl">
+        <h2 className="text-navy-900 mb-4 text-center text-2xl font-bold md:text-3xl">
           {header}
         </h2>
         <p className="mx-auto mb-8 max-w-xl text-center text-gray-600">

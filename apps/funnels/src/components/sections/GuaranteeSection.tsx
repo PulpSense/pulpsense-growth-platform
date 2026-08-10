@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import type { GuaranteeSectionProps } from './types';
+import type { GuaranteeSectionProps } from "./types";
 
 const GuaranteeSection = ({
   headline,
@@ -9,8 +9,8 @@ const GuaranteeSection = ({
   cta,
 }: GuaranteeSectionProps) => {
   const handleClick = () => {
-    const el = document.getElementById(cta.scrollTo ?? 'checkout');
-    el?.scrollIntoView({ behavior: 'smooth' });
+    const el = document.getElementById(cta.scrollTo ?? "checkout");
+    el?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
@@ -22,7 +22,7 @@ const GuaranteeSection = ({
             <span className="block text-3xl font-extrabold text-green-400">
               {days}
             </span>
-            <span className="text-xs font-bold uppercase tracking-wide text-green-400">
+            <span className="text-xs font-bold tracking-wide text-green-400 uppercase">
               Days
             </span>
           </div>

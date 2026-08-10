@@ -1,13 +1,13 @@
-import type { CTASectionProps } from './types';
+import type { CTASectionProps } from "./types";
 
 const CTASection = ({
-  id = 'apply-section',
+  id = "apply-section",
   header,
   steps,
   cta,
   urgency,
-  cardTitle = 'Save Your Slot for a Personalized Demo',
-  cardSubtext = 'No long-term contracts. Cancel anytime.',
+  cardTitle = "Save Your Slot for a Personalized Demo",
+  cardSubtext = "No long-term contracts. Cancel anytime.",
 }: CTASectionProps) => {
   return (
     <section id={id} className="bg-white py-16">
@@ -35,7 +35,7 @@ const CTASection = ({
             href={cta.href}
             className="inline-block w-full rounded-lg px-8 py-4 text-center text-lg font-bold text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
             style={{
-              background: 'linear-gradient(90deg, #FF5B23, #F2BB06)',
+              background: "linear-gradient(90deg, #FF5B23, #F2BB06)",
             }}
           >
             {cta.text}

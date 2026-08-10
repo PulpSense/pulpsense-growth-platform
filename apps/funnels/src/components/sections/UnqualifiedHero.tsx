@@ -1,6 +1,6 @@
-import { TrustBadge } from '@/components/ui';
+import { TrustBadge } from "@/components/ui";
 
-import type { UnqualifiedHeroProps } from './types';
+import type { UnqualifiedHeroProps } from "./types";
 
 const UnqualifiedHero = ({
   trustBadge,
@@ -10,7 +10,7 @@ const UnqualifiedHero = ({
   cta,
 }: UnqualifiedHeroProps) => {
   return (
-    <section className="px-4 pb-16 pt-8 text-center">
+    <section className="px-4 pt-8 pb-16 text-center">
       <div className="mx-auto max-w-3xl">
         {/* Trust badge */}
         {trustBadge && (
@@ -49,7 +49,7 @@ const UnqualifiedHero = ({
           href={cta.href}
           className="inline-block rounded-lg px-10 py-5 text-xl font-bold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
           style={{
-            background: 'linear-gradient(90deg, #FF5B23, #F2BB06)',
+            background: "linear-gradient(90deg, #FF5B23, #F2BB06)",
           }}
         >
           {cta.text}

@@ -10,15 +10,8 @@ const WistiaPlayer = ({
   priority,
 }: WistiaPlayerProps) => {
   return (
-    <div
-      className="relative w-full"
-      style={{ aspectRatio: aspect }}
-    >
-      <script
-        src="https://fast.wistia.com/player.js"
-        async={!priority}
-        defer
-      />
+    <div className="relative w-full" style={{ aspectRatio: aspect }}>
+      <script src="https://fast.wistia.com/player.js" async={!priority} defer />
       <script
         src={`https://fast.wistia.com/embed/${mediaId}.js`}
         async={!priority}

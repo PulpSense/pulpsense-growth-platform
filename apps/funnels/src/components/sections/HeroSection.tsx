@@ -1,6 +1,6 @@
-import { GradientButton, TrustBadge, VideoPlaceholder } from '@/components/ui';
+import { GradientButton, TrustBadge, VideoPlaceholder } from "@/components/ui";
 
-import type { HeroSectionProps } from './types';
+import type { HeroSectionProps } from "./types";
 
 const HeroSection = ({
   trustBadge,
@@ -13,7 +13,7 @@ const HeroSection = ({
   cta,
 }: HeroSectionProps) => {
   return (
-    <section className="pb-6 pt-6 md:pb-8 md:pt-8">
+    <section className="pt-6 pb-6 md:pt-8 md:pb-8">
       <div className="mx-auto max-w-4xl px-4">
         {/* Trust badge */}
         <div className="mb-4 flex justify-center md:mb-6">
@@ -34,14 +34,17 @@ const HeroSection = ({
         </div>
 
         {/* Main headline */}
-        <h1 className="mb-4 text-center text-xl font-extrabold leading-tight text-white md:mb-6 md:text-2xl lg:text-3xl">
+        <h1 className="mb-4 text-center text-xl leading-tight font-extrabold text-white md:mb-6 md:text-2xl lg:text-3xl">
           {headline}
           {highlightedText && (
             <>
-              {' '}
+              {" "}
               <span className="text-orange-500">
-                {highlightedText.split('\n').map((line, i) => (
-                  <span key={i}>{i > 0 && <br />}{line}</span>
+                {highlightedText.split("\n").map((line, i) => (
+                  <span key={i}>
+                    {i > 0 && <br />}
+                    {line}
+                  </span>
                 ))}
               </span>
             </>
