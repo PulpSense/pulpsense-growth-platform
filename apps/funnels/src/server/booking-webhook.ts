@@ -1,7 +1,8 @@
 import { bookingCompletedEventSchema } from "@pulpsense/contracts";
 import { z } from "zod";
 
-import { enqueueFunnelEvent, readBookingToken } from "./contact-submission";
+import { enqueueFunnelEvent } from "./funnel-events/delivery";
+import { readBookingToken } from "./funnel-events/submission-identity";
 import type { FunnelEnv } from "./funnel-env";
 import { json } from "./http";
 

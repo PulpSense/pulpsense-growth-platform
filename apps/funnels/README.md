@@ -59,6 +59,12 @@ src/funnels/ai-seo/
 └── styles/                 # Route-specific funnel stylesheets
 ```
 
+Cloudflare files under `functions/api/` are thin adapters. Server handlers keep
+the `(request, env) => response` interface, while endpoint internals live behind
+that seam. The funnel-event handler delegates contact and application flows to
+`src/server/funnel-events/`, which also owns signed identities, request context,
+and durable Trigger.dev delivery.
+
 ## Runtime isolation
 
 Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` copied from `.dev.vars.example`, with sandbox values only. Local builds may omit browser Meta tracking. Preview builds require a non-production `PUBLIC_META_PIXEL_ID` and a non-production `PUBLIC_CAL_LINK`; the build fails if either is absent or if the known production Meta dataset is supplied.
