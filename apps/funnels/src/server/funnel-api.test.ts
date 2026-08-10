@@ -1035,7 +1035,7 @@ describe("POST /api/webhooks/cal", () => {
     );
   });
 
-  it("withholds booking from a qualified applicant whose email is unverified", async () => {
+  it("allows booking for a qualified applicant when the email verifier fails", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -1074,7 +1074,8 @@ describe("POST /api/webhooks/cal", () => {
       expect.objectContaining({
         accepted: true,
         qualificationStatus: "qualified",
-        nextStep: "unqualified",
+        nextStep: "booking",
+        bookingIdentity: expect.any(Object),
       }),
     );
     expect(fetchMock).toHaveBeenCalledTimes(4);
@@ -1256,6 +1257,31 @@ describe("POST /api/verify-email", () => {
       status: "unverified",
       result: "catch_all",
     });
+  });
+
+  it("bypasses MillionVerifier for Santi's email only", async () => {
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    const request = new Request(
+      "https://preview.pulpsense.com/api/verify-email",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://preview.pulpsense.com",
+        },
+        body: JSON.stringify({ email: "  SANTI@PULPSENSE.COM " }),
+      },
+    );
+
+    const response = await handleVerifyEmail(request, allowingRateLimit);
+
+    await expect(response.json()).resolves.toEqual({
+      valid: true,
+      status: "verified",
+      result: "business",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("fails closed for an email the verifier identifies as invalid", async () => {
