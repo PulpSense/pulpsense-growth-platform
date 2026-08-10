@@ -54,21 +54,11 @@ type TurnstileStatus =
   | "timeout"
   | "unsupported";
 
-const TURNSTILE_STATUS_MESSAGES: Record<TurnstileStatus, string> = {
-  loading: "Running security check…",
-  rendering: "Running security check…",
-  ready: "Security check complete.",
-  error: "The security check could not start. Please try again.",
-  expired: "The security check expired. Please run it again.",
-  timeout: "The security check timed out. Please try again.",
-  unsupported:
-    "This browser cannot run the security check. Please update your browser or try another one.",
-};
-
-const recoverableTurnstileStatuses = new Set<TurnstileStatus>([
+const unavailableTurnstileStatuses = new Set<TurnstileStatus>([
   "error",
   "expired",
   "timeout",
+  "unsupported",
 ]);
 
 type ContactData = {
@@ -366,7 +356,10 @@ export function AiSeoQualificationForm({
     event.preventDefault();
     if (!validateContact() || submitting) return;
     if (!turnstileToken) {
-      setSubmissionError(TURNSTILE_STATUS_MESSAGES[turnstileStatus]);
+      retryTurnstile();
+      setSubmissionError(
+        "We couldn't submit your details yet. Please try again.",
+      );
       return;
     }
     setSubmitting(true);
@@ -399,7 +392,7 @@ export function AiSeoQualificationForm({
             : contactResult.error === "rate_limited"
               ? "Too many attempts. Please wait a minute and try again."
               : contactResult.error === "turnstile_unavailable"
-                ? "The security check was not ready. Please run it again."
+                ? "We couldn't submit your details yet. Please try again."
                 : "We could not save your details yet. Please try again.",
         );
         if (!contactResult.retryAvailable && turnstileWidgetRef.current) {
@@ -553,23 +546,35 @@ export function AiSeoQualificationForm({
                   <label htmlFor="ai-seo-email">
                     Business email <span className="pr-tf-req">*</span>
                   </label>
-                  <input
-                    id="ai-seo-email"
-                    type="email"
-                    autoComplete="email"
-                    value={contact.email}
-                    onChange={(event) => {
-                      updateContact("email", event.target.value);
-                      setEmailStatus("idle");
-                    }}
-                    onBlur={() => void verifyEmail()}
-                  />
-                  {emailStatus === "verifying" && (
-                    <span className="pr-tf-legend">Verifying email…</span>
-                  )}
-                  {emailStatus === "valid" && (
-                    <span className="pr-tf-legend">Email verified</span>
-                  )}
+                  <div className="pr-tf-email-control">
+                    <input
+                      id="ai-seo-email"
+                      type="email"
+                      autoComplete="email"
+                      value={contact.email}
+                      onChange={(event) => {
+                        updateContact("email", event.target.value);
+                        setEmailStatus("idle");
+                      }}
+                      onBlur={() => void verifyEmail()}
+                    />
+                    {emailStatus === "verifying" && (
+                      <span
+                        className="pr-tf-email-indicator pr-tf-email-indicator--loading"
+                        role="status"
+                        aria-label="Checking email"
+                      />
+                    )}
+                    {emailStatus === "valid" && (
+                      <span
+                        className="pr-tf-email-indicator pr-tf-email-indicator--valid"
+                        role="status"
+                        aria-label="Email verified"
+                      >
+                        ✓
+                      </span>
+                    )}
+                  </div>
                   {errors.email && (
                     <span className="pr-tf-error">{errors.email}</span>
                   )}
@@ -637,29 +642,6 @@ export function AiSeoQualificationForm({
                 </div>
               </div>
               <div ref={turnstileContainerRef} />
-              {turnstileStatus !== "ready" && (
-                <p
-                  className={
-                    recoverableTurnstileStatuses.has(turnstileStatus) ||
-                    turnstileStatus === "unsupported"
-                      ? "pr-tf-error"
-                      : "pr-tf-legend"
-                  }
-                  role="status"
-                  aria-live="polite"
-                >
-                  {TURNSTILE_STATUS_MESSAGES[turnstileStatus]}
-                </p>
-              )}
-              {recoverableTurnstileStatuses.has(turnstileStatus) && (
-                <button
-                  type="button"
-                  className="pr-tf-back"
-                  onClick={retryTurnstile}
-                >
-                  Retry security check
-                </button>
-              )}
               {submissionError && (
                 <p className="pr-tf-error" role="alert">
                   {submissionError}
@@ -671,9 +653,10 @@ export function AiSeoQualificationForm({
                   className="pr-btn"
                   disabled={
                     submitting ||
-                    !turnstileToken ||
                     emailStatus === "verifying" ||
-                    emailStatus === "invalid"
+                    emailStatus === "invalid" ||
+                    (!turnstileToken &&
+                      !unavailableTurnstileStatuses.has(turnstileStatus))
                   }
                 >
                   {submitting ? "Submitting…" : "See Available Times"}

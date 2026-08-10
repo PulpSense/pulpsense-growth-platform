@@ -26,7 +26,7 @@ export function CalBookingStep({
 }: CalBookingStepProps) {
   const config: Record<string, string> = {
     layout: "month_view",
-    theme: "dark",
+    theme: "light",
     useSlotsViewOnSmallScreen: "true",
     firstName: prefill.firstName,
     email: prefill.email,
@@ -40,7 +40,7 @@ export function CalBookingStep({
     void (async () => {
       const cal = await getCalApi({ namespace });
       cal("ui", {
-        theme: "dark",
+        theme: "light",
         cssVarsPerTheme: {
           dark: { "cal-brand": "#f97316" },
           light: { "cal-brand": "#f97316" },

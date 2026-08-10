@@ -482,6 +482,41 @@ body {
   border-color: var(--pr-blue);
   box-shadow: 0 0 0 3px rgba(0, 128, 255, 0.15);
 }
+#pr-funnel .pr-tf-email-control {
+  position: relative;
+}
+#pr-funnel .pr-tf-email-control input {
+  padding-right: 3rem;
+}
+#pr-funnel .pr-tf-email-indicator {
+  position: absolute;
+  top: 50%;
+  right: 0.875rem;
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  place-items: center;
+  transform: translateY(-50%);
+}
+#pr-funnel .pr-tf-email-indicator--loading {
+  border: 2px solid #bfdbfe;
+  border-top-color: var(--pr-blue);
+  border-radius: 999px;
+  animation: pr-email-spinner 0.7s linear infinite;
+}
+#pr-funnel .pr-tf-email-indicator--valid {
+  border-radius: 999px;
+  background: #16a34a;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+}
+@keyframes pr-email-spinner {
+  to {
+    transform: translateY(-50%) rotate(360deg);
+  }
+}
 #pr-funnel .pr-phone-field {
   display: grid;
   grid-template-columns: minmax(5.75rem, auto) 1fr;
@@ -497,6 +532,9 @@ body {
 }
 #pr-funnel .pr-form-embed--booking iframe {
   min-height: 42rem;
+}
+#pr-funnel .pr-form-embed--booking {
+  margin-top: 1.25rem;
 }
 #pr-funnel .pr-tf-field-row {
   display: grid;
