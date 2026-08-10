@@ -584,9 +584,20 @@ export function AiSeoQualificationForm({
                         ✓
                       </span>
                     )}
+                    {emailStatus === "invalid" && (
+                      <span
+                        className="pr-tf-email-indicator pr-tf-email-indicator--invalid"
+                        role="status"
+                        aria-label="Email is invalid"
+                      >
+                        ×
+                      </span>
+                    )}
                   </div>
                   {errors.email && (
-                    <span className="pr-tf-error">{errors.email}</span>
+                    <span className="pr-tf-error">
+                      Email is invalid. {errors.email}
+                    </span>
                   )}
                 </div>
                 <div className="pr-tf-field">

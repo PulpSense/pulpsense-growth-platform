@@ -1046,6 +1046,7 @@ describe("POST /api/webhooks/cal", () => {
         }),
       )
       .mockRejectedValueOnce(new Error("verifier offline"))
+      .mockResolvedValueOnce(Response.json({ Status: 0 }))
       .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
       .mockResolvedValueOnce(Response.json({ id: "run_application" }));
     vi.stubGlobal("fetch", fetchMock);
@@ -1078,7 +1079,7 @@ describe("POST /api/webhooks/cal", () => {
         bookingIdentity: expect.any(Object),
       }),
     );
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
   it("rejects a booking correlated with contact identity instead of qualified booking identity", async () => {
@@ -1376,6 +1377,40 @@ describe("POST /api/verify-email", () => {
       valid: false,
       status: "unverified",
       result: "provider_error",
+    });
+  });
+
+  it("rejects a nonexistent domain when the email verifier is unavailable", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          Response.json({ error: "unavailable" }, { status: 503 }),
+        )
+        .mockResolvedValueOnce(Response.json({ Status: 3 })),
+    );
+    const request = new Request(
+      "https://preview.pulpsense.com/api/verify-email",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "https://preview.pulpsense.com",
+        },
+        body: JSON.stringify({ email: "asdf@alksjdf.com" }),
+      },
+    );
+
+    const response = await handleVerifyEmail(request, {
+      ...allowingRateLimit,
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+    });
+
+    await expect(response.json()).resolves.toEqual({
+      valid: false,
+      status: "invalid",
+      result: "invalid",
     });
   });
 });
