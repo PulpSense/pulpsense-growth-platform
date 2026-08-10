@@ -1,5 +1,10 @@
 ---
 import { FunnelAnalytics, TrackingPixels } from "@/components/ui";
+import {
+  AI_SEO_CAMPAIGNS,
+  resolveAiSeoBrowserPixelId,
+  type AiSeoCampaign,
+} from "@/funnels/ai-seo/campaigns";
 import DisclosureFooter from "@/funnels/ai-seo/components/DisclosureFooter.astro";
 import CalendarConfirmationStep from "@/funnels/ai-seo/components/thank-you/CalendarConfirmationStep.astro";
 import ConfirmationHero from "@/funnels/ai-seo/components/thank-you/ConfirmationHero.astro";
@@ -7,7 +12,6 @@ import ReviewsSection from "@/funnels/ai-seo/components/thank-you/ReviewsSection
 import SeoAuditStep from "@/funnels/ai-seo/components/thank-you/SeoAuditStep.astro";
 import TestimonialVideosSection from "@/funnels/ai-seo/components/thank-you/TestimonialVideosSection.astro";
 import ThankYouInteractions from "@/funnels/ai-seo/components/thank-you/ThankYouInteractions.astro";
-import { resolveAiSeoVariant } from "@/funnels/ai-seo/meta-destination";
 import "@/funnels/ai-seo/styles/thank-you.css";
 import {
   createBrowserTrackingConfig,
@@ -15,18 +19,27 @@ import {
 } from "@/lib/funnel/runtime-config";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
+export function getStaticPaths() {
+  return AI_SEO_CAMPAIGNS.map((campaign) => ({
+    params: { campaign: campaign.slug },
+    props: { campaign },
+  }));
+}
+
+type Props = { campaign: AiSeoCampaign };
+
+const { campaign } = Astro.props;
 const deploymentEnvironment = parseDeploymentEnvironment(
   import.meta.env.PUBLIC_PULPSENSE_ENVIRONMENT,
 );
-const variant = resolveAiSeoVariant({
-  vertical: import.meta.env.PUBLIC_AI_SEO_VERTICAL,
-  lawyersMetaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_L,
-  dentistsMetaPixelId: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_D,
+const metaPixelId = resolveAiSeoBrowserPixelId(campaign, {
+  lawyers: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_L,
+  dentists: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_D,
 });
 const pixels = createBrowserTrackingConfig({
   environment: deploymentEnvironment,
-  metaPixelId: variant.metaPixelId,
-  productionMetaPixelId: variant.productionMetaPixelId,
+  metaPixelId,
+  productionMetaPixelId: campaign.productionMetaPixelId,
 });
 ---
 
@@ -46,7 +59,7 @@ const pixels = createBrowserTrackingConfig({
     client:interaction="idle"
     apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
     host={import.meta.env.PUBLIC_POSTHOG_HOST}
-    funnelId={variant.funnelId}
+    funnelId={campaign.funnelId}
     page="qualified"
   />
   <TrackingPixels client:interaction="idle" pixels={pixels} interactionReady />

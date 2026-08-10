@@ -46,15 +46,43 @@ const isolatedFallbackBindings = [
 
 const publicRoutes = [
   {
-    path: "/ai-seo/",
+    path: "/local-growth-6732ef498c/",
+    funnelId: "ai-seo",
+    thankYouPath: "/local-growth-6732ef498c/thank-you/",
     markers: ["45 New Calls", "See If You Qualify"],
   },
   {
-    path: "/ai-seo/thank-you/",
+    path: "/local-growth-6732ef498c/thank-you/",
+    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+  },
+  {
+    path: "/local-growth-51d2a5f4f2/",
+    funnelId: "ai-seo-dentists",
+    thankYouPath: "/local-growth-51d2a5f4f2/thank-you/",
+    markers: ["45 New Calls", "See If You Qualify"],
+  },
+  {
+    path: "/local-growth-51d2a5f4f2/thank-you/",
     markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
   },
 ];
-let landerHtml = "";
+const compatibilityRedirects = [
+  ["/local-growth-6732ef498c", "/local-growth-6732ef498c/"],
+  [
+    "/local-growth-6732ef498c/thank-you",
+    "/local-growth-6732ef498c/thank-you/",
+  ],
+  ["/local-growth-51d2a5f4f2", "/local-growth-51d2a5f4f2/"],
+  [
+    "/local-growth-51d2a5f4f2/thank-you",
+    "/local-growth-51d2a5f4f2/thank-you/",
+  ],
+  ["/ai-seo/", "/local-growth-6732ef498c/"],
+  ["/ai-seo/thank-you/", "/local-growth-6732ef498c/thank-you/"],
+  ["/vsl-p/", "/local-growth-6732ef498c/"],
+  ["/local-confirm/", "/local-growth-6732ef498c/thank-you/"],
+];
+const landerHtmlByFunnelId = new Map();
 
 async function postJson(path, body) {
   return fetch(`${origin}${path}`, {
@@ -135,7 +163,7 @@ try {
   for (const route of publicRoutes) {
     const response = await fetch(`${origin}${route.path}`);
     const html = await response.text();
-    if (route.path === "/ai-seo/") landerHtml = html;
+    if (route.funnelId) landerHtmlByFunnelId.set(route.funnelId, html);
 
     assert.equal(response.status, 200, `${route.path} should return 200`);
     assert.ok(
@@ -174,6 +202,32 @@ try {
         `${route.path} should contain ${JSON.stringify(marker)}`,
       );
     }
+
+    if (route.funnelId) {
+      assert.ok(
+        html.includes(route.funnelId),
+        `${route.path} should use the ${route.funnelId} identity`,
+      );
+      assert.ok(
+        html.includes(route.thankYouPath),
+        `${route.path} should submit to its own thank-you route`,
+      );
+    }
+  }
+
+  for (const [legacyPath, canonicalPath] of compatibilityRedirects) {
+    const response = await fetch(`${origin}${legacyPath}`, {
+      redirect: "manual",
+    });
+    const location = response.headers.get("location");
+
+    assert.equal(response.status, 301, `${legacyPath} should redirect permanently`);
+    assert.ok(location, `${legacyPath} should provide a redirect location`);
+    assert.equal(
+      new URL(location, origin).pathname,
+      canonicalPath,
+      `${legacyPath} should redirect to ${canonicalPath}`,
+    );
   }
 
   const robotsResponse = await fetch(`${origin}/robots.txt`);
@@ -190,16 +244,18 @@ try {
     "FunnelAnalytics",
     "TrackingPixels",
   ];
-  for (const island of landerIslands) {
+  for (const [funnelId, landerHtml] of landerHtmlByFunnelId) {
+    for (const island of landerIslands) {
+      assert.ok(
+        landerHtml.includes(`component-export="${island}"`),
+        `${funnelId} lander should hydrate the ${island} island`,
+      );
+    }
     assert.ok(
-      landerHtml.includes(`component-export="${island}"`),
-      `lander should hydrate the ${island} island`,
+      !landerHtml.includes("2262354061181522"),
+      `${funnelId} preview output should not include the production Pixel ID`,
     );
   }
-  assert.ok(
-    !landerHtml.includes("828948073514575"),
-    "preview output should not include the production Pixel ID",
-  );
 
   if (!externalOrigin) {
     const personalEmailResponse = await postJson("/api/verify-email", {
@@ -230,7 +286,7 @@ try {
   }
 
   console.log(
-    `Parity check passed for ${publicRoutes.length} public routes, ${landerIslands.length} React island exports, ${externalOrigin ? "non-mutating preview checks" : "two API fallbacks"}, and robots.txt.`,
+    `Parity check passed for ${publicRoutes.length} public routes, ${compatibilityRedirects.length} legacy redirects, ${landerIslands.length} React island exports, ${externalOrigin ? "non-mutating preview checks" : "two API fallbacks"}, and robots.txt.`,
   );
 } finally {
   server?.kill("SIGTERM");

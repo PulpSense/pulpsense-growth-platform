@@ -21,8 +21,7 @@ Configure the `Preview` GitHub environment with:
 | Variable | `CLOUDFLARE_ACCOUNT_ID`         | The PulpSense Cloudflare account ID                                       |
 | Variable | `CLOUDFLARE_PAGES_PROJECT`      | `pulpsense-funnels-preview`                                               |
 | Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_L` | The non-production lawyers Meta dataset used by the AI SEO funnel         |
-| Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_D` | The non-production dentist Meta dataset used by a dentist AI SEO build   |
-| Variable | `PUBLIC_AI_SEO_VERTICAL`         | `lawyers` (default) or `dentists`; selects the matching browser and CAPI destination |
+| Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_D` | The non-production dentist Meta dataset used by the dentist route         |
 | Variable | `PUBLIC_POSTHOG_KEY`            | The public PostHog project key used for privacy-allowlisted funnel events |
 | Variable | `PUBLIC_POSTHOG_HOST`           | The region-appropriate PostHog ingestion host                             |
 | Variable | `PUBLIC_CAL_LINK`               | The non-production Cal event link                                         |
@@ -72,8 +71,8 @@ pnpm test
 pnpm check-types
 pnpm lint
 PUBLIC_PULPSENSE_ENVIRONMENT=preview \
-PUBLIC_AI_SEO_VERTICAL=lawyers \
 PUBLIC_META_PIXEL_ID_AI_SEO_L=<sandbox-lawyers-dataset> \
+PUBLIC_META_PIXEL_ID_AI_SEO_D=<sandbox-dentists-dataset> \
 PUBLIC_POSTHOG_KEY=<project-key> \
 PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
 PUBLIC_CAL_LINK=<sandbox-owner/sandbox-event> \

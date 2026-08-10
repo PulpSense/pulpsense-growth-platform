@@ -6,10 +6,12 @@ funnels.
 
 ## Public routes
 
-| Route                | Purpose                                        |
-| -------------------- | ---------------------------------------------- |
-| `/ai-seo/`           | AI SEO lander, qualification, contact, booking |
-| `/ai-seo/thank-you/` | Post-booking instructions and proof            |
+| Route                                        | Purpose                                                     |
+| -------------------------------------------- | ----------------------------------------------------------- |
+| `/local-growth-6732ef498c/`                  | Lawyer campaign lander, qualification, contact, and booking |
+| `/local-growth-6732ef498c/thank-you/`        | Lawyer post-booking instructions and proof                  |
+| `/local-growth-51d2a5f4f2/`                  | Dentist campaign lander, qualification, contact, and booking |
+| `/local-growth-51d2a5f4f2/thank-you/`        | Dentist post-booking instructions and proof                 |
 
 For every public funnel route, confirm:
 
@@ -22,7 +24,7 @@ For every public funnel route, confirm:
 
 ## Source structure
 
-- `src/pages/[funnel]/` contains only thin Astro route entrypoints.
+- `src/pages/[campaign]/` contains only Astro composition shells that statically generate the opaque routes from the funnel-local campaign registry.
 - Funnel-specific visual documents and islands live in `src/funnels/[funnel]/`.
 - Shared form, booking, tracking, and presentation primitives live in
   `src/components/` or `src/funnels/` at the narrowest reusable seam.

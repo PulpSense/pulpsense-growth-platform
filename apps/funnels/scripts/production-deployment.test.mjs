@@ -58,18 +58,13 @@ describe("production deployment isolation", () => {
     expect(validation).toContain(
       "PUBLIC_META_PIXEL_ID_AI_SEO_D: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_D }}",
     );
-    expect(validation).toContain(
-      "PUBLIC_AI_SEO_VERTICAL: ${{ vars.PUBLIC_AI_SEO_VERTICAL || 'lawyers' }}",
-    );
+    expect(validation).not.toContain("PUBLIC_AI_SEO_VERTICAL");
     expect(validation).not.toContain(
       "PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}",
     );
-    expect(productionJob).toContain('dentists) meta_destination_suffix="D"');
-    expect(productionJob).toContain(
-      '"META_PIXEL_ID_AI_SEO_$meta_destination_suffix"',
-    );
-    expect(productionJob).toContain(
-      '"META_CAPI_ACCESS_TOKEN_AI_SEO_$meta_destination_suffix"',
-    );
+    expect(productionJob).toContain("META_PIXEL_ID_AI_SEO_L");
+    expect(productionJob).toContain("META_CAPI_ACCESS_TOKEN_AI_SEO_L");
+    expect(productionJob).toContain("META_PIXEL_ID_AI_SEO_D");
+    expect(productionJob).toContain("META_CAPI_ACCESS_TOKEN_AI_SEO_D");
   });
 });
