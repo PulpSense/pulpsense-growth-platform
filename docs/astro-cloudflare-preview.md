@@ -32,8 +32,6 @@ Pull requests targeting `master` are verified and deployed automatically by `.gi
 The existing command remains a manual fallback for the issue #81 branch:
 
 ```bash
-PUBLIC_META_PIXEL_ID_AI_SEO_L=<preview-lawyers-dataset-id> \
-PUBLIC_META_PIXEL_ID_AI_SEO_D=<preview-dentists-dataset-id> \
 PUBLIC_POSTHOG_KEY=<project-key> \
 PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
 PUBLIC_CAL_LINK=<preview-team/preview-event> \
@@ -41,7 +39,7 @@ PUBLIC_CAL_NAMESPACE=<preview-embed-namespace> \
 pnpm --filter @pulpsense/funnels deploy:preview
 ```
 
-Both vertical-specific Meta variables, `PUBLIC_POSTHOG_KEY`, and `PUBLIC_CAL_LINK` are mandatory in the GitHub preview deployment. One build generates both opaque campaign routes; each route's internal identity keeps its browser and Trigger.dev lifecycle events on the matching destination.
+Browser Meta tracking is intentionally disabled in GitHub preview deployments so preview traffic cannot reach a live Pixel. `PUBLIC_POSTHOG_KEY` and `PUBLIC_CAL_LINK` remain mandatory. One build generates both opaque campaign routes; each route's internal identity keeps its Trigger.dev lifecycle events on the matching destination.
 
 The command targets project `pulpsense-funnels-preview` and branch `issue-81`. Do not attach a custom production domain or add production credentials to that project. Configure Pages Function secrets separately in the Pages preview environment; the public build values above are not secrets.
 

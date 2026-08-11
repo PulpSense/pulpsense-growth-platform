@@ -69,7 +69,7 @@ and durable Trigger.dev delivery.
 
 ## Runtime isolation
 
-Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` copied from `.dev.vars.example`, with sandbox values only. Local builds may omit browser Meta tracking. Both AI SEO campaigns are generated in the same build: their opaque routes select separate funnel identities and `PUBLIC_META_PIXEL_ID_AI_SEO_L` or `PUBLIC_META_PIXEL_ID_AI_SEO_D` without a deployment-wide vertical switch. Preview builds require both public Pixel IDs and a non-production `PUBLIC_CAL_LINK`.
+Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` copied from `.dev.vars.example`, with sandbox values only. Local and deployed preview builds omit browser Meta tracking; the live Pixel IDs are supplied only to production builds. Both AI SEO campaigns are generated in the same build: their opaque routes select separate funnel identities without a deployment-wide vertical switch. Preview builds still require a non-production `PUBLIC_CAL_LINK`.
 
 Browser-facing `PUBLIC_*` values must be present in the Astro build environment. Pages Function secrets belong in the Cloudflare preview environment instead. `PUBLIC_CAL_NAMESPACE` may be set when the sandbox event uses a distinct embed namespace.
 

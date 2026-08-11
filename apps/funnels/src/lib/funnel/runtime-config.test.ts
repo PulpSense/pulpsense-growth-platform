@@ -6,22 +6,20 @@ import {
 } from "./runtime-config";
 
 describe("funnel runtime configuration", () => {
-  it("requires a sandbox Meta pixel for preview", () => {
-    expect(() =>
+  it("disables Meta tracking in preview even when a pixel is configured", () => {
+    expect(
       createBrowserTrackingConfig({
         environment: "preview",
         metaPixelId: "",
-        productionMetaPixelId: "828948073514575",
       }),
-    ).toThrow("vertical-specific public Meta Pixel ID");
+    ).toEqual({});
 
-    expect(() =>
+    expect(
       createBrowserTrackingConfig({
         environment: "preview",
         metaPixelId: "828948073514575",
-        productionMetaPixelId: "828948073514575",
       }),
-    ).toThrow("production Meta dataset");
+    ).toEqual({});
   });
 
   it("requires an explicit Cal link in preview and allows a local fallback", () => {

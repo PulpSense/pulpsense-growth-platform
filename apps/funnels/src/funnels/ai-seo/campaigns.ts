@@ -1,7 +1,5 @@
 import type { FunnelId } from "@pulpsense/contracts";
 
-export const AI_SEO_LAWYERS_PRODUCTION_PIXEL_ID = "2262354061181522";
-
 export type AiSeoCampaignKey = "lawyers" | "dentists";
 export type AiSeoFunnelId = Extract<FunnelId, "ai-seo" | "ai-seo-dentists">;
 
@@ -11,7 +9,6 @@ export type AiSeoCampaign = {
   funnelId: AiSeoFunnelId;
   landingPath: string;
   thankYouPath: string;
-  productionMetaPixelId?: string;
 };
 
 const defineCampaign = (
@@ -27,7 +24,6 @@ export const AI_SEO_CAMPAIGNS = [
     key: "lawyers",
     slug: "local-growth-6732ef498c",
     funnelId: "ai-seo",
-    productionMetaPixelId: AI_SEO_LAWYERS_PRODUCTION_PIXEL_ID,
   }),
   defineCampaign({
     key: "dentists",
