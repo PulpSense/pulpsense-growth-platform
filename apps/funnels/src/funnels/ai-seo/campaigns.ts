@@ -22,12 +22,12 @@ const defineCampaign = (
 export const AI_SEO_CAMPAIGNS = [
   defineCampaign({
     key: "lawyers",
-    slug: "local-growth-6732ef498c",
+    slug: "regional-visibility-audit/law-firms",
     funnelId: "ai-seo",
   }),
   defineCampaign({
     key: "dentists",
-    slug: "local-growth-51d2a5f4f2",
+    slug: "regional-visibility-audit/dental-practices",
     funnelId: "ai-seo-dentists",
   }),
 ] as const satisfies readonly AiSeoCampaign[];

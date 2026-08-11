@@ -95,7 +95,10 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  white-space: nowrap;
+  justify-content: center;
+  max-width: 100%;
+  box-sizing: border-box;
+  white-space: normal;
   background: #fff;
   border: 1px solid var(--pr-border);
   border-radius: 9999px;
@@ -192,22 +195,13 @@ body {
 #pr-funnel .pr-note {
   text-align: center;
   font-size: 0.75rem;
-  color: #9ca3af;
-  font-style: italic;
+  color: var(--pr-text);
+  font-style: normal;
+  font-weight: 700;
   margin-top: 0.5rem;
 }
 #pr-funnel .pr-note u {
   text-decoration: underline;
-}
-/* Secondary self-serve rail: "skip the call" link to /start (7-day trial checkout). */
-#pr-funnel .pr-skip-call {
-  display: block;
-  text-align: center;
-  margin-top: 0.75rem;
-  font-size: 0.9rem;
-  color: var(--pr-blue);
-  text-decoration: underline;
-  text-underline-offset: 3px;
 }
 #pr-funnel .pr-section {
   padding: 3rem 1rem;
@@ -911,7 +905,7 @@ body {
   color: var(--pr-muted);
   font-size: 0.93rem;
 }
-#pr-funnel .pr-price-card {
+#pr-funnel .pr-offer-card {
   max-width: 34rem;
   margin: 0 auto;
   background: #fff;
@@ -921,49 +915,29 @@ body {
   box-shadow: 0 20px 40px -18px rgba(0, 128, 255, 0.35);
   text-align: center;
 }
-#pr-funnel .pr-price-num {
-  font-size: clamp(2.75rem, 8vw, 4rem);
-  font-weight: 800;
-  color: var(--pr-blue);
-  line-height: 1;
-}
-#pr-funnel .pr-price-per {
-  font-size: 0.4em;
-  font-weight: 700;
-  color: var(--pr-muted);
-}
-#pr-funnel .pr-price-note {
-  margin: 0.75rem 0 1.25rem;
-  color: var(--pr-muted);
-  font-size: 0.9rem;
-}
-#pr-funnel .pr-price-list {
+#pr-funnel .pr-offer-list {
   list-style: none;
   margin: 0;
   padding: 1.25rem 0 0;
-  border-top: 1px solid var(--pr-border);
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
   text-align: left;
 }
-#pr-funnel .pr-price-list li {
+#pr-funnel .pr-offer-list li {
   position: relative;
   padding-left: 1.75rem;
   font-size: 0.95rem;
   line-height: 1.5;
   color: #4b5563;
 }
-#pr-funnel .pr-price-list li::before {
+#pr-funnel .pr-offer-list li::before {
   content: "✓";
   position: absolute;
   left: 0;
   top: 0;
   color: var(--pr-blue);
   font-weight: 800;
-}
-#pr-funnel .pr-price-list li strong {
-  color: var(--pr-text);
 }
 #pr-funnel .pr-guarantee {
   max-width: 44rem;
