@@ -59,7 +59,10 @@ export function CalBookingStep({
     <Cal
       namespace={namespace}
       calLink={calLink}
-      style={{ width: "100%", height: "100%", overflow: "scroll" }}
+      // Cal's inline embed sets its iframe height whenever the booking view changes.
+      // A host-controlled height here prevents the month and slot views from fitting
+      // their actual rendered content.
+      style={{ width: "100%" }}
       config={config}
     />
   );
