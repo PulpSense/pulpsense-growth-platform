@@ -17,25 +17,25 @@ This document records the shared lifecycle decisions and ordered implementation 
 - A later cancellation remains owned by the sales process. It does not return the Communication Recipient to Qualified but Unbooked; cancellation follow-up is manual.
 - Cancellation does not add a Slack reply. The owner relies on the existing cancellation email for manual follow-up.
 - A reschedule updates the existing Sales Appointment. It does not create a new Lead Journey, add another Slack booking reply, or re-enter acquisition nurturing.
-- Pre-call Nurture is a Brevo-owned Communication Flow that begins after a verified booking and remains active only while the Sales Appointment remains scheduled.
-- The first Pre-call Nurture message is the Booking Confirmation and is sent through Brevo seconds after the verified booking. This is the one fixed timing requirement within the otherwise TBD flow.
-- Rescheduling keeps Pre-call Nurture active and updates appointment-relative timing and references to use the new meeting time. Cancellation stops Pre-call Nurture.
+- Pre-call Nurture is a Trigger.dev-owned workflow that begins after a verified booking and remains active only while the Sales Appointment remains scheduled. Brevo's Transactional Email API delivers each send requested by Trigger.dev.
+- The first Pre-call Nurture message is requested immediately after booking verification. Trigger.dev dynamically selects 4–18 messages from the approved canonical library based on time remaining before the call.
+- Rescheduling invalidates the old schedule and creates a replacement against the new appointment time without repeating modules already delivered. Cancellation stops all unsent Pre-call Nurture.
 - Meeting Reminders are separate from Pre-call Nurture. Trigger.dev schedules them directly for 24 hours, 2 hours, and 15 minutes before the active Sales Appointment; Gmail is the initially intended delivery adapter.
 - Meeting Reminders are sent automatically from the authenticated personal Gmail account without draft approval.
 - Rescheduling cancels the old pending Meeting Reminders and schedules replacements from the new start time. Cancellation stops all pending Meeting Reminders.
 - A Meeting Reminder may be delivered only if the Sales Appointment is still active and its current start time matches the schedule used to create that reminder.
 - Immediately before Gmail delivery, Trigger.dev confirms the booking is still active and its start time is unchanged through the Cal.com booking API. This final check protects against delayed cancellation or reschedule webhooks.
 - If Cal.com cannot confirm the appointment, the reminder is not sent. The status check retries only within that reminder's expiry window and emits a redacted reliability alert if confirmation never succeeds.
-- Meeting Reminder thresholds that are already in the past when a booking or reschedule is processed are skipped rather than sent immediately. The immediate Brevo Booking Confirmation provides acknowledgement; only future 24-hour, 2-hour, and 15-minute thresholds are scheduled.
+- Meeting Reminder thresholds already in the past when a booking or reschedule is processed are skipped. The immediate Trigger-owned Brevo Booking Confirmation provides acknowledgement; only future 24-hour, 2-hour, and 15-minute reminder thresholds are scheduled.
 - A failed 24-hour reminder may retry only until the 2-hour threshold; a failed 2-hour reminder may retry only until the 15-minute threshold; a failed 15-minute reminder may retry only until the Sales Appointment starts. Expired reminders are skipped rather than delivered late.
 - Meeting Reminder subject lines and plain-text bodies are approved below. Delivery personalizes the first name, attendee-local meeting time and daypart, and current meeting join link.
 - Replies to Meeting Reminders go directly to the authenticated personal Gmail inbox and are handled manually as sales correspondence. Trigger.dev does not ingest, classify, or respond to replies.
 - Exhausted Brevo and Gmail delivery failures use the existing reliability Slack webhook rather than the PII-bearing lead channel. Alerts include environment, operation, Lead Journey ID, relevant Cal UID, and Trigger.dev run link, but exclude contact PII and message content.
-- Trigger.dev owns detection and durable publication of lifecycle entry and exit.
-- Brevo owns the internal definition and delivery of Communication Flows, including message count, channels, timing, cadence, and copy.
-- Brevo owns unsubscribe and suppression behavior for Brevo-delivered flows. Trigger.dev does not duplicate or synchronize that provider-managed logic.
-- Brevo contact upsert, Booking Link variables, and Qualified but Unbooked entry occur as one durable qualified-lifecycle operation after the application is accepted. There is no separate earlier Brevo-contact creation stage.
-- Every contact upsert performed by the funnel lifecycle also adds that contact to Brevo's `Ads` list in the same API request. List membership is available for organization and segmentation, while lifecycle custom events remain the authoritative automation triggers.
+- Trigger.dev owns lifecycle entry and exit plus the Pre-call Nurture message count, selection, timing, cadence, waits, idempotency, cancellation, rescheduling, and send-time eligibility checks.
+- Brevo's Transactional Email API sends pre-call messages when Trigger.dev requests them. Brevo Automations own evergreen newsletter, welcome, and lead-magnet programs.
+- Brevo suppression state remains authoritative. Trigger.dev checks that state before optional pre-call sends and never silently reverses an unsubscribe, complaint, hard bounce, or block.
+- The basic Brevo contact/list upsert moves to `contact_submitted`, the earliest accepted event containing the verified normalized email and contact fields. Qualification later adds only qualification and Booking Link state.
+- Every accepted paid-ad contact is added additively to Paid Ads (#7), and every marketing-eligible accepted contact is also added to Newsletter (#9). Existing unrelated memberships and suppression state are preserved. Lead-magnet requests additionally add Lead Magnets (#10).
 - An existing Brevo contact remains eligible for both funnel flows. Qualification updates only funnel-owned attributes and enters Qualified but Unbooked; a later verified booking exits that state and enters Pre-call Nurture.
 - Funnel processing must not overwrite unrelated Brevo attributes, list memberships, or provider-managed suppression state.
 - Booked lifecycle state has precedence over Qualified but Unbooked. Delayed, retried, or replayed qualification delivery must never move a booked Communication Recipient out of Pre-call Nurture or back into acquisition nurture.
@@ -51,15 +51,10 @@ This document records the shared lifecycle decisions and ordered implementation 
 - If preview proves that Cal.com truncates or rejects the current identity, replace it with a compact signed identifier. Do not introduce CRM-backed lifecycle state solely to shorten the URL.
 - The underlying Cal.com event type is an Ads Booking Calendar used exclusively for paid-ad funnel appointments, not for other scheduling purposes.
 
-## Explicitly TBD
+## Remaining TBD
 
-The Qualified but Unbooked and Pre-call Nurture flows will be designed through a separate process. Except for the immediate Brevo Booking Confirmation, do not infer or implement any of the following yet:
+The Qualified but Unbooked flow remains a separate future design. Pre-call Nurture is specified in the dedicated implementation plan and approved canonical copy library. Remaining lifecycle questions are:
 
-- Number of messages
-- Delivery channels
-- Timing or delays
-- Frequency or cadence
-- Message copy
 - Repeat-entry behavior when the same Communication Recipient submits a new Lead Journey while already in the Qualified but Unbooked flow
 - The Cal.com webhook field or derivation used to obtain the internal booking-record URL
 - Whether the existing encrypted booking identity must be compacted to fit reliably in the Cal.com URL and metadata; decide from preview round-trip testing
@@ -69,7 +64,7 @@ The Qualified but Unbooked and Pre-call Nurture flows will be designed through a
 - Slack message-retention policy or custom deletion automation
 - Automated acquisition-nurture re-entry after a booked call is cancelled
 - Custom unsubscribe or suppression handling outside Brevo for Brevo-delivered flows
-- Choosing or configuring email, SMS, or other delivery steps inside Brevo Communication Flows
+- Choosing or configuring the future Qualified but Unbooked Brevo flow
 - Moving Lead Journey automation state into Twenty solely to support Booking Link correlation
 - Ingesting Brevo delivery, open, click, or unsubscribe events into PostHog; first-version engagement reporting remains in Brevo
 - Gmail reply ingestion, classification, or automated responses
@@ -173,12 +168,13 @@ Acceptance criteria:
 ### 4. Build the Brevo lifecycle adapter
 
 - Add environment-isolated Brevo credentials and configuration.
-- Publish a single durable qualified-lifecycle operation that creates or updates the Brevo contact, updates only funnel-owned attributes, writes the Booking Link, and enters Qualified but Unbooked.
+- Upsert the Brevo contact during `contact_submitted`, update only funnel-owned attributes, add Paid Ads (#7), and add Newsletter (#9) only when marketing-eligible without replacing existing memberships.
+- Keep the later qualified-lifecycle operation focused on Booking Link and Qualified but Unbooked state.
 - Identify Communication Recipients by verified normalized email without merging by name.
 - Send the approved contact and lifecycle attribute allowlist, including normalized phone and attribution.
-- On verified booking, publish the transition that ends Qualified but Unbooked, writes appointment variables, and starts Pre-call Nurture.
-- On reschedule, update the existing appointment variables and publish the Brevo transition required to re-anchor future Pre-call Nurture content.
-- On cancellation, publish the transition that stops Pre-call Nurture without returning the recipient to Qualified but Unbooked.
+- On verified booking, end Qualified but Unbooked, write appointment variables, and start the Trigger.dev Pre-call Nurture workflow.
+- On reschedule, update appointment variables and invalidate/rebuild the Trigger.dev schedule.
+- On cancellation, invalidate unsent Trigger.dev nurture without returning the recipient to Qualified but Unbooked.
 - Include lifecycle ordering data so stale qualification delivery cannot override a later booking.
 - Preserve unrelated Brevo attributes, list memberships, and provider-managed suppression state.
 
@@ -205,19 +201,21 @@ Acceptance criteria:
 - The Booking Link contains no readable raw token or plaintext embedded contact payload beyond Cal.com's normal prefilled fields.
 - No CRM-backed lifecycle store or resume-booking page is introduced for this requirement.
 
-### 6. Configure the two Brevo Communication Flow seams
+### 6. Implement Trigger-owned Pre-call Nurture
 
-- Expose lifecycle events and variables needed by the separately designed Qualified but Unbooked flow.
-- Expose lifecycle events and variables needed by the separately designed Pre-call Nurture flow.
-- Ensure the first Pre-call Nurture action can send the Booking Confirmation seconds after a verified booking.
-- Ensure rescheduling updates future appointment-relative content and cancellation exits Pre-call Nurture.
-- Leave message count, channels, cadence, timing, and copy to the separate Brevo flow-design process.
+- Keep the approved copy library and HTML/text rendering versioned in `apps/automations/src/email/`.
+- Calculate 4–18 message slots from the appointment horizon, send the first immediately, and keep the final preparation message near the appointment.
+- Wait in Trigger.dev and call Brevo's Transactional Email API only when a slot becomes due.
+- Before every send, revalidate booking identity/start time, Brevo suppression, sequence generation, and per-message delivery history.
+- Invalidate old schedules on cancellation or reschedule; on reschedule, preserve delivered-module history and do not repeat modules.
+- Avoid collisions with Gmail reminders at 24 hours, 2 hours, and 15 minutes.
 
 Acceptance criteria:
 
-- Platform code does not encode the internal Brevo sequence steps.
-- Brevo can change flow content and cadence without an application deployment.
-- Provider-managed unsubscribe and suppression behavior remains authoritative.
+- Trigger.dev produces the approved 4–18 counts and deterministic send schedule.
+- Duplicate events, task retries, cancellation, and rescheduling cannot duplicate or stale-send a message.
+- Canonical copy and rendering are tested and deployed with application code.
+- Provider-managed suppression remains authoritative at send time.
 
 ### 7. Implement the Trigger.dev Meeting Reminder workflow
 
@@ -298,7 +296,7 @@ Acceptance criteria:
 
 - Add production secrets and configuration through the existing protected deployment process.
 - Confirm the production Ads Booking Calendar webhook subscriptions and Cal.com read access.
-- Confirm the Brevo flows are active only after their separate content-design approval.
+- Confirm newsletter/welcome/lead-magnet Brevo Automations are active only after approval; deploy Pre-call Nurture through Trigger.dev.
 - Confirm the selected personal Gmail account and sender identity before enabling reminder delivery.
 - Deploy the exact qualified revision and run the non-mutating release checks.
 - Monitor initial production lifecycle runs and redacted reliability alerts without copying lead payloads into tickets or logs.
@@ -314,8 +312,8 @@ Acceptance criteria:
 These inputs are required before their associated production sends can be enabled, but they do not block adapter and lifecycle implementation:
 
 - Approved Qualified but Unbooked Brevo flow definition
-- Approved Pre-call Nurture Brevo flow definition and Booking Confirmation
-- Brevo API key, attribute names, and flow/event identifiers for each environment
+- Approved canonical Pre-call Nurture library and sequence version
+- Brevo API key, list IDs, sender identity, and transactional webhook configuration for each environment
 - Slack app credentials with access to private channel `C0AR39DFA4S`
 - Selected personal Gmail account and OAuth authorization
 - Cal.com API read credentials and confirmed internal booking-link derivation

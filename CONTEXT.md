@@ -25,11 +25,11 @@ A defined series of lead communications that begins and ends in response to life
 _Avoid_: Trigger workflow, email blast
 
 **Pre-call Nurture**:
-A Brevo-owned Communication Flow that confirms, educates, and prepares a Communication Recipient while a Sales Appointment remains scheduled. Its first message is the immediate Booking Confirmation; rescheduling updates appointment-relative references, and cancellation ends the flow.
+A Trigger.dev-owned Communication Flow that confirms, educates, and prepares a Communication Recipient while a Sales Appointment remains scheduled. Trigger.dev owns selection, cadence, waits, idempotency, rescheduling, and cancellation; Brevo's Transactional Email API delivers each message when Trigger.dev requests it.
 _Avoid_: Meeting reminder, confirmation email
 
 **Booking Confirmation**:
-The first Pre-call Nurture message, sent through Brevo seconds after a verified booking to acknowledge and confirm the Sales Appointment.
+The first Pre-call Nurture message, requested immediately by Trigger.dev and delivered through Brevo seconds after a verified booking.
 _Avoid_: Meeting reminder, Gmail confirmation
 
 **Booking Link**:
