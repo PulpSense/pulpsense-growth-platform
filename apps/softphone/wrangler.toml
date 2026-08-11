@@ -1,0 +1,7 @@
+name = "pulpsense-softphone-preview"
+pages_build_output_dir = "dist"
+compatibility_date = "2026-08-11"
+
+[vars]
+SOFTPHONE_ENVIRONMENT = "production"
+TELNYX_CALLER_NUMBER = "+13072490829"

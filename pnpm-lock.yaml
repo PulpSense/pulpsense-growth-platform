@@ -153,7 +153,7 @@ importers:
         version: 8.54.0(eslint@9.39.2(jiti@2.6.1)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@5.9.3)
       wrangler:
         specifier: ^4.120.0
-        version: 4.120.0
+        version: 4.120.0(@cloudflare/workers-types@5.20260810.1)
 
   apps/rate-limiter:
     devDependencies:
@@ -165,7 +165,23 @@ importers:
         version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.10.1)(jsdom@27.4.0(supports-color@10.2.2))(vite@8.2.1(@types/node@24.10.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
       wrangler:
         specifier: ^4.120.0
-        version: 4.120.0
+        version: 4.120.0(@cloudflare/workers-types@5.20260810.1)
+
+  apps/softphone:
+    dependencies:
+      '@telnyx/webrtc':
+        specifier: 2.27.9
+        version: 2.27.9
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vite:
+        specifier: ^8.0.0
+        version: 8.2.1(@types/node@24.10.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0)
+      wrangler:
+        specifier: ^4.120.0
+        version: 4.120.0(@cloudflare/workers-types@5.20260810.1)
 
   packages/contracts:
     dependencies:
@@ -524,6 +540,9 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
+
+  '@cloudflare/workers-types@5.20260810.1':
+    resolution: {integrity: sha512-aD0hEU6HaiG4wy4hDoPoLXMH963nHD4MsIY566pGkWO2dL/yeYEiMN7SeJ24t+wBmLDnh16yQ7IPos5opGkIoA==}
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -1577,6 +1596,10 @@ packages:
   '@paulirish/trace_engine@0.0.65':
     resolution: {integrity: sha512-Qsm6F5C8xf6ZzQXbQc2+wcpe6sggfs/gvc/ytqSurdvYg3kyW0ECHCqE0CWBKZpqgjVfPNX9c7SCS3r2nEIRGg==}
 
+  '@peermetrics/webrtc-stats@5.9.0':
+    resolution: {integrity: sha512-eQYGGdj+H4MUEuwbccy9bxRV3uAqPM5+Say9PSx/alrtv5ccmKCqGfLbqXrRJ/qThZvjZNBna5K/YnCWoaTQBw==}
+    engines: {node: '>=18'}
+
   '@pkgr/core@0.2.9':
     resolution: {integrity: sha512-QNqXyfVS2wm9hweSYD2O7F0G06uurj9kZ96TRQE5Y9hU7+tgdZwIkbAKc5Ocy1HxEY2kuDQa6cQ1WRs/O5LFKA==}
     engines: {node: ^12.20.0 || ^14.18.0 || >=16.0.0}
@@ -1898,6 +1921,10 @@ packages:
     resolution: {integrity: sha512-yYU8cogLeSh/ms2jh8Fj7jaba/EWa7Ja6GoUqYZaraEuCI5YS6ms6ObZgjjedm+jm6XZjdNRWBpPP6Z86oOxcw==}
     peerDependencies:
       vite: ^5.2.0 || ^6 || ^7 || ^8
+
+  '@telnyx/webrtc@2.27.9':
+    resolution: {integrity: sha512-4ZUY6K7tWdKewrUTFiajFQicmPIriSq2tkHmL0xHFhzRAKAD/sHD8hizHbOmGKFUQYLHXItzSmxVF844undgWQ==}
+    engines: {node: '>=14.x'}
 
   '@trigger.dev/build@4.5.9':
     resolution: {integrity: sha512-CAZTBZBqErQSPjl0T0C/EB3vwS5pMNVGruYtzQIaCXnKXfg0abGRiH1sNrj7M2buGm+h8ttbpWfssyb/GlvGdA==}
@@ -3008,6 +3035,10 @@ packages:
   eventemitter3@5.0.4:
     resolution: {integrity: sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==}
 
+  events@3.3.0:
+    resolution: {integrity: sha512-mQw+2fkQbALzQ7V0MY0IqdnXNOeTtP4r0lN9z7AAawCXgqea7bDii20AYrIBrFd/Hx0M2Ocz6S111CaFkUcb0Q==}
+    engines: {node: '>=0.8.x'}
+
   eventsource-parser@3.1.0:
     resolution: {integrity: sha512-kJezFj9YFAMLeORyi7aCLxLbD5/qWMQnoMVlVPyHIll7lgRJCc3JVln9Vgl9nwQi0YkMnhdGTMNn7CkRRAptMg==}
     engines: {node: '>=18.0.0'}
@@ -3869,6 +3900,10 @@ packages:
   log-update@6.1.0:
     resolution: {integrity: sha512-9ie8ItPR6tjY5uYJh8K/Zrv/RMZ5VOlOWvtZdEHYSTFKZfIBPQa9tOAEeAWhd+AnIneLJ22w5fjOYtoutpWq5w==}
     engines: {node: '>=18'}
+
+  loglevel@1.9.2:
+    resolution: {integrity: sha512-HgMmCqIJSAKqo68l0rS2AanEWfkxaZ5wNiEFb5ggm08lDs9Xl2KxBlX3PTcaD2chBM1gXAYf491/M2Rv8Jwayg==}
+    engines: {node: '>= 0.6.0'}
 
   lookup-closest-locale@6.2.0:
     resolution: {integrity: sha512-/c2kL+Vnp1jnV6K6RpDTHK3dgg0Tu2VVp+elEiJpjfS1UyY7AjOYHohRug6wT0OpoX2qFgNORndE9RqesfVxWQ==}
@@ -5232,6 +5267,16 @@ packages:
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
 
+  uuid@7.0.3:
+    resolution: {integrity: sha512-DPSke0pXhTZgoF/d+WSt2QaKMCFSfx7QegxEWT+JOuHF5aWrKEn0G+ztjuJg/gG8/ItK+rbPCD/yNv8yyih6Cg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+    hasBin: true
+
+  uuid@8.3.2:
+    resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
+    hasBin: true
+
   validate-npm-package-license@3.0.4:
     resolution: {integrity: sha512-DpKm2Ui/xN7/HQKCtpZxoRWBhZ9Z0kqtygG8XCgNQ8ZlDnxuQmWhj566j8fN4Cu3/JmbhsDo7fcAJq4s9h27Ew==}
 
@@ -6117,6 +6162,9 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20260801.1':
     optional: true
 
+  '@cloudflare/workers-types@5.20260810.1':
+    optional: true
+
   '@colors/colors@1.5.0':
     optional: true
 
@@ -6939,6 +6987,11 @@ snapshots:
       legacy-javascript: 0.0.1
       third-party-web: 0.29.2
 
+  '@peermetrics/webrtc-stats@5.9.0':
+    dependencies:
+      events: 3.3.0
+      uuid: 8.3.2
+
   '@pkgr/core@0.2.9': {}
 
   '@poppinss/colors@4.1.6':
@@ -7195,6 +7248,12 @@ snapshots:
       '@tailwindcss/oxide': 4.3.3
       tailwindcss: 4.3.3
       vite: 8.2.1(@types/node@22.19.8)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0)
+
+  '@telnyx/webrtc@2.27.9':
+    dependencies:
+      '@peermetrics/webrtc-stats': 5.9.0
+      loglevel: 1.9.2
+      uuid: 7.0.3
 
   '@trigger.dev/build@4.5.9(magicast@0.3.5)(supports-color@10.2.2)(typescript@5.9.3)':
     dependencies:
@@ -8847,6 +8906,8 @@ snapshots:
 
   eventemitter3@5.0.4: {}
 
+  events@3.3.0: {}
+
   eventsource-parser@3.1.0: {}
 
   eventsource@3.0.7:
@@ -9762,6 +9823,8 @@ snapshots:
       slice-ansi: 7.1.2
       strip-ansi: 7.1.2
       wrap-ansi: 9.0.2
+
+  loglevel@1.9.2: {}
 
   lookup-closest-locale@6.2.0: {}
 
@@ -11270,6 +11333,10 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
+  uuid@7.0.3: {}
+
+  uuid@8.3.2: {}
+
   validate-npm-package-license@3.0.4:
     dependencies:
       spdx-correct: 3.2.0
@@ -11548,7 +11615,7 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20260801.1
       '@cloudflare/workerd-windows-64': 1.20260801.1
 
-  wrangler@4.120.0:
+  wrangler@4.120.0(@cloudflare/workers-types@5.20260810.1):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.5.0
       '@cloudflare/unenv-preset': 2.16.1(unenv@2.0.0-rc.24)(workerd@1.20260801.1)
@@ -11559,6 +11626,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       workerd: 1.20260801.1
     optionalDependencies:
+      '@cloudflare/workers-types': 5.20260810.1
       fsevents: 2.3.3
     transitivePeerDependencies:
       - bufferutil

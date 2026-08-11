@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
+    <meta name="theme-color" content="#101114" />
+    <title>PulpSense Softphone</title>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="brand">
+        <div class="brand-mark" aria-hidden="true">P</div>
+        <div>
+          <div class="eyebrow">PulpSense</div>
+          <h1>Browser call</h1>
+        </div>
+        <div id="connection-pill" class="pill" data-tone="waiting">
+          Preparing
+        </div>
+      </header>
+
+      <section class="call-card" aria-labelledby="person-name">
+        <div class="avatar" aria-hidden="true" id="person-initial">—</div>
+        <div class="identity">
+          <p class="eyebrow">Calling from your Telnyx number</p>
+          <h2 id="person-name">Loading person…</h2>
+          <p id="destination-number" class="phone">Secure destination</p>
+        </div>
+
+        <div class="status-stack" aria-live="polite">
+          <div id="call-state" class="call-state">
+            Verifying secure handoff…
+          </div>
+          <div id="call-detail" class="call-detail">
+            Keep this tab open while the call is active.
+          </div>
+        </div>
+
+        <div class="controls">
+          <button
+            id="call-button"
+            class="primary-control"
+            type="button"
+            disabled
+          >
+            <span class="control-icon" aria-hidden="true">↗</span>
+            Call from computer
+          </button>
+          <button
+            id="mute-button"
+            class="secondary-control"
+            type="button"
+            disabled
+          >
+            Mute
+          </button>
+          <button
+            id="hangup-button"
+            class="danger-control"
+            type="button"
+            disabled
+          >
+            Hang up
+          </button>
+        </div>
+
+        <audio id="remote-media" autoplay></audio>
+
+        <div class="privacy-note">
+          Your browser will ask for microphone permission. Audio goes directly
+          through Telnyx; PulpSense does not capture it in this page.
+        </div>
+      </section>
+
+      <section id="error-panel" class="error-panel" hidden>
+        <strong>Couldn’t prepare this call</strong>
+        <p id="error-message"></p>
+        <p>Return to Twenty and open the call again from the Person record.</p>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
