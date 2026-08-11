@@ -13,6 +13,7 @@
     "start": "cross-env CLOUDFLARE_LOAD_DEV_VARS_FROM_DOT_ENV=false wrangler pages dev -c wrangler.toml -c ../rate-limiter/wrangler.toml",
     "build-prod": "run-s clean build",
     "check-parity": "node scripts/check-parity.mjs",
+    "check-cal-embed-sizing": "node scripts/check-cal-embed-sizing.mjs",
     "check-release-performance": "node scripts/check-release-performance.mjs",
     "clean": "rimraf .astro dist",
     "lint": "eslint .",

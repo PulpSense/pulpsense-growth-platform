@@ -538,9 +538,6 @@ body {
   padding: 0.75rem 0.5rem;
   font: inherit;
 }
-#pr-funnel .pr-form-embed--booking iframe {
-  min-height: 42rem;
-}
 #pr-funnel .pr-form-embed--booking {
   margin-top: 1.25rem;
 }
@@ -641,17 +638,6 @@ body {
 }
 #pr-funnel #pr-funnel-form .pr-form-embed:not(.pr-form-embed--booking) iframe {
   min-height: 560px;
-}
-/* Desktop: embed script often sets a short height; wide month grid needs more vertical space. */
-@media (min-width: 768px) {
-  #pr-funnel
-    #pr-funnel-form
-    #pr-tf-step-calendar.pr-tf-step.is-active
-    .pr-form-embed--booking
-    iframe {
-    min-height: clamp(32rem, 56vh, 42rem);
-    overflow: auto;
-  }
 }
 @media (max-width: 767px) {
   #pr-funnel #pr-funnel-form.pr-section {
@@ -761,16 +747,6 @@ body {
   }
   #pr-funnel.pr-calendar-active.pr-has-sticky .pr-footer {
     padding-bottom: 2rem;
-  }
-  /* Leave enough scroll room for the embedded booking calendar on mobile. */
-  #pr-funnel
-    #pr-funnel-form
-    #pr-tf-step-calendar.pr-tf-step.is-active
-    .pr-form-embed--booking
-    iframe {
-    min-height: clamp(52rem, 165vh, 120rem);
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
   }
 }
 
