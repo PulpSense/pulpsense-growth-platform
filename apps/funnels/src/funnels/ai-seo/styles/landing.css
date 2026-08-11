@@ -516,9 +516,15 @@ body {
   border-radius: 999px;
   background: #dc2626;
   color: #fff;
-  font-size: 1rem;
-  font-weight: 700;
-  line-height: 1;
+}
+#pr-funnel .pr-tf-email-indicator--invalid svg {
+  display: block;
+  width: 0.75rem;
+  height: 0.75rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-width: 2.5;
 }
 @keyframes pr-email-spinner {
   to {
