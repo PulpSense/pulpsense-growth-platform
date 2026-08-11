@@ -703,9 +703,6 @@ export function AiSeoQualificationForm({
               Choose a time — after you book, you&apos;ll land on the
               confirmation page with next steps.
             </p>
-            <a className="pr-skip-call" href="/start" data-skip-call="calendar">
-              Don&apos;t want a call? Skip it — start your 7-day trial instead →
-            </a>
             <div className="pr-form-embed pr-form-embed--booking">
               <CalBookingStep
                 calLink={calLink}

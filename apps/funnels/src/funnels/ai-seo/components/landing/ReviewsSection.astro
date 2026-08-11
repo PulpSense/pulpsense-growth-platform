@@ -1,10 +1,17 @@
+---
+import { Image } from "astro:assets";
+import reviewBarb from "../../../../assets/ai-seo/review-barb.webp";
+import reviewConnor from "../../../../assets/ai-seo/review-connor.webp";
+import reviewGeorgia from "../../../../assets/ai-seo/review-georgia.webp";
+---
+
 <section class="pr-section" aria-label="Trustpilot reviews">
   <div class="pr-container pr-center">
-    <h2 class="pr-h2">What Local Businesses Say About Us</h2>
+    <h2 class="pr-h2">What Service Business Owners Say About Us</h2>
     <div class="pr-reviews-track" id="pr-reviews-track">
       <figure class="pr-review-card">
-        <img
-          src="/ai-seo/images/review-barb.webp"
+        <Image
+          src={reviewBarb}
           width="800"
           height="562"
           alt='Five-star Trustpilot review from Barb: went through 4 other marketing companies and lost thousands, then Norman delivered — "He saved me and my business."'
@@ -14,8 +21,8 @@
         <span class="pr-review-zoom" aria-hidden="true">🔍 Tap to enlarge</span>
       </figure>
       <figure class="pr-review-card">
-        <img
-          src="/ai-seo/images/review-georgia.webp"
+        <Image
+          src={reviewGeorgia}
           width="800"
           height="530"
           alt="Five-star Trustpilot review from Georgia Pond & Waterfall: started invisible on Google Maps with 0 reviews, ranked #2 in their city's map pack 2 weeks in."
@@ -25,8 +32,8 @@
         <span class="pr-review-zoom" aria-hidden="true">🔍 Tap to enlarge</span>
       </figure>
       <figure class="pr-review-card">
-        <img
-          src="/ai-seo/images/review-connor.webp"
+        <Image
+          src={reviewConnor}
           width="800"
           height="810"
           alt="Five-star Trustpilot review from Connor Kaplan, residential painter: burnt by agencies and Angi before, now ranked page 1 on multiple keywords with consistent leads."

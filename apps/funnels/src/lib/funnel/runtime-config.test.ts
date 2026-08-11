@@ -13,7 +13,6 @@ describe("funnel runtime configuration", () => {
         metaPixelId: "",
       }),
     ).toEqual({});
-
     expect(
       createBrowserTrackingConfig({
         environment: "preview",

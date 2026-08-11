@@ -8,10 +8,10 @@ funnels.
 
 | Route                                        | Purpose                                                     |
 | -------------------------------------------- | ----------------------------------------------------------- |
-| `/local-growth-6732ef498c/`                  | Lawyer campaign lander, qualification, contact, and booking |
-| `/local-growth-6732ef498c/thank-you/`        | Lawyer post-booking instructions and proof                  |
-| `/local-growth-51d2a5f4f2/`                  | Dentist campaign lander, qualification, contact, and booking |
-| `/local-growth-51d2a5f4f2/thank-you/`        | Dentist post-booking instructions and proof                 |
+| `/regional-visibility-audit/law-firms/`                  | Lawyer campaign lander, qualification, contact, and booking |
+| `/regional-visibility-audit/law-firms/thank-you/`        | Lawyer post-booking instructions and proof                  |
+| `/regional-visibility-audit/dental-practices/`                  | Dentist campaign lander, qualification, contact, and booking |
+| `/regional-visibility-audit/dental-practices/thank-you/`        | Dentist post-booking instructions and proof                 |
 
 For every public funnel route, confirm:
 

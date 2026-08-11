@@ -14,7 +14,7 @@ describe("production deployment isolation", () => {
         "utf8",
       ),
       readFile(
-        repositoryFile("apps/funnels/src/pages/[campaign]/index.astro"),
+        repositoryFile("apps/funnels/src/pages/[...campaign]/index.astro"),
         "utf8",
       ),
       readFile(

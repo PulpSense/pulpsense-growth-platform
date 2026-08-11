@@ -139,30 +139,3 @@
     }, 4000);
   })();
 </script>
-<script is:inline>
-  /* Skip-the-call rail: carry any typed contact info onto /start (pixel
-         advanced matching + /onboarding prefill downstream) and log which
-         placement was clicked. */
-  (function () {
-    document.addEventListener("click", function (e) {
-      var a = e.target.closest && e.target.closest(".pr-skip-call");
-      if (!a) return;
-      var placement = a.getAttribute("data-skip-call") || "unknown";
-      try {
-        var u = new URL(a.getAttribute("href"), location.origin);
-        var email = (document.getElementById("ai-seo-email") || {}).value;
-        var phone = (document.getElementById("ai-seo-phone") || {}).value;
-        var first = (document.getElementById("ai-seo-first") || {}).value;
-        var last = (document.getElementById("ai-seo-last") || {}).value;
-        if (email) u.searchParams.set("email", email.trim());
-        if (phone) u.searchParams.set("phone", phone.trim());
-        if (first) u.searchParams.set("first_name", first.trim());
-        if (last) u.searchParams.set("last_name", last.trim());
-        u.searchParams.set("src", placement);
-        a.href = u.toString();
-      } catch (err) {}
-      if (window.fbq)
-        fbq("trackCustom", "SkipCallClick", { placement: placement });
-    });
-  })();
-</script>
