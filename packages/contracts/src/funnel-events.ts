@@ -4,6 +4,8 @@ export const FUNNEL_EVENT_SCHEMA_VERSION = 1 as const;
 export const CONTACT_SUBMITTED_EVENT = "contact_submitted" as const;
 export const APPLICATION_SUBMITTED_EVENT = "application_submitted" as const;
 export const BOOKING_COMPLETED_EVENT = "booking_completed" as const;
+export const BOOKING_RESCHEDULED_EVENT = "booking_rescheduled" as const;
+export const BOOKING_CANCELLED_EVENT = "booking_cancelled" as const;
 
 export const funnelIdSchema = z.enum([
   "ai-seo",
@@ -137,11 +139,46 @@ const applicationSubmittedEventBase = z
     occurredAt: z.string().datetime({ offset: true }),
     qualificationStatus: z.enum(["qualified", "unqualified"]),
     companyDomain: z.string().min(1).max(253),
+    bookingLink: z.url().max(8192).optional(),
     attribution: funnelAttributionSchema,
     requestContext: requestContextSchema,
     environment: z.enum(["local", "preview", "production"]),
   })
   .strict();
+
+const bookingDetailsSchema = z
+  .object({
+    uid: z.string().trim().min(1).max(200),
+    title: z.string().trim().min(1).max(500),
+    startTime: z.string().datetime({ offset: true }),
+    endTime: z.string().datetime({ offset: true }),
+    attendeeTimeZone: z.string().trim().min(1).max(100),
+    meetingUrl: z.url().max(2048),
+    internalBookingUrl: z.url().max(2048).optional(),
+  })
+  .strict();
+
+const verifiedBookingPayloadSchema = contactPayloadSchema.extend({
+  emailVerification: z
+    .object({
+      status: z.literal("verified"),
+      result: z.literal("business"),
+    })
+    .strict(),
+  booking: bookingDetailsSchema,
+});
+
+const bookingLifecycleEventBase = z.object({
+  schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
+  funnelId: funnelIdSchema,
+  submissionId: z.string().uuid(),
+  eventId: z.string().min(1).max(500),
+  occurredAt: z.string().datetime({ offset: true }),
+  qualificationStatus: z.literal("qualified"),
+  attribution: funnelAttributionSchema,
+  requestContext: requestContextSchema,
+  environment: z.enum(["local", "preview", "production"]),
+});
 
 export const applicationSubmittedEventSchema = z.discriminatedUnion(
   "funnelId",
@@ -171,32 +208,9 @@ export const applicationSubmittedEventSchema = z.discriminatedUnion(
 
 export const bookingCompletedEventSchema = z
   .object({
-    schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
+    ...bookingLifecycleEventBase.shape,
     eventType: z.literal(BOOKING_COMPLETED_EVENT),
-    funnelId: funnelIdSchema,
-    submissionId: z.string().uuid(),
-    eventId: z.string().min(1).max(300),
-    occurredAt: z.string().datetime({ offset: true }),
-    payload: contactPayloadSchema.extend({
-      emailVerification: z
-        .object({
-          status: z.literal("verified"),
-          result: z.literal("business"),
-        })
-        .strict(),
-      booking: z
-        .object({
-          uid: z.string().trim().min(1).max(200),
-          title: z.string().trim().min(1).max(500),
-          startTime: z.string().datetime({ offset: true }),
-          endTime: z.string().datetime({ offset: true }),
-        })
-        .strict(),
-    }),
-    qualificationStatus: z.literal("qualified"),
-    attribution: funnelAttributionSchema,
-    requestContext: requestContextSchema,
-    environment: z.enum(["local", "preview", "production"]),
+    payload: verifiedBookingPayloadSchema,
   })
   .strict()
   .refine(
@@ -205,10 +219,54 @@ export const bookingCompletedEventSchema = z
     { path: ["eventId"], message: "Booking event ID must match the Cal UID" },
   );
 
+export const bookingRescheduledEventSchema = z
+  .object({
+    ...bookingLifecycleEventBase.shape,
+    eventType: z.literal(BOOKING_RESCHEDULED_EVENT),
+    payload: verifiedBookingPayloadSchema.extend({
+      booking: bookingDetailsSchema.extend({
+        previousUid: z.string().trim().min(1).max(200),
+        previousStartTime: z.string().datetime({ offset: true }),
+        previousEndTime: z.string().datetime({ offset: true }),
+      }),
+    }),
+  })
+  .strict()
+  .refine(
+    (event) =>
+      event.eventId === `booking_rescheduled:${event.payload.booking.uid}`,
+    {
+      path: ["eventId"],
+      message: "Reschedule event ID must match the replacement Cal UID",
+    },
+  );
+
+export const bookingCancelledEventSchema = z
+  .object({
+    ...bookingLifecycleEventBase.shape,
+    eventType: z.literal(BOOKING_CANCELLED_EVENT),
+    payload: verifiedBookingPayloadSchema.extend({
+      booking: bookingDetailsSchema.extend({
+        cancellationReason: z.string().trim().max(2000).optional(),
+      }),
+    }),
+  })
+  .strict()
+  .refine(
+    (event) =>
+      event.eventId === `booking_cancelled:${event.payload.booking.uid}`,
+    {
+      path: ["eventId"],
+      message: "Cancellation event ID must match the Cal UID",
+    },
+  );
+
 export const funnelEventSchema = z.discriminatedUnion("eventType", [
   contactSubmittedEventSchema,
   applicationSubmittedEventSchema,
   bookingCompletedEventSchema,
+  bookingRescheduledEventSchema,
+  bookingCancelledEventSchema,
 ]);
 
 export type ApplicationAnswers = z.infer<typeof applicationAnswersSchema>;
@@ -219,4 +277,8 @@ export type ApplicationSubmittedEvent = z.infer<
   typeof applicationSubmittedEventSchema
 >;
 export type BookingCompletedEvent = z.infer<typeof bookingCompletedEventSchema>;
+export type BookingRescheduledEvent = z.infer<
+  typeof bookingRescheduledEventSchema
+>;
+export type BookingCancelledEvent = z.infer<typeof bookingCancelledEventSchema>;
 export type FunnelEvent = z.infer<typeof funnelEventSchema>;

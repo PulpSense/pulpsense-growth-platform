@@ -19,6 +19,34 @@ const determineQualificationStatus = (request: ApplicationSubmissionRequest) =>
       : ("qualified" as const)
     : ("qualified" as const);
 
+const createCalBookingLink = (
+  configuredLink: string | undefined,
+  bookingIdentity: { submissionId: string; token: string },
+  contact: { firstName: string; lastName?: string; email: string },
+) => {
+  const trimmedLink = configuredLink?.trim();
+  if (!trimmedLink) return undefined;
+  const url = new URL(
+    /^https?:\/\//u.test(trimmedLink)
+      ? trimmedLink
+      : `https://cal.com/${trimmedLink.replace(/^\/+|\/+$/gu, "")}`,
+  );
+  url.searchParams.set(
+    "name",
+    [contact.firstName, contact.lastName].filter(Boolean).join(" "),
+  );
+  url.searchParams.set("email", contact.email);
+  url.searchParams.set(
+    "metadata[pulpsenseSubmissionId]",
+    bookingIdentity.submissionId,
+  );
+  url.searchParams.set(
+    "metadata[pulpsenseBookingToken]",
+    bookingIdentity.token,
+  );
+  return url.toString();
+};
+
 export async function processApplicationSubmission(
   body: unknown,
   request: Request,
@@ -54,7 +82,6 @@ export async function processApplicationSubmission(
   ) {
     return json({ error: "invalid_submission_identity" }, 400);
   }
-
   const qualificationStatus = determineQualificationStatus(parsed.data);
   const submissionId = identity.submissionId;
   const eventId = `application_submitted:${submissionId}`;
@@ -65,6 +92,41 @@ export async function processApplicationSubmission(
 
   const environment = env.PULPSENSE_ENVIRONMENT ?? "local";
   const requestContext = createRequestContext(request, clientIp, parsed.data);
+  const bookingEligible =
+    qualificationStatus === "qualified" &&
+    ((identity.emailVerification.status === "verified" &&
+      identity.emailVerification.result === "business") ||
+      identity.emailVerification.result === "provider_error");
+  const bookingIdentity = bookingEligible
+    ? {
+        submissionId,
+        token: await createBookingToken(
+          {
+            submissionId,
+            funnelId: parsed.data.funnelId,
+            qualificationStatus: "qualified",
+            contact: {
+              ...identity.contact,
+              emailVerification: {
+                status: "verified",
+                result: "business",
+              },
+            },
+            attribution: identity.attribution,
+            requestContext,
+            environment,
+          },
+          env.SUBMISSION_SIGNING_SECRET,
+        ),
+      }
+    : undefined;
+  const bookingLink = bookingIdentity
+    ? createCalBookingLink(
+        env.CAL_BOOKING_LINK,
+        bookingIdentity,
+        identity.contact,
+      )
+    : undefined;
   const event = applicationSubmittedEventSchema.parse({
     schemaVersion: 1,
     eventType: "application_submitted",
@@ -78,6 +140,7 @@ export async function processApplicationSubmission(
     },
     qualificationStatus,
     companyDomain: emailDomain.trim().toLowerCase().replace(/\.$/u, ""),
+    ...(bookingLink ? { bookingLink } : {}),
     attribution: identity.attribution,
     requestContext,
     environment,
@@ -85,34 +148,6 @@ export async function processApplicationSubmission(
 
   try {
     const runId = await enqueueFunnelEvent(event, env);
-    const bookingEligible =
-      qualificationStatus === "qualified" &&
-      ((identity.emailVerification.status === "verified" &&
-        identity.emailVerification.result === "business") ||
-        identity.emailVerification.result === "provider_error");
-    const bookingIdentity = bookingEligible
-      ? {
-          submissionId,
-          token: await createBookingToken(
-            {
-              submissionId,
-              funnelId: parsed.data.funnelId,
-              qualificationStatus: "qualified",
-              contact: {
-                ...identity.contact,
-                emailVerification: {
-                  status: "verified",
-                  result: "business",
-                },
-              },
-              attribution: identity.attribution,
-              requestContext,
-              environment,
-            },
-            env.SUBMISSION_SIGNING_SECRET,
-          ),
-        }
-      : undefined;
     return json({
       accepted: true,
       submissionId,

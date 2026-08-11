@@ -71,8 +71,6 @@ pnpm test
 pnpm check-types
 pnpm lint
 PUBLIC_PULPSENSE_ENVIRONMENT=preview \
-PUBLIC_META_PIXEL_ID_AI_SEO_L=<sandbox-lawyers-dataset> \
-PUBLIC_META_PIXEL_ID_AI_SEO_D=<sandbox-dentists-dataset> \
 PUBLIC_POSTHOG_KEY=<project-key> \
 PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
 PUBLIC_CAL_LINK=<sandbox-owner/sandbox-event> \

@@ -55,6 +55,8 @@ const eventName = (event: FunnelEvent) =>
     contact_submitted: "funnel_contact_submitted",
     application_submitted: "funnel_application_submitted",
     booking_completed: "funnel_booking_completed",
+    booking_rescheduled: "funnel_booking_rescheduled",
+    booking_cancelled: "funnel_booking_cancelled",
   })[event.eventType];
 
 export function createPostHogLifecycleCapture(
@@ -82,7 +84,9 @@ export function createPostHogLifecycleCapture(
           ...(event.eventType === "application_submitted"
             ? { qualification_status: event.qualificationStatus }
             : {}),
-          ...(event.eventType === "booking_completed"
+          ...(event.eventType === "booking_completed" ||
+          event.eventType === "booking_rescheduled" ||
+          event.eventType === "booking_cancelled"
             ? { qualification_status: "qualified" }
             : {}),
           ...touchProperties("first", event.attribution.firstTouch),

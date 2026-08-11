@@ -1,6 +1,7 @@
 import type {
   ApplicationSubmittedEvent,
   BookingCompletedEvent,
+  BookingRescheduledEvent,
   ContactSubmittedEvent,
 } from "@pulpsense/contracts";
 import { describe, expect, it, vi } from "vitest";
@@ -106,12 +107,34 @@ const bookingEvent: BookingCompletedEvent = {
       title: "Creative Multiplier Sprint Fit Call",
       startTime: "2026-08-10T14:00:00.000Z",
       endTime: "2026-08-10T14:15:00.000Z",
+      attendeeTimeZone: "America/New_York",
+      meetingUrl: "https://meet.example.com/cal_booking_123",
     },
   },
   qualificationStatus: "qualified",
   attribution: event.attribution,
   requestContext: event.requestContext,
   environment: "preview",
+};
+
+const rescheduledEvent: BookingRescheduledEvent = {
+  ...bookingEvent,
+  eventType: "booking_rescheduled",
+  eventId: "booking_rescheduled:cal_booking_456",
+  occurredAt: "2026-08-09T13:00:00.000Z",
+  payload: {
+    ...bookingEvent.payload,
+    booking: {
+      ...bookingEvent.payload.booking,
+      uid: "cal_booking_456",
+      previousUid: bookingEvent.payload.booking.uid,
+      previousStartTime: bookingEvent.payload.booking.startTime,
+      previousEndTime: bookingEvent.payload.booking.endTime,
+      startTime: "2026-08-11T14:00:00.000Z",
+      endTime: "2026-08-11T14:15:00.000Z",
+      meetingUrl: "https://meet.example.com/cal_booking_456",
+    },
+  },
 };
 
 describe("process-funnel-event", () => {
@@ -150,6 +173,46 @@ describe("process-funnel-event", () => {
     expect(result).toMatchObject({ ok: true, personId: "person_123" });
     expect(upsertTwentyPerson).toHaveBeenCalledOnce();
     expect(sendMetaLead).toHaveBeenCalledTimes(2);
+  });
+
+  it("attempts Slack even when the independent Twenty path fails", async () => {
+    const postSlackLead = vi.fn().mockResolvedValue({ threadTs: "100.200" });
+    const upsertTwentyPerson = vi
+      .fn()
+      .mockRejectedValue(new Error("Twenty unavailable"));
+
+    await expect(
+      processFunnelEvent(event, {
+        upsertTwentyPerson,
+        sendMetaLead: vi.fn(),
+        postSlackLead,
+        log: { info: vi.fn() },
+      }),
+    ).rejects.toThrow("Twenty unavailable");
+    expect(postSlackLead).toHaveBeenCalledOnce();
+  });
+
+  it("re-anchors Brevo and reminder schedules without repeating booking sales effects", async () => {
+    const publishBrevoLifecycle = vi
+      .fn()
+      .mockResolvedValue({ published: true });
+    const scheduleMeetingReminders = vi
+      .fn()
+      .mockResolvedValue({ scheduled: ["24h", "2h", "15m"] });
+    const upsertTwentyPerson = vi.fn();
+
+    await expect(
+      processFunnelEvent(rescheduledEvent, {
+        upsertTwentyPerson,
+        sendMetaLead: vi.fn(),
+        publishBrevoLifecycle,
+        scheduleMeetingReminders,
+        log: { info: vi.fn() },
+      }),
+    ).resolves.toEqual({ ok: true, bookingUid: "cal_booking_456" });
+    expect(publishBrevoLifecycle).toHaveBeenCalledWith(rescheduledEvent);
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(rescheduledEvent);
+    expect(upsertTwentyPerson).not.toHaveBeenCalled();
   });
 
   it("retries a delayed booking prerequisite without repeating Person upsert", async () => {

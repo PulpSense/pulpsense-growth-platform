@@ -19,25 +19,13 @@ export function parseDeploymentEnvironment(
 export function createBrowserTrackingConfig({
   environment = "local",
   metaPixelId,
-  productionMetaPixelId,
 }: {
   environment?: DeploymentEnvironment;
   metaPixelId?: string;
-  productionMetaPixelId?: string;
 }): PixelConfig {
+  if (environment === "preview") return {};
+
   const configuredPixelId = metaPixelId?.trim();
-  if (environment === "preview" && !configuredPixelId) {
-    throw new Error(
-      "A vertical-specific public Meta Pixel ID is required for preview builds so browser tracking is exercised against a sandbox dataset.",
-    );
-  }
-  if (
-    environment === "preview" &&
-    productionMetaPixelId &&
-    configuredPixelId === productionMetaPixelId
-  ) {
-    throw new Error("Preview builds cannot use the production Meta dataset.");
-  }
   if (configuredPixelId && !/^\d{5,30}$/u.test(configuredPixelId)) {
     throw new Error("The configured public Meta Pixel ID must be numeric.");
   }

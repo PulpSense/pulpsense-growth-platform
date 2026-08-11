@@ -13,9 +13,15 @@ The shared home for PulpSense background jobs, scheduled workflows, and durable 
    pnpm dev:automations
    ```
 
-The starter task is `health-check`. The public funnel task is `process-funnel-event`; it validates the shared versioned contact/application/booking contract, upserts the Person in Twenty, records each completed application and verified Cal booking as an immutable Person Note, maintains the qualified Opportunity lifecycle, and delivers the matching Meta event.
+The starter task is `health-check`. The public funnel task is `process-funnel-event`; it validates the shared versioned contact/application/booking contract, including signed Cal create, reschedule, and cancellation events. It independently delivers Twenty, Meta, PostHog, Slack Lead Journey threads, and Brevo lifecycle events. Verified bookings and reschedules schedule durable `send-meeting-reminder` runs for the future 24-hour, 2-hour, and 15-minute thresholds.
 
 Twenty and Meta operations retry independently inside that one public task. Successful destination work is not re-run merely because the other destination has a transient failure; manual replays remain safe because People, activities, Opportunities, bookings, and Meta conversions use their natural stable identities. Configure `SLACK_FAILURE_WEBHOOK_URL` for redacted exhausted-Twenty alerts. The operator procedure and preview proof checklist are in [`docs/funnel-event-recovery.md`](../../docs/funnel-event-recovery.md).
+
+Set `SLACK_BOT_TOKEN` and `SLACK_LEADS_CHANNEL_ID` together to enable the PII-bearing lead channel. The bot stores only stable Lead Journey identifiers in Slack message metadata, scans that metadata before posting, and replies to the matching root only for the first verified booking. Reschedules and cancellations do not add Slack replies.
+
+Set `BREVO_API_KEY` and `BREVO_ADS_LIST_ID` after creating the `PULPSENSE_*` contact attributes listed in `docs/lead-lifecycle-automation-plan.md`. Every Brevo contact upsert also adds the contact to the configured Ads list in the same request. Trigger.dev emits `pulpsense_qualified_unbooked`, `pulpsense_booking_created`, `pulpsense_booking_rescheduled`, and `pulpsense_booking_cancelled`; Brevo owns the actual message steps and suppression behavior. A booked or cancelled contact cannot be regressed by a delayed qualification event.
+
+Gmail reminders remain fail-closed until `GMAIL_REMINDERS_ENABLED=true` and all six subject/body template variables are present. Templates may use `{{first_name}}`, `{{local_time}}`, `{{daypart}}`, `{{meeting_title}}`, `{{start_time}}`, `{{attendee_timezone}}`, and `{{meeting_url}}`. Immediately before each send the task reads the current Cal booking through `CAL_API_KEY`; cancelled, rescheduled, expired, or unverifiable reminders are skipped.
 
 Preview deployments must set `PULPSENSE_AUTOMATION_ENVIRONMENT=preview` and use only sandbox Twenty and Meta credentials. The task rejects an event whose environment does not match its configured destinations.
 

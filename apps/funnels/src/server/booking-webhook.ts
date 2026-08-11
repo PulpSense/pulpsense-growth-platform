@@ -1,4 +1,9 @@
-import { bookingCompletedEventSchema } from "@pulpsense/contracts";
+import {
+  bookingCancelledEventSchema,
+  bookingCompletedEventSchema,
+  bookingRescheduledEventSchema,
+  type FunnelEvent,
+} from "@pulpsense/contracts";
 import { z } from "zod";
 
 import { enqueueFunnelEvent } from "./funnel-events/delivery";
@@ -40,22 +45,58 @@ const verifyCalSignature = async (
   );
 };
 
-const calBookingWebhookSchema = z.object({
-  triggerEvent: z.literal("BOOKING_CREATED"),
-  createdAt: z.iso.datetime({ offset: true }),
-  payload: z.object({
-    type: z.literal("funnel"),
-    status: z.literal("ACCEPTED"),
-    uid: z.string().trim().min(1).max(200),
-    title: z.string().trim().min(1).max(500),
-    startTime: z.iso.datetime({ offset: true }),
-    endTime: z.iso.datetime({ offset: true }),
-    attendees: z
-      .array(z.object({ email: z.email().trim().toLowerCase() }))
-      .min(1),
-    metadata: z.record(z.string(), z.unknown()),
-  }),
+const calBookingPayloadSchema = z.object({
+  type: z.string().trim().min(1).max(200),
+  status: z.enum(["ACCEPTED", "CANCELLED"]),
+  uid: z.string().trim().min(1).max(200),
+  title: z.string().trim().min(1).max(500),
+  startTime: z.iso.datetime({ offset: true }),
+  endTime: z.iso.datetime({ offset: true }),
+  attendees: z
+    .array(
+      z.object({
+        email: z.email().trim().toLowerCase(),
+        timeZone: z.string().trim().min(1).max(100),
+      }),
+    )
+    .min(1),
+  metadata: z.record(z.string(), z.unknown()),
+  rescheduleUid: z.string().trim().min(1).max(200).optional(),
+  rescheduleStartTime: z.iso.datetime({ offset: true }).optional(),
+  rescheduleEndTime: z.iso.datetime({ offset: true }).optional(),
+  cancellationReason: z.string().trim().max(2000).optional(),
+  videoCallData: z.object({ url: z.url() }).optional(),
+  references: z.array(z.object({ meetingUrl: z.url().optional() })).optional(),
 });
+
+const calBookingWebhookSchema = z.object({
+  triggerEvent: z.enum([
+    "BOOKING_CREATED",
+    "BOOKING_RESCHEDULED",
+    "BOOKING_CANCELLED",
+  ]),
+  createdAt: z.iso.datetime({ offset: true }),
+  payload: calBookingPayloadSchema,
+});
+
+const isUrl = (value: unknown): value is string => {
+  if (typeof value !== "string") return false;
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const meetingUrlFromPayload = (
+  payload: z.infer<typeof calBookingPayloadSchema>,
+) => {
+  const metadataUrl = payload.metadata.videoCallUrl;
+  if (isUrl(metadataUrl)) return metadataUrl;
+  if (payload.videoCallData?.url) return payload.videoCallData.url;
+  return payload.references?.find(({ meetingUrl }) => meetingUrl)?.meetingUrl;
+};
 
 export async function handleCalWebhook(request: Request, env: FunnelEnv) {
   if (!env.CAL_WEBHOOK_SECRET || !env.SUBMISSION_SIGNING_SECRET) {
@@ -82,13 +123,21 @@ export async function handleCalWebhook(request: Request, env: FunnelEnv) {
     !untrusted ||
     typeof untrusted !== "object" ||
     !("triggerEvent" in untrusted) ||
-    untrusted.triggerEvent !== "BOOKING_CREATED"
+    !["BOOKING_CREATED", "BOOKING_RESCHEDULED", "BOOKING_CANCELLED"].includes(
+      String(untrusted.triggerEvent),
+    )
   ) {
     return json({ accepted: false, ignored: true }, 202);
   }
 
   const parsed = calBookingWebhookSchema.safeParse(untrusted);
   if (!parsed.success) {
+    return json({ error: "invalid_cal_payload" }, 400);
+  }
+  if (
+    (parsed.data.triggerEvent === "BOOKING_CANCELLED") !==
+    (parsed.data.payload.status === "CANCELLED")
+  ) {
     return json({ error: "invalid_cal_payload" }, 400);
   }
   const submissionId = parsed.data.payload.metadata.pulpsenseSubmissionId;
@@ -101,25 +150,26 @@ export async function handleCalWebhook(request: Request, env: FunnelEnv) {
     bookingToken,
     env.SUBMISSION_SIGNING_SECRET,
   );
-  const attendeeMatches = parsed.data.payload.attendees.some(
+  const matchingAttendee = parsed.data.payload.attendees.find(
     ({ email }) => email === claims?.contact.email.trim().toLowerCase(),
   );
   if (
     !claims ||
     claims.submissionId !== submissionId ||
     claims.environment !== (env.PULPSENSE_ENVIRONMENT ?? "local") ||
-    !attendeeMatches
+    !matchingAttendee
   ) {
     return json({ error: "booking_not_eligible" }, 422);
   }
 
-  const eventId = `booking_completed:${parsed.data.payload.uid}`;
-  const event = bookingCompletedEventSchema.parse({
+  const meetingUrl = meetingUrlFromPayload(parsed.data.payload);
+  if (!meetingUrl) {
+    return json({ error: "booking_join_url_unavailable" }, 422);
+  }
+  const commonEvent = {
     schemaVersion: 1,
-    eventType: "booking_completed",
     funnelId: claims.funnelId,
     submissionId: claims.submissionId,
-    eventId,
     occurredAt: parsed.data.createdAt,
     payload: {
       ...claims.contact,
@@ -128,20 +178,67 @@ export async function handleCalWebhook(request: Request, env: FunnelEnv) {
         title: parsed.data.payload.title,
         startTime: parsed.data.payload.startTime,
         endTime: parsed.data.payload.endTime,
+        attendeeTimeZone: matchingAttendee.timeZone,
+        meetingUrl,
       },
     },
     qualificationStatus: claims.qualificationStatus,
     attribution: claims.attribution,
     requestContext: claims.requestContext,
     environment: claims.environment,
-  });
+  } as const;
+  let event: FunnelEvent;
+  if (parsed.data.triggerEvent === "BOOKING_RESCHEDULED") {
+    if (
+      !parsed.data.payload.rescheduleUid ||
+      !parsed.data.payload.rescheduleStartTime ||
+      !parsed.data.payload.rescheduleEndTime
+    ) {
+      return json({ error: "invalid_cal_payload" }, 400);
+    }
+    event = bookingRescheduledEventSchema.parse({
+      ...commonEvent,
+      eventType: "booking_rescheduled",
+      eventId: `booking_rescheduled:${parsed.data.payload.uid}`,
+      payload: {
+        ...commonEvent.payload,
+        booking: {
+          ...commonEvent.payload.booking,
+          previousUid: parsed.data.payload.rescheduleUid,
+          previousStartTime: parsed.data.payload.rescheduleStartTime,
+          previousEndTime: parsed.data.payload.rescheduleEndTime,
+        },
+      },
+    });
+  } else if (parsed.data.triggerEvent === "BOOKING_CANCELLED") {
+    event = bookingCancelledEventSchema.parse({
+      ...commonEvent,
+      eventType: "booking_cancelled",
+      eventId: `booking_cancelled:${parsed.data.payload.uid}`,
+      payload: {
+        ...commonEvent.payload,
+        booking: {
+          ...commonEvent.payload.booking,
+          ...(parsed.data.payload.cancellationReason
+            ? { cancellationReason: parsed.data.payload.cancellationReason }
+            : {}),
+        },
+      },
+    });
+  } else {
+    event = bookingCompletedEventSchema.parse({
+      ...commonEvent,
+      eventType: "booking_completed",
+      eventId: `booking_completed:${parsed.data.payload.uid}`,
+    });
+  }
 
   try {
     const runId = await enqueueFunnelEvent(event, env);
     return json({
       accepted: true,
       submissionId: claims.submissionId,
-      eventId,
+      eventId: event.eventId,
       runId,
     });
   } catch {

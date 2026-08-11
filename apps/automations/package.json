@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "@pulpsense/contracts": "workspace:*",
-    "@trigger.dev/sdk": "4.5.9"
+    "@trigger.dev/sdk": "4.5.9",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@trigger.dev/build": "4.5.9",

@@ -48,7 +48,6 @@ const metaPixelId = resolveAiSeoBrowserPixelId(campaign, {
 const pixels = createBrowserTrackingConfig({
   environment: deploymentEnvironment,
   metaPixelId,
-  productionMetaPixelId: campaign.productionMetaPixelId,
 });
 const cal = resolveCalConfig({
   environment: deploymentEnvironment,

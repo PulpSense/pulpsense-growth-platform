@@ -273,7 +273,7 @@ try {
     });
     assert.equal(sandboxEmailResponse.status, 200);
     assert.deepEqual(await sandboxEmailResponse.json(), {
-      valid: true,
+      valid: false,
       status: "unverified",
       result: "provider_error",
     });
