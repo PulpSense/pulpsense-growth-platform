@@ -14,7 +14,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "@pulpsense/contracts": "workspace:*",
+    "@pulpsense/contracts": "file:../../packages/contracts",
     "@trigger.dev/sdk": "4.5.9",
     "zod": "^4.3.6"
   },
