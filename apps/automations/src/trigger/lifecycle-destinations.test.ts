@@ -150,6 +150,60 @@ describe("Slack lead journey delivery", () => {
 });
 
 describe("Brevo lifecycle delivery", () => {
+  it("includes a bounded Brevo validation response in a failed upsert", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(
+        Response.json(
+          { code: "invalid_parameter", message: "Unknown attribute" },
+          { status: 400 },
+        ),
+      );
+
+    await expect(
+      publishBrevoLifecycle(
+        applicationEvent,
+        { apiKey: "brevo-test", adsListId: 7 },
+        fetcher,
+      ),
+    ).rejects.toThrow(
+      'Brevo contact upsert failed (400): {"code":"invalid_parameter","message":"Unknown attribute"}',
+    );
+  });
+
+  it("retries without SMS when Brevo rejects the phone number", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(
+        Response.json(
+          { code: "invalid_parameter", message: "Invalid phone number" },
+          { status: 400 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const invalidPhoneEvent = {
+      ...applicationEvent,
+      payload: { ...applicationEvent.payload, phone: "+1 (342) 342-3423" },
+    };
+
+    await expect(
+      publishBrevoLifecycle(
+        invalidPhoneEvent,
+        { apiKey: "brevo-test", adsListId: 7 },
+        fetcher,
+      ),
+    ).resolves.toEqual({
+      published: true,
+      eventName: "pulpsense_qualified_unbooked",
+    });
+
+    const retryBody = JSON.parse(String(fetcher.mock.calls[2]?.[1]?.body));
+    expect(retryBody.attributes.SMS).toBeUndefined();
+  });
+
   it("upserts only owned attributes and publishes the qualified event", async () => {
     const fetcher = vi
       .fn<typeof fetch>()

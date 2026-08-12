@@ -389,6 +389,15 @@ const readBrevoContact = async (
   return (await response.json()) as BrevoContact;
 };
 
+const responseDetail = async (response: Response) => {
+  const body = (await response.text()).trim();
+  if (!body) return "";
+  const redacted = body
+    .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/gu, "[redacted-email]")
+    .replace(/\+?\d[\d\s().-]{7,}\d/gu, "[redacted-phone]");
+  return `: ${redacted.slice(0, 1_000)}`;
+};
+
 export const publishBrevoLifecycle = async (
   event: BrevoLifecycleEvent,
   config: BrevoConfig,
@@ -433,23 +442,43 @@ export const publishBrevoLifecycle = async (
     ...ownedAttribution(event),
     ...projection.attributes,
   };
-  const upsert = await fetcher("https://api.brevo.com/v3/contacts", {
-    method: "POST",
-    headers: brevoHeaders(config.apiKey),
-    body: JSON.stringify({
-      email,
-      attributes,
-      listIds: [
-        config.adsListId,
-        ...(event.eventType === "contact_submitted" && config.newsletterListId
-          ? [config.newsletterListId]
-          : []),
-      ],
-      updateEnabled: true,
-    }),
-  });
+  const upsertContact = (contactAttributes: typeof attributes) =>
+    fetcher("https://api.brevo.com/v3/contacts", {
+      method: "POST",
+      headers: brevoHeaders(config.apiKey),
+      body: JSON.stringify({
+        email,
+        attributes: contactAttributes,
+        listIds: [
+          config.adsListId,
+          ...(event.eventType === "contact_submitted" && config.newsletterListId
+            ? [config.newsletterListId]
+            : []),
+        ],
+        updateEnabled: true,
+      }),
+    });
+  let upsert = await upsertContact(attributes);
   if (!upsert.ok && upsert.status !== 204) {
-    throw new Error(`Brevo contact upsert failed (${upsert.status})`);
+    const detail = await responseDetail(upsert);
+    if (
+      upsert.status === 400 &&
+      sms &&
+      detail.includes("Invalid phone number")
+    ) {
+      const attributesWithoutSms = { ...attributes };
+      delete attributesWithoutSms.SMS;
+      upsert = await upsertContact(attributesWithoutSms);
+    } else {
+      throw new Error(
+        `Brevo contact upsert failed (${upsert.status})${detail}`,
+      );
+    }
+  }
+  if (!upsert.ok && upsert.status !== 204) {
+    throw new Error(
+      `Brevo contact upsert failed (${upsert.status})${await responseDetail(upsert)}`,
+    );
   }
   const publish = await fetcher("https://api.brevo.com/v3/events", {
     method: "POST",
@@ -467,7 +496,9 @@ export const publishBrevoLifecycle = async (
     }),
   });
   if (!publish.ok) {
-    throw new Error(`Brevo lifecycle event failed (${publish.status})`);
+    throw new Error(
+      `Brevo lifecycle event failed (${publish.status})${await responseDetail(publish)}`,
+    );
   }
   return { published: true as const, eventName: projection.eventName };
 };
