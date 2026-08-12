@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -25,9 +25,10 @@ describe("AI SEO thank-you briefing deck", () => {
     expect(heroSource).not.toContain("WistiaPlayer");
     expect(heroSource).not.toContain("8py8vigtf1");
     expect(heroSource).not.toContain("pr-bar");
+    expect(carouselSource).toContain("briefingSlides.map");
   });
 
-  it("covers call preparation and the approved Growth Platform delivery model", () => {
+  it("covers call preparation and the approved delivery model", () => {
     expect(carouselSource).toContain("Confirm your calendar invitation");
     expect(carouselSource).toContain(
       "Reschedule from the link in your invitation",
@@ -44,34 +45,15 @@ describe("AI SEO thank-you briefing deck", () => {
     expect(carouselSource).not.toMatch(/block one|block 1|one-star|two-star/i);
   });
 
-  it("retains the useful calendar confirmation screenshot", () => {
-    const calendarSource = readFileSync(
-      new URL("./CalendarConfirmationStep.astro", import.meta.url),
-      "utf8",
-    );
-
-    expect(calendarSource).toContain("calendar-confirmation.webp");
-    expect(calendarSource).toContain("pr-inbox-guide");
-    expect(calendarSource).not.toContain("pr-calendar-preview");
-  });
-
-  it("preserves the true 16:9 image frame and compliant dot targets", () => {
+  it("keeps the deck stage accessible without dot navigation", () => {
     expect(stylesSource).toMatch(
       /\.pr-ty-deck-stage \{[\s\S]*?aspect-ratio: 16 \/ 9;/,
     );
-    expect(stylesSource).toMatch(
-      /\.pr-ty-deck-image \{[\s\S]*?object-fit: contain;/,
-    );
-    expect(stylesSource).toMatch(/\.pr-ty-deck-dot \{[\s\S]*?width: 1\.5rem;/);
-    expect(stylesSource).toMatch(/\.pr-ty-deck-dot \{[\s\S]*?height: 2rem;/);
+    expect(stylesSource).not.toContain("pr-ty-deck-dot");
+    expect(carouselSource).not.toContain("pr-ty-deck-dots");
   });
 
-  it("ships sixteen flattened AI briefing images with accessible equivalents", () => {
-    const deckFiles = readdirSync(
-      new URL("../../../../../public/ai-seo/thank-you-deck/", import.meta.url),
-    ).filter((file) => file.startsWith("slide-") && file.endsWith(".webp"));
-
-    expect(deckFiles).toHaveLength(16);
+  it("defines sixteen structured briefing slides", () => {
     expect(carouselSource).toContain("briefingSlides.map");
     expect(carouselSource.match(/eyebrow: ["“]/g)).toHaveLength(16);
   });
