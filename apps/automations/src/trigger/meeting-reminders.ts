@@ -5,6 +5,8 @@ import type {
 import { idempotencyKeys, logger, retry, schemaTask } from "@trigger.dev/sdk";
 import { z } from "zod";
 
+import { triggerRunUrl } from "./trigger-dashboard.js";
+
 export const reminderThresholdSchema = z.enum(["24h", "2h", "15m"]);
 export type ReminderThreshold = z.infer<typeof reminderThresholdSchema>;
 
@@ -305,12 +307,9 @@ const alertReminderFailure = async (
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       text: [
-        ":rotating_light: Meeting reminder exhausted retries",
-        `Environment: ${payload.environment}`,
-        `Operation: gmail_reminder_${payload.threshold}`,
-        `Lead Journey: ${payload.submissionId}`,
-        `Cal UID: ${payload.bookingUid}`,
-        `Trigger.dev run: ${runUrl}`,
+        `:rotating_light: *Gmail reminder failed* — ${payload.environment}`,
+        `${payload.threshold} reminder · Journey: \`${payload.submissionId}\` · Booking: \`${payload.bookingUid}\``,
+        `<${runUrl}|Open in Trigger>`,
       ].join("\n"),
     }),
   });
@@ -402,7 +401,7 @@ export const sendMeetingReminderTask = schemaTask({
           await alertReminderFailure(
             payload,
             webhookUrl,
-            `https://cloud.trigger.dev/projects/v3/${encodeURIComponent(ctx.project.ref)}/${encodeURIComponent(ctx.environment.slug)}/runs/${encodeURIComponent(ctx.run.id)}`,
+            triggerRunUrl(ctx.environment.slug, ctx.run.id),
             fetch,
           );
         } catch {
