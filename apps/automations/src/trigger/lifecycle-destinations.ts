@@ -256,12 +256,18 @@ export const postSlackBooking = async (
 };
 
 type BrevoLifecycleEvent =
+  | ContactSubmittedEvent
   | ApplicationSubmittedEvent
   | BookingCompletedEvent
   | BookingRescheduledEvent
   | BookingCancelledEvent;
 
-type BrevoConfig = { apiKey: string; adsListId: number };
+type BrevoConfig = {
+  apiKey: string;
+  adsListId: number;
+  newsletterListId?: number;
+  leadMagnetsListId?: number;
+};
 
 type BrevoContact = { attributes?: Record<string, unknown> };
 
@@ -289,6 +295,14 @@ const ownedAttribution = (event: BrevoLifecycleEvent) => ({
 });
 
 const lifecycleProjection = (event: BrevoLifecycleEvent) => {
+  if (event.eventType === "contact_submitted") {
+    return {
+      state: "captured",
+      eventName: "pulpsense_contact_submitted",
+      attributes: {},
+      eventProperties: { capture_source: event.funnelId },
+    } as const;
+  }
   if (event.eventType === "application_submitted") {
     if (event.qualificationStatus !== "qualified") return undefined;
     if (!event.bookingLink) return undefined;
@@ -315,7 +329,13 @@ const lifecycleProjection = (event: BrevoLifecycleEvent) => {
     return {
       state: "booked",
       eventName: "pulpsense_booking_created",
-      attributes: commonBookingAttributes,
+      attributes: {
+        ...commonBookingAttributes,
+        PULPSENSE_PRECALL_STATUS: "active",
+        PULPSENSE_PRECALL_SEQUENCE_ID: `precall:${booking.uid}:${booking.startTime}:precall-v1`,
+        PULPSENSE_PRECALL_SENT_MASK: 0,
+        PULPSENSE_PRECALL_COPY_VERSION: "precall-v1",
+      },
       eventProperties: { booking_uid: booking.uid },
     } as const;
   }
@@ -323,7 +343,12 @@ const lifecycleProjection = (event: BrevoLifecycleEvent) => {
     return {
       state: "booked",
       eventName: "pulpsense_booking_rescheduled",
-      attributes: commonBookingAttributes,
+      attributes: {
+        ...commonBookingAttributes,
+        PULPSENSE_PRECALL_STATUS: "active",
+        PULPSENSE_PRECALL_SEQUENCE_ID: `precall:${booking.uid}:${booking.startTime}:precall-v1`,
+        PULPSENSE_PRECALL_COPY_VERSION: "precall-v1",
+      },
       eventProperties: {
         booking_uid: booking.uid,
         previous_booking_uid: event.payload.booking.previousUid,
@@ -333,7 +358,10 @@ const lifecycleProjection = (event: BrevoLifecycleEvent) => {
   return {
     state: "cancelled",
     eventName: "pulpsense_booking_cancelled",
-    attributes: commonBookingAttributes,
+    attributes: {
+      ...commonBookingAttributes,
+      PULPSENSE_PRECALL_STATUS: "cancelled",
+    },
     eventProperties: { booking_uid: booking.uid },
   } as const;
 };
@@ -411,7 +439,12 @@ export const publishBrevoLifecycle = async (
     body: JSON.stringify({
       email,
       attributes,
-      listIds: [config.adsListId],
+      listIds: [
+        config.adsListId,
+        ...(event.eventType === "contact_submitted" && config.newsletterListId
+          ? [config.newsletterListId]
+          : []),
+      ],
       updateEnabled: true,
     }),
   });
