@@ -271,9 +271,9 @@ body {
 }
 #pr-funnel .pr-ty-deck-dot {
   position: relative;
-  width: 1.35rem;
+  width: 1.5rem;
   height: 2rem;
-  flex: 0 0 1.35rem;
+  flex: 0 0 1.5rem;
   padding: 0;
   border: 0;
   border-radius: 999px;
@@ -311,6 +311,11 @@ body {
   #pr-funnel .video-wrap {
     padding-right: 0;
     padding-left: 0;
+  }
+  #pr-funnel .pr-ty-deck-stage {
+    min-height: 25rem;
+    overflow-y: auto;
+    aspect-ratio: auto;
   }
   #pr-funnel .pr-ty-deck-grid {
     grid-template-columns: minmax(0, 1fr) 4.5rem;

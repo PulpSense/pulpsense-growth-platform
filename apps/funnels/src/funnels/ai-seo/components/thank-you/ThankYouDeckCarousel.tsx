@@ -216,7 +216,7 @@ export function ThankYouDeckCarousel() {
         </div>
       </div>
       <p className="pr-ty-deck-hint">
-        Tap, swipe, or focus the deck and use the arrow keys
+        Swipe, use the controls, or focus the deck and use the arrow keys
       </p>
     </section>
   );

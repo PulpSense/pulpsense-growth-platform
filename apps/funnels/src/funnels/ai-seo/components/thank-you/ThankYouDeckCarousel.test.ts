@@ -10,6 +10,10 @@ const carouselSource = readFileSync(
   new URL("./ThankYouDeckCarousel.tsx", import.meta.url),
   "utf8",
 );
+const stylesSource = readFileSync(
+  new URL("../../styles/thank-you.css", import.meta.url),
+  "utf8",
+);
 
 describe("AI SEO thank-you briefing deck", () => {
   it("replaces the outdated confirmation video with the native deck", () => {
@@ -43,6 +47,18 @@ describe("AI SEO thank-you briefing deck", () => {
 
     expect(calendarSource).not.toContain("calendar-confirmation.webp");
     expect(calendarSource).toContain("pr-calendar-preview");
+  });
+
+  it("keeps mobile slide content visible and provides compliant dot targets", () => {
+    expect(stylesSource).toContain("min-height:");
+    expect(stylesSource).toMatch(/\.pr-ty-deck-dot \{[\s\S]*?width: 1\.5rem;/);
+    expect(stylesSource).toMatch(/\.pr-ty-deck-dot \{[\s\S]*?height: 2rem;/);
+    expect(stylesSource).toMatch(
+      /@media \(max-width: 560px\)[\s\S]*?aspect-ratio: auto;/,
+    );
+    expect(stylesSource).toMatch(
+      /@media \(max-width: 560px\)[\s\S]*?overflow-y: auto;/,
+    );
   });
 
   it("supports focused keyboard, swipe, and direct slide navigation", () => {
