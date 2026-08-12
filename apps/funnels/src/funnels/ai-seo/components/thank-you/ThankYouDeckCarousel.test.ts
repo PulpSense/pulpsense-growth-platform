@@ -25,18 +25,13 @@ describe("AI SEO thank-you briefing deck", () => {
     expect(heroSource).not.toContain("WistiaPlayer");
     expect(heroSource).not.toContain("8py8vigtf1");
     expect(heroSource).not.toContain("pr-bar");
-    expect(carouselSource).toContain("briefingSlides.map");
+    expect(carouselSource).toContain("deckSlides.map");
   });
 
-  it("covers call preparation and the approved delivery model", () => {
-    expect(carouselSource).toContain("Confirm your calendar invitation");
-    expect(carouselSource).toContain(
-      "Reschedule from the link in your invitation",
-    );
-    expect(carouselSource).toContain("We benchmark your market");
-    expect(carouselSource).toContain("We build your authority foundation");
-    expect(carouselSource).toContain("We expand and maintain visibility");
-    expect(carouselSource).toContain("45 additional calls in 90 days");
+  it("uses the rich approved briefing deck images", () => {
+    expect(carouselSource).toContain("/ai-seo/deck/slide-");
+    expect(carouselSource).toContain("Array.from({ length: 20 }");
+    expect(stylesSource).toContain(".pr-ty-deck-image");
   });
 
   it("does not carry Lead Oracle pricing, trial, contracts, or review gating into PulpSense", () => {
@@ -53,9 +48,9 @@ describe("AI SEO thank-you briefing deck", () => {
     expect(carouselSource).not.toContain("pr-ty-deck-dots");
   });
 
-  it("defines sixteen structured briefing slides", () => {
-    expect(carouselSource).toContain("briefingSlides.map");
-    expect(carouselSource.match(/eyebrow: ["“]/g)).toHaveLength(16);
+  it("defines twenty rich briefing slides", () => {
+    expect(carouselSource).toContain("deckSlides.map");
+    expect(carouselSource).toContain("{index + 1} / {deckSlides.length}");
   });
 
   it("supports focused keyboard, swipe, and direct slide navigation", () => {
