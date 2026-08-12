@@ -85,10 +85,7 @@ export function VisibilityDeckCarousel() {
                   onClick={handleSlideTap}
                 />
                 <span className="pr-deck-tap-hint" aria-hidden="true">
-                  <svg viewBox="0 0 32 44" focusable="false">
-                    <path d="M16 2C9.4 2 4 7.4 4 14v16c0 6.6 5.4 12 12 12s12-5.4 12-12V14C28 7.4 22.6 2 16 2Z" />
-                    <path d="M16 2v12M12 8h8" />
-                  </svg>
+                  <img src="/ai-seo/images/tap-mouse.svg" alt="" />
                 </span>
               </div>
             </CarouselItem>

@@ -320,14 +320,10 @@ body {
   border-radius: inherit;
   content: "";
 }
-#pr-funnel .pr-ty-deck-tap-hint svg {
+#pr-funnel .pr-ty-deck-tap-hint img {
   width: 1.15rem;
   height: 1.55rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2;
+  object-fit: contain;
 }
 #pr-funnel .pr-ty-deck-hint {
   margin: 0;
