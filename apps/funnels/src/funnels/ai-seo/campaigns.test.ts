@@ -13,12 +13,12 @@ describe("AI SEO campaigns", () => {
     expect(new Set(AI_SEO_CAMPAIGNS.map(({ slug }) => slug))).toHaveLength(6);
 
     expect(AI_SEO_CAMPAIGNS.map(({ slug }) => slug)).toEqual([
-      "regional-visibility-audit/law-firms",
-      "regional-visibility-audit/dental-practices",
-      "regional-visibility-audit/dental-implants",
-      "regional-visibility-audit/plastic-surgery",
-      "regional-visibility-audit/hair-restoration",
-      "regional-visibility-audit/med-spas",
+      "visibility-audit/law-firms",
+      "visibility-audit/dental-practices",
+      "visibility-audit/dental-implants",
+      "visibility-audit/plastic-surgery",
+      "visibility-audit/hair-restoration",
+      "visibility-audit/med-spas",
     ]);
 
     for (const campaign of AI_SEO_CAMPAIGNS) {
