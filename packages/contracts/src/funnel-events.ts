@@ -131,7 +131,11 @@ export const applicationAnswersSchema = z
 export const aiSeoApplicationAnswersSchema = z
   .object({
     businessOwner: z.literal("yes"),
-    businessAge: z.enum(["3+ years", "1–2 years", "Less than 1 year"]),
+    marketingBudget: z.enum([
+      "$500–$1,500/month",
+      "$1,500+/month",
+      "Under $500/month or not set yet",
+    ]),
     investmentIntent: z.enum([
       "Yes, if the numbers make sense",
       "Maybe—I’m exploring options",

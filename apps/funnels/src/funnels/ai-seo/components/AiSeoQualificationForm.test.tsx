@@ -64,11 +64,11 @@ const renderForm = async () => {
   );
   expect(ownerButton).toBeInstanceOf(HTMLButtonElement);
   await act(async () => ownerButton?.click());
-  const ageButton = Array.from(document.querySelectorAll("button")).find(
-    (button) => button.textContent === "3+ years",
+  const budgetButton = Array.from(document.querySelectorAll("button")).find(
+    (button) => button.textContent === "$1,500+/month",
   );
-  expect(ageButton).toBeInstanceOf(HTMLButtonElement);
-  await act(async () => ageButton?.click());
+  expect(budgetButton).toBeInstanceOf(HTMLButtonElement);
+  await act(async () => budgetButton?.click());
   const investmentButton = Array.from(document.querySelectorAll("button")).find(
     (button) => button.textContent === "Yes, if the numbers make sense",
   );

@@ -20,8 +20,8 @@ pnpm dev
 ```
 
 Open the lawyer campaign at
-<http://localhost:4321/regional-visibility-audit/law-firms/> or the dentist campaign at
-<http://localhost:4321/regional-visibility-audit/dental-practices/>.
+<http://localhost:4321/visibility-audit/law-firms/> or the dentist campaign at
+<http://localhost:4321/visibility-audit/dental-practices/>.
 
 ## Scripts
 

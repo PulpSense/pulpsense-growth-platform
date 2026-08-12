@@ -176,6 +176,15 @@ body {
   margin: 1rem auto 0;
   user-select: none;
 }
+@media (min-width: 768px) {
+  #pr-funnel .pr-deck {
+    width: min(56rem, calc(100vw - 6rem));
+    max-width: none;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
 #pr-funnel .pr-deck:focus-visible {
   outline: 3px solid var(--pr-blue);
   outline-offset: 0.35rem;
@@ -480,6 +489,14 @@ body {
   margin: 1.15rem 0 0;
   transform: translateX(-50%);
   overflow: hidden;
+}
+@media (min-width: 768px) {
+  #pr-funnel .pr-note {
+    margin-top: 1rem;
+  }
+  #pr-funnel .pr-client-logos {
+    margin-top: 2rem;
+  }
 }
 #pr-funnel .pr-client-logos-label {
   margin: 0 0 0.45rem;

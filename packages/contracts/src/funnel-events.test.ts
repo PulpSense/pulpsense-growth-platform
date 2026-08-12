@@ -65,7 +65,7 @@ describe("funnel event contract", () => {
           ...aiSeoContact.payload,
           application: {
             businessOwner: "yes",
-            businessAge: "3+ years",
+            marketingBudget: "$1,500+/month",
             investmentIntent: "Yes, if the numbers make sense",
           },
         },
@@ -77,7 +77,7 @@ describe("funnel event contract", () => {
       payload: {
         application: {
           businessOwner: "yes",
-          businessAge: "3+ years",
+            marketingBudget: "$1,500+/month",
           investmentIntent: "Yes, if the numbers make sense",
         },
       },
@@ -103,7 +103,7 @@ describe("funnel event contract", () => {
           ...dentistContact.payload,
           application: {
             businessOwner: "yes",
-            businessAge: "3+ years",
+            marketingBudget: "$1,500+/month",
             investmentIntent: "Yes, if the numbers make sense",
           },
         },
@@ -115,7 +115,7 @@ describe("funnel event contract", () => {
       payload: {
         application: {
           businessOwner: "yes",
-          businessAge: "3+ years",
+            marketingBudget: "$1,500+/month",
           investmentIntent: "Yes, if the numbers make sense",
         },
       },

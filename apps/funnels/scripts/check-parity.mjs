@@ -46,63 +46,63 @@ const isolatedFallbackBindings = [
 
 const publicRoutes = [
   {
-    path: "/regional-visibility-audit/law-firms/",
+    path: "/visibility-audit/law-firms/",
     funnelId: "ai-seo",
-    thankYouPath: "/regional-visibility-audit/law-firms/thank-you/",
+    thankYouPath: "/visibility-audit/law-firms/thank-you/",
     markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/regional-visibility-audit/law-firms/thank-you/",
+    path: "/visibility-audit/law-firms/thank-you/",
     markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
   },
   {
-    path: "/regional-visibility-audit/dental-practices/",
+    path: "/visibility-audit/dental-practices/",
     funnelId: "ai-seo-dentists",
-    thankYouPath: "/regional-visibility-audit/dental-practices/thank-you/",
+    thankYouPath: "/visibility-audit/dental-practices/thank-you/",
     markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/regional-visibility-audit/dental-practices/thank-you/",
+    path: "/visibility-audit/dental-practices/thank-you/",
     markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
   },
   {
-    path: "/regional-visibility-audit/dental-implants/",
+    path: "/visibility-audit/dental-implants/",
     funnelId: "ai-seo-dental-implants",
-    thankYouPath: "/regional-visibility-audit/dental-implants/thank-you/",
+    thankYouPath: "/visibility-audit/dental-implants/thank-you/",
     markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/regional-visibility-audit/dental-implants/thank-you/",
+    path: "/visibility-audit/dental-implants/thank-you/",
     markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
   },
   {
-    path: "/regional-visibility-audit/plastic-surgery/",
+    path: "/visibility-audit/plastic-surgery/",
     funnelId: "ai-seo-plastic-surgery",
-    thankYouPath: "/regional-visibility-audit/plastic-surgery/thank-you/",
+    thankYouPath: "/visibility-audit/plastic-surgery/thank-you/",
     markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/regional-visibility-audit/plastic-surgery/thank-you/",
+    path: "/visibility-audit/plastic-surgery/thank-you/",
     markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
   },
   {
-    path: "/regional-visibility-audit/hair-restoration/",
+    path: "/visibility-audit/hair-restoration/",
     funnelId: "ai-seo-hair-restoration",
-    thankYouPath: "/regional-visibility-audit/hair-restoration/thank-you/",
+    thankYouPath: "/visibility-audit/hair-restoration/thank-you/",
     markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/regional-visibility-audit/hair-restoration/thank-you/",
+    path: "/visibility-audit/hair-restoration/thank-you/",
     markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
   },
   {
-    path: "/regional-visibility-audit/med-spas/",
+    path: "/visibility-audit/med-spas/",
     funnelId: "ai-seo-med-spas",
-    thankYouPath: "/regional-visibility-audit/med-spas/thank-you/",
+    thankYouPath: "/visibility-audit/med-spas/thank-you/",
     markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/regional-visibility-audit/med-spas/thank-you/",
+    path: "/visibility-audit/med-spas/thank-you/",
     markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
   },
 ];

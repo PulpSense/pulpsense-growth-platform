@@ -75,7 +75,7 @@ const releaseRunCount = () => {
 async function run() {
   const origin = releaseOrigin();
   const runCount = releaseRunCount();
-  const target = new URL("/regional-visibility-audit/law-firms/", origin).href;
+  const target = new URL("/visibility-audit/law-firms/", origin).href;
   const lighthouseBin = fileURLToPath(
     new URL("../node_modules/lighthouse/cli/index.js", import.meta.url),
   );
