@@ -241,8 +241,20 @@ export const postSlackBooking = async (
     if (!result.ts) throw new Error("Slack fallback root omitted timestamp");
     return { threadTs: result.ts, fallbackRoot: true as const };
   }
-  if (await hasSlackBookingReply(root, event.eventId, config, fetcher)) {
-    return { threadTs: root, fallbackRoot: false as const, duplicate: true };
+  try {
+    if (await hasSlackBookingReply(root, event.eventId, config, fetcher)) {
+      return { threadTs: root, fallbackRoot: false as const, duplicate: true };
+    }
+  } catch (error) {
+    // A malformed/stale Slack thread timestamp must not suppress a valid
+    // booking notification. Posting the reply is safer than dropping the
+    // customer-facing event; Slack remains an at-least-once destination.
+    if (
+      !(error instanceof Error) ||
+      !/invalid_arguments|thread_not_found/u.test(error.message)
+    ) {
+      throw error;
+    }
   }
   await slackApi(config, fetcher, "chat.postMessage", {
     channel: config.channelId,

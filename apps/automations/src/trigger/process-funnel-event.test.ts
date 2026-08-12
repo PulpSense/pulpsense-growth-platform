@@ -314,7 +314,7 @@ describe("process-funnel-event", () => {
         executeAdapter: retryImmediately(3),
         run: {
           id: "run_01recovery",
-          url: "https://cloud.trigger.dev/projects/v3/proj_test/dev/runs/run_01recovery",
+          url: "https://cloud.trigger.dev/projects/v3/proj_test/runs/run_01recovery",
         },
       },
     );
@@ -1121,5 +1121,49 @@ describe("process-funnel-event", () => {
     expect(fetchMock).toHaveBeenCalledTimes(5);
     expect(fetchMock.mock.calls[1]?.[1]?.method).toBe("POST");
     expect(fetchMock.mock.calls[3]?.[1]?.method).toBe("PATCH");
+  });
+
+  it("recovers from Twenty's 400 duplicate-entry response without failing the event", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(Response.json({ data: { people: { edges: [] } } }))
+      .mockResolvedValueOnce(
+        Response.json(
+          { messages: ["A duplicate entry was detected"] },
+          { status: 400 },
+        ),
+      )
+      .mockResolvedValueOnce(Response.json({ data: { people: { edges: [] } } }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { people: { edges: [{ node: { id: "person_deleted" } }] } },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ data: { restorePerson: { id: "person_deleted" } } }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ data: { updatePerson: { id: "person_deleted" } } }),
+      )
+      .mockResolvedValueOnce(Response.json({ events_received: 1 }));
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    const result = await processFunnelEvent(event, dependencies);
+
+    expect(result.personId).toBe("person_deleted");
+    expect(fetchMock).toHaveBeenCalledTimes(7);
+    expect(fetchMock.mock.calls[1]?.[1]?.method).toBe("POST");
+    expect(fetchMock.mock.calls[5]?.[1]?.method).toBe("PATCH");
   });
 });

@@ -147,6 +147,30 @@ describe("Slack lead journey delivery", () => {
     expect(body.text).toContain("Open booking");
     expect(body.text).not.toContain(bookingEvent.payload.email);
   });
+
+  it("posts the booking when Slack cannot inspect a stale thread", async () => {
+    const root = {
+      ts: "100.200",
+      metadata: {
+        event_type: "pulpsense_lead_journey",
+        event_payload: { lead_journey_id: contactEvent.submissionId },
+      },
+    };
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({ ok: true, messages: [root], response_metadata: {} }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ ok: false, error: "invalid_arguments" }),
+      )
+      .mockResolvedValueOnce(Response.json({ ok: true, ts: "100.300" }));
+
+    await expect(
+      postSlackBooking(bookingEvent, slackConfig, fetcher),
+    ).resolves.toMatchObject({ threadTs: "100.200", duplicate: false });
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
 });
 
 describe("Brevo lifecycle delivery", () => {

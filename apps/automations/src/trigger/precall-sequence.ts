@@ -206,7 +206,8 @@ export const deliverPrecallSequence = async (
 
   for (const slot of schedule) {
     const sendAt = slot.sendAt;
-    if (sendAt > (runtime.now?.() ?? new Date())) {
+    const currentTime = runtime.now?.() ?? new Date();
+    if (sendAt.getTime() - currentTime.getTime() > 1_000) {
       await wait.until({
         date: sendAt,
         idempotencyKey: await idempotencyKeys.create(

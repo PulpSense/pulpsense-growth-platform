@@ -7,7 +7,7 @@ import {
   type ContactSubmittedEvent,
   type FunnelEvent,
 } from "@pulpsense/contracts";
-import { idempotencyKeys, logger, retry, schemaTask } from "@trigger.dev/sdk";
+import { logger, retry, schemaTask } from "@trigger.dev/sdk";
 
 import {
   postSlackBooking,
@@ -19,13 +19,9 @@ import {
   scheduleMeetingReminders,
   sendMeetingReminderTask,
 } from "./meeting-reminders.js";
-import {
-  precallRunIdempotencyKey,
-  runPrecallSequenceTask,
-} from "./precall-sequence.js";
+import { runPrecallSequenceTask } from "./precall-sequence.js";
 import { createPostHogLifecycleCapture } from "./posthog-lifecycle.js";
 import { resolveMetaEnvironment } from "./meta-destination.js";
-import { triggerRunUrl } from "./trigger-dashboard.js";
 
 type AdapterDestination = "twenty" | "meta" | "slack" | "brevo" | "trigger";
 
@@ -144,15 +140,15 @@ type ProcessorDependencies = {
 };
 
 const runIndependent = async <
-  Operations extends Record<string, () => Promise<unknown>>,
+  Operations extends Record<string, Promise<unknown>>,
 >(
   operations: Operations,
 ) => {
-  const entries = Object.entries(operations);
-  const settled = [] as PromiseSettledResult<unknown>[];
+    const entries = Object.entries(operations);
+  const settled: PromiseSettledResult<unknown>[] = [];
   for (const [, operation] of entries) {
     try {
-      settled.push({ status: "fulfilled", value: await operation() });
+      settled.push({ status: "fulfilled", value: await operation });
     } catch (reason) {
       settled.push({ status: "rejected", reason });
     }
@@ -169,9 +165,7 @@ const runIndependent = async <
       entries[index]![0],
       result.status === "fulfilled" ? result.value : undefined,
     ]),
-  ) as {
-    [Key in keyof Operations]: Awaited<ReturnType<Operations[Key]>>;
-  };
+  ) as { [Key in keyof Operations]: Awaited<Operations[Key]> };
 };
 
 const executeAdapter = <Result>(
@@ -266,14 +260,13 @@ export async function processFunnelEvent(
       previousBookingUid: event.payload.booking.previousUid,
       environment: event.environment,
     });
-    await dependencies.schedulePrecallSequence?.(event);
     await runIndependent({
-      brevo: () =>
-        dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      reminders: () =>
+      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      reminders:
         dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
-      measurement: () => capturePostHogSafely(event, dependencies),
+      measurement: capturePostHogSafely(event, dependencies),
     });
+    await dependencies.schedulePrecallSequence?.(event);
     return { ok: true as const, bookingUid: event.payload.booking.uid };
   }
 
@@ -285,9 +278,8 @@ export async function processFunnelEvent(
       environment: event.environment,
     });
     await runIndependent({
-      brevo: () =>
-        dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      measurement: () => capturePostHogSafely(event, dependencies),
+      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      measurement: capturePostHogSafely(event, dependencies),
     });
     return { ok: true as const, bookingUid: event.payload.booking.uid };
   }
@@ -303,13 +295,14 @@ export async function processFunnelEvent(
       funnelId: event.funnelId,
       environment: event.environment,
     });
-    // The customer-facing sequence is independent of CRM, analytics, and Slack
-    // delivery. Schedule it first so a downstream integration failure cannot
-    // suppress a valid booked-call email sequence.
+
+    // Schedule the customer-facing sequence before CRM/Slack work. These
+    // integrations are independent and must not suppress the booked-call
+    // emails when a destination has stale data or a provider outage.
     await dependencies.schedulePrecallSequence?.(event);
 
     const destinations = await runIndependent({
-      core: async () => {
+      core: (async () => {
         const { personId } = await executeTwenty(
           event,
           dependencies,
@@ -328,13 +321,12 @@ export async function processFunnelEvent(
           () => dependencies.sendMetaSchedule!(event),
         );
         return { personId, booking, eventsReceived };
-      },
-      slack: () => dependencies.postSlackBooking?.(event) ?? Promise.resolve(),
-      brevo: () =>
-        dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      reminders: () =>
+      })(),
+      slack: dependencies.postSlackBooking?.(event) ?? Promise.resolve(),
+      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      reminders:
         dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
-      measurement: () => capturePostHogSafely(event, dependencies),
+      measurement: capturePostHogSafely(event, dependencies),
     });
     const { personId, booking, eventsReceived } = destinations.core;
 
@@ -373,7 +365,7 @@ export async function processFunnelEvent(
     });
 
     const destinations = await runIndependent({
-      core: async () => {
+      core: (async () => {
         const { personId } = await executeTwenty(
           event,
           dependencies,
@@ -392,10 +384,9 @@ export async function processFunnelEvent(
           () => dependencies.sendMetaApplication!(event),
         );
         return { personId, application, eventsReceived };
-      },
-      brevo: () =>
-        dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      measurement: () => capturePostHogSafely(event, dependencies),
+      })(),
+      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      measurement: capturePostHogSafely(event, dependencies),
     });
     const { personId, application, eventsReceived } = destinations.core;
 
@@ -430,7 +421,7 @@ export async function processFunnelEvent(
   });
 
   const destinations = await runIndependent({
-    core: async () => {
+    core: (async () => {
       const { personId } = await executeTwenty(
         event,
         dependencies,
@@ -443,11 +434,10 @@ export async function processFunnelEvent(
         () => dependencies.sendMetaLead(event),
       );
       return { personId, eventsReceived };
-    },
-    slack: () => dependencies.postSlackLead?.(event) ?? Promise.resolve(),
-    brevo: () =>
-      dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-    measurement: () => capturePostHogSafely(event, dependencies),
+    })(),
+    slack: dependencies.postSlackLead?.(event) ?? Promise.resolve(),
+    brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+    measurement: capturePostHogSafely(event, dependencies),
   });
   const { personId, eventsReceived } = destinations.core;
 
@@ -501,15 +491,6 @@ const required = (value: string | undefined, name: string) => {
   return value;
 };
 
-const responseDetail = async (response: Response) => {
-  const body = (await response.text()).trim();
-  if (!body) return "";
-  const redacted = body
-    .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/gu, "[redacted-email]")
-    .replace(/\+?\d[\d\s().-]{7,}\d/gu, "[redacted-phone]");
-  return `: ${redacted.slice(0, 1_000)}`;
-};
-
 const normalizeOrigin = (origin: string) => origin.replace(/\/+$/u, "");
 
 const twentyHeaders = (apiKey: string) => ({
@@ -523,7 +504,12 @@ type TwentyClient = {
   apiKey: string;
 };
 
-const findTwentyPersonId = async (client: TwentyClient, email: string) => {
+const findTwentyPersonId = async (
+  client: TwentyClient,
+  email: string,
+  includeDeleted = false,
+) => {
+  const deletedFilter = includeDeleted ? ", deletedAt: { is: NOT_NULL }" : "";
   const response = await client.fetch(`${client.origin}/graphql`, {
     method: "POST",
     headers: twentyHeaders(client.apiKey),
@@ -531,7 +517,7 @@ const findTwentyPersonId = async (client: TwentyClient, email: string) => {
       query: `
         query FindPersonByEmail($email: String!) {
           people(
-            filter: { emails: { primaryEmail: { eq: $email } } }
+            filter: { emails: { primaryEmail: { eq: $email } }${deletedFilter} }
             first: 1
           ) {
             edges { node { id } }
@@ -551,6 +537,29 @@ const findTwentyPersonId = async (client: TwentyClient, email: string) => {
   };
   if (result.errors?.length) throw new Error("Twenty person lookup failed");
   return result.data?.people?.edges?.[0]?.node?.id;
+};
+
+const restoreTwentyPerson = async (client: TwentyClient, personId: string) => {
+  const response = await client.fetch(`${client.origin}/graphql`, {
+    method: "POST",
+    headers: twentyHeaders(client.apiKey),
+    body: JSON.stringify({
+      query: `mutation RestorePerson($id: UUID!) {
+        restorePerson(id: $id) { id }
+      }`,
+      variables: { id: personId },
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Twenty person restore failed (${response.status})`);
+  }
+  const result = (await response.json()) as {
+    data?: { restorePerson?: { id?: string } };
+    errors?: unknown[];
+  };
+  if (result.errors?.length || result.data?.restorePerson?.id !== personId) {
+    throw new Error("Twenty person restore failed");
+  }
 };
 
 const personInput = (event: FunnelEvent) => ({
@@ -580,14 +589,25 @@ const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
   });
 
   if (!response.ok) {
-    if (response.status === 409 && !existingId) {
+    const responseBody = response.status === 400 ? await response.text() : "";
+    const isDuplicateCreate =
+      !existingId &&
+      (response.status === 409 ||
+        (response.status === 400 &&
+          responseBody.toLowerCase().includes("duplicate entry")));
+
+    if (isDuplicateCreate) {
       const concurrentId = await findTwentyPersonId(client, normalizedEmail);
-      if (!concurrentId) {
+      const personId = concurrentId ??
+        (await findTwentyPersonId(client, normalizedEmail, true));
+      if (!personId) {
         throw new Error("Twenty person conflict could not be reconciled");
       }
-
+      if (!concurrentId) {
+        await restoreTwentyPerson(client, personId);
+      }
       const updateResponse = await client.fetch(
-        `${client.origin}/rest/people/${encodeURIComponent(concurrentId)}`,
+        `${client.origin}/rest/people/${encodeURIComponent(personId)}`,
         {
           method: "PATCH",
           headers: twentyHeaders(client.apiKey),
@@ -595,16 +615,13 @@ const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
         },
       );
       if (!updateResponse.ok) {
-        throw new Error(
-          `Twenty person upsert failed (${updateResponse.status})${await responseDetail(updateResponse)}`,
-        );
+        throw new Error(`Twenty person upsert failed (${updateResponse.status})`);
       }
-
-      return { personId: concurrentId };
+      return { personId };
     }
 
     throw new Error(
-      `Twenty person upsert failed (${response.status})${await responseDetail(response)}`,
+      `Twenty person upsert failed (${response.status})${responseBody ? `: ${responseBody}` : ""}`,
     );
   }
 
@@ -1205,6 +1222,9 @@ export function createProcessorDependencies(
         },
       ));
   const alertTwentyFailure = async (context: TwentyFailureContext) => {
+    const runReference = runtime.run
+      ? `<${runtime.run.url}|${runtime.run.id}>`
+      : "unavailable";
     await executeWithRetry(
       { destination: "slack", operation: "alert_twenty_failure" },
       async () => {
@@ -1212,7 +1232,15 @@ export function createProcessorDependencies(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: formatTwentyFailureAlert(context, runtime.run?.url),
+            text: [
+              ":rotating_light: Twenty delivery exhausted retries",
+              `Environment: ${context.environment}`,
+              `Funnel: ${context.funnelId}`,
+              `Event type: ${context.eventType}`,
+              `Submission: ${context.submissionId}`,
+              `Operation: ${displayOperation(context.operation)}`,
+              `Trigger.dev run: ${runReference}`,
+            ].join("\n"),
           }),
         });
         if (!response.ok) {
@@ -1221,7 +1249,13 @@ export function createProcessorDependencies(
       },
     );
   };
-  const alertDestinationFailure = async (event: BrevoLifecycleEvent) => {
+  const alertDestinationFailure = async (
+    event: BrevoLifecycleEvent,
+    operation: AdapterOperation,
+  ) => {
+    const runReference = runtime.run
+      ? `<${runtime.run.url}|${runtime.run.id}>`
+      : "unavailable";
     await executeWithRetry(
       { destination: "slack", operation: "alert_destination_failure" },
       async () => {
@@ -1229,7 +1263,17 @@ export function createProcessorDependencies(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: formatBrevoFailureAlert(event, runtime.run?.url),
+            text: [
+              ":rotating_light: Lifecycle destination exhausted retries",
+              `Environment: ${event.environment}`,
+              `Destination: brevo`,
+              `Operation: ${displayOperation(operation)}`,
+              `Lead Journey: ${event.submissionId}`,
+              ...("booking" in event.payload
+                ? [`Cal UID: ${event.payload.booking.uid}`]
+                : []),
+              `Trigger.dev run: ${runReference}`,
+            ].join("\n"),
           }),
         });
         if (!response.ok) {
@@ -1316,7 +1360,7 @@ export function createProcessorDependencies(
               );
             } catch (error) {
               try {
-                await alertDestinationFailure(event);
+                await alertDestinationFailure(event, "publish_brevo_lifecycle");
               } catch {
                 runtime.log.info("Brevo failure alert delivery failed", {
                   submissionId: event.submissionId,
@@ -1352,16 +1396,10 @@ export function createProcessorDependencies(
           ) => {
             const payload = precallPayloadFromBooking(event);
             return executeWithRetry(
-              {
-                destination: "trigger",
-                operation: "schedule_meeting_reminders",
-              },
-              async () =>
+              { destination: "trigger", operation: "schedule_meeting_reminders" },
+              () =>
                 runPrecallSequenceTask.trigger(payload, {
-                  idempotencyKey: await idempotencyKeys.create(
-                    precallRunIdempotencyKey(payload.sequenceId),
-                    { scope: "global" },
-                  ),
+                  idempotencyKey: `precall-run:${payload.sequenceId}`,
                   idempotencyKeyTTL: "1y",
                 }),
             );
@@ -1413,14 +1451,12 @@ export const processFunnelEventTask = schemaTask({
           BREVO_LEAD_MAGNETS_LIST_ID: process.env.BREVO_LEAD_MAGNETS_LIST_ID,
           BREVO_PRECALL_SENDER_EMAIL: process.env.BREVO_PRECALL_SENDER_EMAIL,
           BREVO_PRECALL_SENDER_NAME: process.env.BREVO_PRECALL_SENDER_NAME,
-          BREVO_PRECALL_REPLY_TO_EMAIL:
-            process.env.BREVO_PRECALL_REPLY_TO_EMAIL,
+          BREVO_PRECALL_REPLY_TO_EMAIL: process.env.BREVO_PRECALL_REPLY_TO_EMAIL,
           PRECALL_EMAILS_ENABLED: process.env.PRECALL_EMAILS_ENABLED,
           PRECALL_PUBLIC_ORIGIN: process.env.PRECALL_PUBLIC_ORIGIN,
           PULPSENSE_BUSINESS_POSTAL_ADDRESS:
             process.env.PULPSENSE_BUSINESS_POSTAL_ADDRESS,
-          PRECALL_OPT_OUT_TOKEN_SECRET:
-            process.env.PRECALL_OPT_OUT_TOKEN_SECRET,
+          PRECALL_OPT_OUT_TOKEN_SECRET: process.env.PRECALL_OPT_OUT_TOKEN_SECRET,
           CAL_API_KEY: process.env.CAL_API_KEY,
           PULPSENSE_AUTOMATION_ENVIRONMENT: process.env
             .PULPSENSE_AUTOMATION_ENVIRONMENT as
@@ -1432,7 +1468,7 @@ export const processFunnelEventTask = schemaTask({
           log: logger,
           run: {
             id: ctx.run.id,
-            url: triggerRunUrl(ctx.environment.slug, ctx.run.id),
+            url: `https://cloud.trigger.dev/projects/v3/${encodeURIComponent(ctx.project.ref)}/runs/${encodeURIComponent(ctx.run.id)}`,
           },
         },
       ),
