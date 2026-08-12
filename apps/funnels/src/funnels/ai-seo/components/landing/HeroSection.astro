@@ -1,6 +1,6 @@
 ---
-import WistiaPlayer from "@/components/funnel/WistiaPlayer.astro";
 import ClientLogoCarousel from "./ClientLogoCarousel.astro";
+import { VisibilityDeckCarousel } from "./VisibilityDeckCarousel";
 
 type Props = {
   heroCallout: string;
@@ -56,12 +56,7 @@ const { heroCallout } = Astro.props;
     Get found when people in your market are ready to call. No ad spend. No
     shared leads. The entire visibility system managed for you.
   </p>
-  <div class="pr-vsl-wrap">
-    <WistiaPlayer
-      mediaId="8py8vigtf1"
-      label="PulpSense visibility system overview"
-    />
-  </div>
+  <VisibilityDeckCarousel client:visible />
   <a class="pr-btn" href="#pr-funnel-form">Get Your Visibility Audit</a>
   <p class="pr-note">
     <u>Over 200M people</u> use ChatGPT every week to decide which service businesses
