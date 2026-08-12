@@ -3,6 +3,9 @@ import { verifySoftphoneHandoff } from "../handoff";
 export type SoftphoneEnv = {
   SOFTPHONE_HANDOFF_SECRET?: string;
   SOFTPHONE_ENVIRONMENT?: string;
+  SOFTPHONE_SECURITY_SERVICE?: {
+    fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+  };
   TELNYX_API_KEY?: string;
   TELNYX_CALLER_NUMBER?: string;
   TELNYX_TELEPHONY_CREDENTIAL_ID?: string;
@@ -49,7 +52,8 @@ const requireEnvironment = (env: SoftphoneEnv) => {
     !required.apiKey ||
     !required.callerNumber ||
     !required.credentialId ||
-    !required.handoffSecret
+    !required.handoffSecret ||
+    !env.SOFTPHONE_SECURITY_SERVICE
   ) {
     throw new Error("softphone_is_not_configured");
   }
@@ -62,6 +66,40 @@ const requireEnvironment = (env: SoftphoneEnv) => {
     credentialId: string;
     handoffSecret: string;
   };
+};
+
+const sha256 = async (value: string) => {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(value),
+  );
+  return Array.from(new Uint8Array(digest), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+};
+
+const clientRateLimitKey = async (request: Request) => {
+  const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0];
+  const clientAddress =
+    request.headers.get("cf-connecting-ip") ??
+    forwardedFor?.trim() ??
+    "unknown";
+  return sha256(`softphone-session:${clientAddress}`);
+};
+
+const callSecurityService = async (
+  env: SoftphoneEnv,
+  path: string,
+  body: string,
+) => {
+  try {
+    return await env.SOFTPHONE_SECURITY_SERVICE?.fetch(
+      `https://softphone-security${path}`,
+      { method: "POST", body },
+    );
+  } catch {
+    return undefined;
+  }
 };
 
 export const createSoftphoneSessionHandler =
@@ -77,6 +115,18 @@ export const createSoftphoneSessionHandler =
       return json({ error: (error as Error).message }, 503);
     }
 
+    const rateLimitResponse = await callSecurityService(
+      env,
+      "/limit",
+      await clientRateLimitKey(request),
+    );
+    if (rateLimitResponse?.status === 429) {
+      return json({ error: "rate_limit_exceeded" }, 429);
+    }
+    if (rateLimitResponse?.status !== 204) {
+      return json({ error: "softphone_security_unavailable" }, 503);
+    }
+
     const body = await parseBody(request);
     if (!body?.handoff) return json({ error: "handoff_is_required" }, 400);
 
@@ -89,6 +139,18 @@ export const createSoftphoneSessionHandler =
       );
     } catch (error) {
       return json({ error: (error as Error).message }, 401);
+    }
+
+    const consumeResponse = await callSecurityService(
+      env,
+      "/consume",
+      JSON.stringify({ exp: handoff.exp, nonce: handoff.nonce }),
+    );
+    if (consumeResponse?.status === 409) {
+      return json({ error: "handoff_already_used" }, 401);
+    }
+    if (consumeResponse?.status !== 204) {
+      return json({ error: "softphone_security_unavailable" }, 503);
     }
 
     const tokenResponse = await fetchTelnyx(

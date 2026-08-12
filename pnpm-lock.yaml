@@ -183,6 +183,18 @@ importers:
         specifier: ^4.120.0
         version: 4.120.0(@cloudflare/workers-types@5.20260810.1)
 
+  apps/softphone-security:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.18
+        version: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@24.10.1)(jsdom@27.4.0(supports-color@10.2.2))(vite@8.2.1(@types/node@24.10.1)(esbuild@0.28.1)(jiti@2.7.0)(yaml@2.9.0))
+      wrangler:
+        specifier: ^4.120.0
+        version: 4.120.0(@cloudflare/workers-types@5.20260810.1)
+
   packages/contracts:
     dependencies:
       zod:
