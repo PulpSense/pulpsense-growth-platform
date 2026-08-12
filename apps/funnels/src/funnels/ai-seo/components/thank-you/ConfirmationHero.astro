@@ -1,9 +1,9 @@
 ---
-import WistiaPlayer from "@/components/funnel/WistiaPlayer.astro";
+import { ThankYouDeckCarousel } from "./ThankYouDeckCarousel";
 ---
 
 <div class="pr-bar">
-  📌{" "}For established, high-trust regional service businesses
+  📌 For established, high-trust regional service businesses
 </div>
 
 <header class="pr-confirm-hero pr-center">
@@ -11,12 +11,9 @@ import WistiaPlayer from "@/components/funnel/WistiaPlayer.astro";
     ONE LAST THING: Complete these required steps ✅
   </h1>
   <p class="pr-confirm-sub">
-    👇 Watch this video on next steps, what we do, and FAQs 👇
+    Review this quick briefing before your Regional Visibility Audit.
   </p>
   <div class="video-wrap">
-    <WistiaPlayer
-      mediaId="8py8vigtf1"
-      label="PulpSense visibility audit next steps"
-    />
+    <ThankYouDeckCarousel client:visible />
   </div>
 </header>
