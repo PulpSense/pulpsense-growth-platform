@@ -11,9 +11,13 @@ import { createSoftphoneSessionHandler, type SoftphoneEnv } from "./session";
 const now = new Date("2026-08-11T17:00:00.000Z").getTime();
 const apiKey = "KEY_test_that_is_longer_than_thirty_two_characters";
 const secret = "handoff_test_secret_that_is_longer_than_thirty_two_characters";
+const securityService = () => ({
+  fetch: vi.fn(async () => new Response(null, { status: 204 })),
+});
 const env: SoftphoneEnv = {
   SOFTPHONE_HANDOFF_SECRET: secret,
   SOFTPHONE_ENVIRONMENT: "test",
+  SOFTPHONE_SECURITY_SERVICE: securityService(),
   TELNYX_API_KEY: apiKey,
   TELNYX_CALLER_NUMBER: "+13072490829",
   TELNYX_TELEPHONY_CREDENTIAL_ID: "eec718ab-9e16-4042-ac54-ea2cb48143ef",
@@ -86,6 +90,23 @@ describe("softphone session", () => {
     expect(fetchTelnyx).not.toHaveBeenCalled();
   });
 
+  it("rejects handoffs signed for more than two minutes", async () => {
+    const longLived = await signSoftphoneHandoff(
+      payload({ exp: Math.floor(now / 1000) + 121 }),
+      secret,
+    );
+    const fetchTelnyx = vi.fn();
+    const handler = createSoftphoneSessionHandler(fetchTelnyx, () => now);
+
+    const response = await handler(request(longLived), env);
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: "handoff_lifetime_is_invalid",
+    });
+    expect(fetchTelnyx).not.toHaveBeenCalled();
+  });
+
   it("rejects cross-origin token exchange attempts", async () => {
     const handoff = await signSoftphoneHandoff(payload(), secret);
     const handler = createSoftphoneSessionHandler(vi.fn(), () => now);
@@ -96,6 +117,46 @@ describe("softphone session", () => {
     );
 
     expect(response.status).toBe(403);
+  });
+
+  it("rejects a replay before requesting another Telnyx JWT", async () => {
+    const handoff = await signSoftphoneHandoff(payload(), secret);
+    const fetchTelnyx = vi.fn();
+    const replayEnv: SoftphoneEnv = {
+      ...env,
+      SOFTPHONE_SECURITY_SERVICE: {
+        fetch: vi
+          .fn()
+          .mockResolvedValueOnce(new Response(null, { status: 204 }))
+          .mockResolvedValueOnce(new Response(null, { status: 409 })),
+      },
+    };
+    const handler = createSoftphoneSessionHandler(fetchTelnyx, () => now);
+
+    const response = await handler(request(handoff), replayEnv);
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: "handoff_already_used",
+    });
+    expect(fetchTelnyx).not.toHaveBeenCalled();
+  });
+
+  it("rate limits token exchange attempts before verifying the handoff", async () => {
+    const handoff = await signSoftphoneHandoff(payload(), secret);
+    const fetchTelnyx = vi.fn();
+    const limitedEnv: SoftphoneEnv = {
+      ...env,
+      SOFTPHONE_SECURITY_SERVICE: {
+        fetch: vi.fn(async () => new Response(null, { status: 429 })),
+      },
+    };
+    const handler = createSoftphoneSessionHandler(fetchTelnyx, () => now);
+
+    const response = await handler(request(handoff), limitedEnv);
+
+    expect(response.status).toBe(429);
+    expect(fetchTelnyx).not.toHaveBeenCalled();
   });
 
   it("fails closed when runtime credentials are missing", async () => {

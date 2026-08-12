@@ -1,0 +1,12 @@
+name = "pulpsense-softphone-security-preview"
+main = "src/index.ts"
+compatibility_date = "2026-08-12"
+workers_dev = false
+
+[[durable_objects.bindings]]
+name = "SOFTPHONE_SECURITY"
+class_name = "SoftphoneSecurity"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["SoftphoneSecurity"]
