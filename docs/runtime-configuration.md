@@ -43,6 +43,8 @@ The rate-limiter Worker owns the Workers-only `FUNNEL_RATE_LIMITER` binding and 
 
 The API key, shared signing secret, SIP password, and Telnyx JWT never enter committed files or Twenty front-component code. The browser receives only a short-lived Telnyx JWT after Cloudflare verifies the signed Person handoff.
 
+`.github/workflows/softphone-pages.yml` verifies softphone changes and publishes a branch deployment for each non-draft pull request. A merge to `master` cancels any stale softphone run, waits for the repository's Production approval, and uploads the exact verified commit to the `pulpsense-softphone-preview` Pages project on its `master` branch. The custom `softphone.pulpsense.com` hostname follows that production branch.
+
 ## Automation worker
 
 | Variable or setting                | Secret | Current behavior                                                                                                             | Local development               | Non-production / Trigger.dev Development    | Production                                     |
