@@ -78,15 +78,7 @@ export function VisibilityDeckCarousel() {
         touchStartX.current = null;
       }}
     >
-      <div className="pr-deck-stage">
-        <img
-          className="pr-deck-image"
-          src={activeSlide.image}
-          alt={activeSlide.alt}
-          width="1600"
-          height="900"
-          draggable="false"
-        />
+      <div className="pr-deck-shell">
         <button
           className="pr-deck-arrow pr-deck-arrow-left"
           type="button"
@@ -96,6 +88,16 @@ export function VisibilityDeckCarousel() {
         >
           <span aria-hidden="true">‹</span>
         </button>
+        <div className="pr-deck-stage">
+          <img
+            className="pr-deck-image"
+            src={activeSlide.image}
+            alt={activeSlide.alt}
+            width="1600"
+            height="900"
+            draggable="false"
+          />
+        </div>
         <button
           className="pr-deck-arrow pr-deck-arrow-right"
           type="button"

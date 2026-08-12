@@ -42,6 +42,12 @@ const pixels = createBrowserTrackingConfig({
   description={campaign.thankYouDescription}
 >
   <meta slot="head" name="referrer" content="strict-origin-when-cross-origin" />
+  <link
+    slot="head"
+    rel="preconnect"
+    href="https://fast.wistia.com"
+    crossorigin
+  />
   <link slot="head" rel="preconnect" href="https://www.youtube-nocookie.com" />
   <FunnelAnalytics
     client:interaction="idle"

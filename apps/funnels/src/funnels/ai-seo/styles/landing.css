@@ -181,8 +181,17 @@ body {
   outline-offset: 0.35rem;
   border-radius: 0.75rem;
 }
+#pr-funnel .pr-deck-shell {
+  display: grid;
+  grid-template-columns: clamp(2.5rem, 5vw, 3.5rem) minmax(0, 1fr) clamp(
+      2.5rem,
+      5vw,
+      3.5rem
+    );
+  align-items: center;
+  gap: clamp(0.5rem, 2vw, 1rem);
+}
 #pr-funnel .pr-deck-stage {
-  position: relative;
   overflow: hidden;
   aspect-ratio: 16 / 9;
   border: 1px solid rgba(17, 24, 39, 0.1);
@@ -199,14 +208,10 @@ body {
   -webkit-user-drag: none;
 }
 #pr-funnel .pr-deck-arrow {
-  position: absolute;
-  top: 50%;
-  z-index: 2;
   display: grid;
   width: clamp(2.5rem, 5vw, 3.5rem);
   height: clamp(2.5rem, 5vw, 3.5rem);
   padding: 0;
-  transform: translateY(-50%);
   place-items: center;
   border: 1px solid rgba(255, 255, 255, 0.75);
   border-radius: 999px;
@@ -225,7 +230,7 @@ body {
 #pr-funnel .pr-deck-arrow:hover:not(:disabled),
 #pr-funnel .pr-deck-arrow:focus-visible {
   background: var(--pr-blue);
-  transform: translateY(-50%) scale(1.05);
+  transform: scale(1.05);
 }
 #pr-funnel .pr-deck-arrow:focus-visible {
   outline: 3px solid #fff;
@@ -240,10 +245,8 @@ body {
   cursor: default;
 }
 #pr-funnel .pr-deck-arrow-left {
-  left: clamp(0.5rem, 2vw, 1rem);
 }
 #pr-funnel .pr-deck-arrow-right {
-  right: clamp(0.5rem, 2vw, 1rem);
 }
 #pr-funnel .pr-deck-controls {
   display: flex;

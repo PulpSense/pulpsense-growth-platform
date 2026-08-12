@@ -155,28 +155,7 @@ export function ThankYouDeckCarousel() {
         touchStartX.current = null;
       }}
     >
-      <div className="pr-ty-deck-stage">
-        <div className="pr-ty-deck-grid" aria-live="polite">
-          <div className="pr-ty-deck-copy">
-            <p className="pr-ty-deck-eyebrow">{slide.eyebrow}</p>
-            <h2>{slide.title}</h2>
-            <p className="pr-ty-deck-body">{slide.body}</p>
-            {slide.points ? (
-              <ul className="pr-ty-deck-points">
-                {slide.points.map((point) => (
-                  <li key={point}>{point}</li>
-                ))}
-              </ul>
-            ) : null}
-            {slide.accent ? (
-              <p className="pr-ty-deck-accent">{slide.accent}</p>
-            ) : null}
-          </div>
-          <div className="pr-ty-deck-mark" aria-hidden="true">
-            <span>{String(activeIndex + 1).padStart(2, "0")}</span>
-            <small>PULPSENSE</small>
-          </div>
-        </div>
+      <div className="pr-ty-deck-shell">
         <button
           className="pr-ty-deck-arrow pr-ty-deck-arrow-left"
           type="button"
@@ -186,6 +165,29 @@ export function ThankYouDeckCarousel() {
         >
           <span aria-hidden="true">‹</span>
         </button>
+        <div className="pr-ty-deck-stage">
+          <div className="pr-ty-deck-grid" aria-live="polite">
+            <div className="pr-ty-deck-copy">
+              <p className="pr-ty-deck-eyebrow">{slide.eyebrow}</p>
+              <h2>{slide.title}</h2>
+              <p className="pr-ty-deck-body">{slide.body}</p>
+              {slide.points ? (
+                <ul className="pr-ty-deck-points">
+                  {slide.points.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              ) : null}
+              {slide.accent ? (
+                <p className="pr-ty-deck-accent">{slide.accent}</p>
+              ) : null}
+            </div>
+            <div className="pr-ty-deck-mark" aria-hidden="true">
+              <span>{String(activeIndex + 1).padStart(2, "0")}</span>
+              <small>PULPSENSE</small>
+            </div>
+          </div>
+        </div>
         <button
           className="pr-ty-deck-arrow pr-ty-deck-arrow-right"
           type="button"
