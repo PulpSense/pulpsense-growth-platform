@@ -48,7 +48,14 @@ const applicationEvent: ApplicationSubmittedEvent = {
   eventType: "application_submitted",
   eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   occurredAt: "2026-08-10T10:01:00.000Z",
-  payload: { ...contactEvent.payload, application: { businessOwner: "yes" } },
+  payload: {
+    ...contactEvent.payload,
+    application: {
+      businessOwner: "yes",
+      businessAge: "3+ years",
+      investmentIntent: "Yes, if the numbers make sense",
+    },
+  },
   qualificationStatus: "qualified",
   companyDomain: "brand.com",
   bookingLink:

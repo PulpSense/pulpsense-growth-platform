@@ -60,10 +60,20 @@ const renderForm = async () => {
   });
 
   const ownerButton = Array.from(document.querySelectorAll("button")).find(
-    (button) => button.textContent?.includes("Yes, I own the business"),
+    (button) => button.textContent === "Yes",
   );
   expect(ownerButton).toBeInstanceOf(HTMLButtonElement);
   await act(async () => ownerButton?.click());
+  const ageButton = Array.from(document.querySelectorAll("button")).find(
+    (button) => button.textContent === "3+ years",
+  );
+  expect(ageButton).toBeInstanceOf(HTMLButtonElement);
+  await act(async () => ageButton?.click());
+  const investmentButton = Array.from(document.querySelectorAll("button")).find(
+    (button) => button.textContent === "Yes, if the numbers make sense",
+  );
+  expect(investmentButton).toBeInstanceOf(HTMLButtonElement);
+  await act(async () => investmentButton?.click());
 };
 
 beforeEach(() => {

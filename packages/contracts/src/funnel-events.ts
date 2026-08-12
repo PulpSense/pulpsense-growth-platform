@@ -131,6 +131,12 @@ export const applicationAnswersSchema = z
 export const aiSeoApplicationAnswersSchema = z
   .object({
     businessOwner: z.literal("yes"),
+    businessAge: z.enum(["3+ years", "1–2 years", "Less than 1 year"]),
+    investmentIntent: z.enum([
+      "Yes, if the numbers make sense",
+      "Maybe—I’m exploring options",
+      "No, I’m only looking for free information",
+    ]),
   })
   .strict();
 
@@ -198,42 +204,42 @@ export const applicationSubmittedEventSchema = z.discriminatedUnion(
       payload: verifiedContactPayloadSchema.extend({
         application: aiSeoApplicationAnswersSchema,
       }),
-      qualificationStatus: z.literal("qualified"),
+      qualificationStatus: z.enum(["qualified", "unqualified"]),
     }),
     applicationSubmittedEventBase.extend({
       funnelId: z.literal("ai-seo-dentists"),
       payload: verifiedContactPayloadSchema.extend({
         application: aiSeoApplicationAnswersSchema,
       }),
-      qualificationStatus: z.literal("qualified"),
+      qualificationStatus: z.enum(["qualified", "unqualified"]),
     }),
     applicationSubmittedEventBase.extend({
       funnelId: z.literal("ai-seo-dental-implants"),
       payload: verifiedContactPayloadSchema.extend({
         application: aiSeoApplicationAnswersSchema,
       }),
-      qualificationStatus: z.literal("qualified"),
+      qualificationStatus: z.enum(["qualified", "unqualified"]),
     }),
     applicationSubmittedEventBase.extend({
       funnelId: z.literal("ai-seo-plastic-surgery"),
       payload: verifiedContactPayloadSchema.extend({
         application: aiSeoApplicationAnswersSchema,
       }),
-      qualificationStatus: z.literal("qualified"),
+      qualificationStatus: z.enum(["qualified", "unqualified"]),
     }),
     applicationSubmittedEventBase.extend({
       funnelId: z.literal("ai-seo-hair-restoration"),
       payload: verifiedContactPayloadSchema.extend({
         application: aiSeoApplicationAnswersSchema,
       }),
-      qualificationStatus: z.literal("qualified"),
+      qualificationStatus: z.enum(["qualified", "unqualified"]),
     }),
     applicationSubmittedEventBase.extend({
       funnelId: z.literal("ai-seo-med-spas"),
       payload: verifiedContactPayloadSchema.extend({
         application: aiSeoApplicationAnswersSchema,
       }),
-      qualificationStatus: z.literal("qualified"),
+      qualificationStatus: z.enum(["qualified", "unqualified"]),
     }),
   ],
 );
