@@ -51,7 +51,10 @@ export const renderPrecallEmail = (
   const subject = interpolate(module.subject, variables);
   const preview = interpolate(module.preview, variables);
   const footer = [
-    "PulpSense",
+    "Talk soon,",
+    "Santi",
+    "Founder, PulpSense",
+    "",
     variables.business_postal_address,
     "",
     `Don't want the preparation emails? Stop pre-call emails: ${variables.precall_opt_out_url}`,
@@ -59,7 +62,12 @@ export const renderPrecallEmail = (
   ].join("\n");
   const textContent = `${body}\n\n${footer}`;
   const htmlBody = bodyToHtml(escapeHtml(body));
-  const htmlFooter = bodyToHtml(escapeHtml(footer));
+  const htmlFooter = [
+    "<p>Talk soon,<br />Santi<br />Founder, PulpSense</p>",
+    `<p>${escapeHtml(variables.business_postal_address)}</p>`,
+    `<p>Don't want the preparation emails? <a href="${escapeHtml(variables.precall_opt_out_url)}">Stop pre-call emails</a></p>`,
+    "<p>Your appointment will stay booked.</p>",
+  ].join("");
   return {
     subject,
     preview,

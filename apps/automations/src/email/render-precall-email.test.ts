@@ -18,6 +18,11 @@ describe("pre-call renderer", () => {
     const result = renderPrecallEmail("confirmation", variables);
     expect(result.textContent).toContain("Hi <Ada>, it's Santi.");
     expect(result.htmlContent).toContain("&lt;Ada&gt;");
+    expect(result.htmlContent).toContain("Talk soon,<br />Santi<br />Founder, PulpSense");
+    expect(result.htmlContent).toContain(
+      '<a href="https://example.com/precall-opt-out?token=abc">Stop pre-call emails</a>',
+    );
+    expect(result.htmlContent).not.toContain("Stop pre-call emails: https://");
     expect(result.htmlContent).toContain("Your appointment will stay booked.");
     expect(result.htmlContent).not.toContain("undefined");
   });
