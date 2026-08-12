@@ -385,20 +385,9 @@ body {
   align-items: center;
   justify-content: center;
   transform: translateY(-50%);
-  border: 1px solid rgba(0, 128, 255, 0.3);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
-  color: var(--pr-blue);
-  box-shadow: 0 4px 14px rgba(17, 24, 39, 0.16);
+  background: transparent;
   pointer-events: none;
   animation: pr-deck-tap-pulse 1.8s ease-in-out infinite;
-}
-#pr-funnel .pr-deck-tap-hint::before {
-  position: absolute;
-  inset: -0.35rem;
-  border: 1px solid rgba(0, 128, 255, 0.2);
-  border-radius: inherit;
-  content: "";
 }
 #pr-funnel .pr-deck-tap-hint img {
   width: 1.15rem;
