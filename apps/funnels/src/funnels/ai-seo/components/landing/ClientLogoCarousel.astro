@@ -1,0 +1,112 @@
+---
+const clients = [
+  {
+    name: "EAK Distribution",
+    asset: "d9c5db0cb7b483bff8fdd84398e3d122183ef0f9-352x44-webp",
+    height: 45,
+  },
+  {
+    name: "Skale Media",
+    asset: "cd3ec738f6b9ed35d7a48682f8987c15a93e3df3-1024x117-webp",
+    height: 40,
+  },
+  {
+    name: "JOOLA",
+    asset: "36755bd6c7c24e58658979b91036cd97a366c0b4-500x158-webp",
+    height: 35,
+  },
+  {
+    name: "FoodReady",
+    asset: "edc858e12dae5fdf4d8aec2ce96f2ebf66e82e2b-1023x191-webp",
+    height: 40,
+  },
+  {
+    name: "Flatiron Search Partners",
+    asset: "5c974556d5a53f06e06fff389fab768fbf6db044-350x140-webp",
+    height: 45,
+  },
+  {
+    name: "Miva",
+    asset: "f4da2fbf5e384c1506d5a8bf27097d498518013d-124x33-svg",
+    height: 25,
+  },
+  {
+    name: "StackEleven Marketing",
+    asset: "3f13a3fbbe536e70851eca6a1fe722ffcc4f7bbb-2000x514-webp",
+    height: 40,
+  },
+  {
+    name: "ABBFP&W",
+    asset: "d78a26a53156ffe8463a3bccc7efa0b44c95a9c5-525x102-webp",
+    height: 40,
+  },
+  {
+    name: "Goldfaden Benson",
+    asset: "c2d680e24a37919565214d937dfbf63be9bcdaa3-791x444-webp",
+    height: 60,
+  },
+  {
+    name: "YMF Global",
+    asset: "250c146254637f38b344c9c78c41810c6356dbc3-1479x876-webp",
+    height: 60,
+  },
+  {
+    name: "Ares Projects",
+    asset: "4920ad63c17e551bc1e823489e6193b1d173a683-1500x811-webp",
+    height: 55,
+  },
+  {
+    name: "Backbody Project",
+    asset: "584039426de3312f979cc54cd24e30a0157d931e-1500x667-webp",
+    height: 60,
+  },
+  {
+    name: "Bots Crew",
+    asset: "410899eabf1ccfe3257b1933007a447bd4244c8a-160x40-png",
+    height: 40,
+  },
+  {
+    name: "Indigitek",
+    asset: "e614816ba2230bd10fc26cd015bb328d02b36a01-750x104-webp",
+    height: 40,
+  },
+];
+
+const logoUrl = (asset: string) =>
+  `https://cdn.sanity.io/images/mgnj5jjo/production/${asset.replace(/-(webp|png|svg)$/u, ".$1")}?auto=format&fit=max&w=320`;
+---
+
+<section
+  class="pr-client-logos"
+  aria-label="Companies PulpSense has worked with"
+>
+  <p class="pr-client-logos-label">Trusted by Growing Businesses</p>
+  <div class="pr-client-logos-window">
+    <div class="pr-client-logos-track">
+      {
+        [...clients, ...clients].map((client, index) => (
+          <div class="pr-client-logo" aria-hidden={index >= clients.length}>
+            <img
+              src={logoUrl(client.asset)}
+              alt={index < clients.length ? `${client.name} logo` : ""}
+              height={client.height}
+              style={`height: ${client.height}px`}
+              loading={index < 4 ? "eager" : "lazy"}
+              decoding="async"
+            />
+          </div>
+        ))
+      }
+    </div>
+    <div
+      class="pr-client-logos-fade pr-client-logos-fade-left"
+      aria-hidden="true"
+    >
+    </div>
+    <div
+      class="pr-client-logos-fade pr-client-logos-fade-right"
+      aria-hidden="true"
+    >
+    </div>
+  </div>
+</section>
