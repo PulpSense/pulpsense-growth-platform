@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { MouseEvent } from "react";
 
 import {
@@ -42,18 +42,7 @@ const slides = slideDescriptions.map((description, index) => {
 });
 
 export function VisibilityDeckCarousel() {
-  const [activeIndex, setActiveIndex] = useState(0);
   const [api, setApi] = useState<CarouselApi>();
-
-  useEffect(() => {
-    if (!api) return;
-    const updateIndex = () => setActiveIndex(api.selectedScrollSnap());
-    updateIndex();
-    api.on("select", updateIndex);
-    return () => {
-      api.off("select", updateIndex);
-    };
-  }, [api]);
 
   const handleSlideTap = (event: MouseEvent<HTMLDivElement>) => {
     const { left, width } = event.currentTarget.getBoundingClientRect();
@@ -76,6 +65,9 @@ export function VisibilityDeckCarousel() {
           {slides.map((slide, index) => (
             <CarouselItem key={slide.image} className="pr-deck-item">
               <div className="pr-deck-stage" onClick={handleSlideTap}>
+                <span className="pr-deck-count">
+                  {index + 1} / {slides.length}
+                </span>
                 <img
                   className="pr-deck-image"
                   src={slide.image}
@@ -97,24 +89,6 @@ export function VisibilityDeckCarousel() {
         <CarouselNext className="pr-deck-arrow" />
       </Carousel>
 
-      <div className="pr-deck-controls">
-        <p className="pr-deck-progress" aria-live="polite">
-          {activeIndex + 1} / {slides.length}
-        </p>
-        <div className="pr-deck-dots" aria-label="Choose a slide">
-          {slides.map((slide, index) => (
-            <button
-              key={slide.image}
-              className="pr-deck-dot"
-              data-active={index === activeIndex ? "true" : "false"}
-              type="button"
-              aria-label={`Go to slide ${index + 1}`}
-              aria-current={index === activeIndex ? "true" : undefined}
-              onClick={() => api?.scrollTo(index)}
-            />
-          ))}
-        </div>
-      </div>
       <p className="pr-deck-hint">Swipe or tap to continue</p>
     </section>
   );

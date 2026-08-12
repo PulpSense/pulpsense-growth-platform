@@ -154,6 +154,9 @@ export function ThankYouDeckCarousel() {
           {briefingSlides.map((briefingSlide, index) => (
             <CarouselItem key={briefingSlide.title} className="pr-ty-deck-item">
               <div className="pr-ty-deck-stage" onClick={handleSlideTap}>
+                <span className="pr-ty-deck-count">
+                  {index + 1} / {briefingSlides.length}
+                </span>
                 <div
                   className="pr-ty-deck-grid"
                   aria-live={index === activeIndex ? "polite" : undefined}
@@ -195,24 +198,6 @@ export function ThankYouDeckCarousel() {
         <CarouselNext className="pr-ty-deck-arrow" />
       </Carousel>
 
-      <div className="pr-ty-deck-controls">
-        <p className="pr-ty-deck-progress">
-          {activeIndex + 1} / {briefingSlides.length}
-        </p>
-        <div className="pr-ty-deck-dots" aria-label="Choose a briefing slide">
-          {briefingSlides.map((item, index) => (
-            <button
-              key={item.title}
-              className="pr-ty-deck-dot"
-              data-active={index === activeIndex ? "true" : "false"}
-              type="button"
-              aria-label={`Go to briefing slide ${index + 1}`}
-              aria-current={index === activeIndex ? "true" : undefined}
-              onClick={() => api?.scrollTo(index)}
-            />
-          ))}
-        </div>
-      </div>
       <p className="pr-ty-deck-hint">Swipe or tap to continue</p>
     </section>
   );

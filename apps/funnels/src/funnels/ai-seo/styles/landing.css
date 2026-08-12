@@ -201,6 +201,24 @@ body {
   box-shadow: 0 12px 30px rgba(17, 24, 39, 0.14);
   touch-action: pan-y;
 }
+#pr-funnel .pr-deck-count,
+#pr-funnel .pr-ty-deck-count {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 1;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgba(17, 24, 39, 0.1);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--pr-muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.12);
+  backdrop-filter: blur(6px);
+}
 #pr-funnel .pr-deck-image {
   display: block;
   width: 100%;
@@ -376,7 +394,7 @@ body {
   background: var(--pr-blue);
 }
 #pr-funnel .pr-deck-tap-hint {
-  display: none;
+  display: flex;
   position: absolute;
   top: 50%;
   right: 0.25rem;
@@ -413,9 +431,6 @@ body {
   }
 }
 @media (max-width: 767px) {
-  #pr-funnel .pr-deck-tap-hint {
-    display: flex;
-  }
   #pr-funnel .pr-deck-hint {
     display: none;
   }
