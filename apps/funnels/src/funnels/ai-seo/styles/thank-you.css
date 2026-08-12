@@ -295,11 +295,69 @@ body {
   outline: 3px solid var(--pr-blue-dark);
   outline-offset: 1px;
 }
+#pr-funnel .pr-ty-deck-tap-hint {
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: 0.85rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+  border: 1px solid rgba(0, 128, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--pr-blue);
+  box-shadow: 0 4px 14px rgba(17, 24, 39, 0.16);
+  pointer-events: none;
+  animation: pr-ty-deck-tap-pulse 1.8s ease-in-out infinite;
+}
+#pr-funnel .pr-ty-deck-tap-hint::before {
+  position: absolute;
+  inset: -0.35rem;
+  border: 1px solid rgba(0, 128, 255, 0.2);
+  border-radius: inherit;
+  content: "";
+}
+#pr-funnel .pr-ty-deck-tap-hint svg {
+  width: 1.15rem;
+  height: 1.55rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
 #pr-funnel .pr-ty-deck-hint {
   margin: 0;
   color: var(--pr-muted);
   font-size: 0.7rem;
   font-weight: 600;
+}
+@keyframes pr-ty-deck-tap-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    transform: translateY(-50%) scale(0.94);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.06);
+  }
+}
+@media (max-width: 560px) {
+  #pr-funnel .pr-ty-deck-tap-hint {
+    display: flex;
+  }
+  #pr-funnel .pr-ty-deck-hint {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #pr-funnel .pr-ty-deck-tap-hint {
+    animation: none;
+  }
 }
 @media (max-width: 560px) {
   #pr-funnel .video-wrap {
