@@ -299,9 +299,9 @@ body {
   display: none;
   position: absolute;
   top: 50%;
-  right: 0.85rem;
-  width: 3.75rem;
-  height: 3.75rem;
+  right: 0.25rem;
+  width: 4rem;
+  height: 4rem;
   align-items: center;
   justify-content: center;
   transform: translateY(-50%);
@@ -310,8 +310,8 @@ body {
   animation: pr-ty-deck-tap-pulse 1.8s ease-in-out infinite;
 }
 #pr-funnel .pr-ty-deck-tap-hint img {
-  width: 2rem;
-  height: 2.7rem;
+  width: 2.3rem;
+  height: 3.1rem;
   object-fit: contain;
 }
 #pr-funnel .pr-ty-deck-hint {

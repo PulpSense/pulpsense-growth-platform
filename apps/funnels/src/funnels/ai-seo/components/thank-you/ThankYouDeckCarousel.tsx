@@ -181,9 +181,11 @@ export function ThankYouDeckCarousel() {
                     <small>PULPSENSE</small>
                   </div>
                 </div>
-                <span className="pr-ty-deck-tap-hint" aria-hidden="true">
-                  <img src="/ai-seo/images/tap-mouse.svg" alt="" />
-                </span>
+                {index === 0 ? (
+                  <span className="pr-ty-deck-tap-hint" aria-hidden="true">
+                    <img src="/ai-seo/images/tap-mouse.svg" alt="" />
+                  </span>
+                ) : null}
               </div>
             </CarouselItem>
           ))}

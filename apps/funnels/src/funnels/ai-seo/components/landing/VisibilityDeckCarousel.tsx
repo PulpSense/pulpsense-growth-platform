@@ -72,7 +72,7 @@ export function VisibilityDeckCarousel() {
         setApi={setApi}
       >
         <CarouselContent className="pr-deck-content">
-          {slides.map((slide) => (
+          {slides.map((slide, index) => (
             <CarouselItem key={slide.image} className="pr-deck-item">
               <div className="pr-deck-stage">
                 <img
@@ -84,9 +84,11 @@ export function VisibilityDeckCarousel() {
                   draggable="false"
                   onClick={handleSlideTap}
                 />
-                <span className="pr-deck-tap-hint" aria-hidden="true">
-                  <img src="/ai-seo/images/tap-mouse.svg" alt="" />
-                </span>
+                {index === 0 ? (
+                  <span className="pr-deck-tap-hint" aria-hidden="true">
+                    <img src="/ai-seo/images/tap-mouse.svg" alt="" />
+                  </span>
+                ) : null}
               </div>
             </CarouselItem>
           ))}
