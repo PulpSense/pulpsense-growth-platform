@@ -250,6 +250,35 @@ body {
 }
 #pr-funnel .pr-ty-deck-arrow-right {
 }
+#pr-funnel .pr-ty-deck-carousel {
+  position: relative;
+  padding-right: clamp(2.25rem, 5vw, 3rem);
+  padding-left: clamp(2.25rem, 5vw, 3rem);
+}
+#pr-funnel .pr-ty-deck-carousel .ps-carousel-viewport {
+  overflow: hidden;
+}
+#pr-funnel .pr-ty-deck-carousel .ps-carousel-container {
+  display: flex;
+  margin-left: -0.5rem;
+}
+#pr-funnel .pr-ty-deck-carousel .ps-carousel-item {
+  min-width: 0;
+  flex: 0 0 100%;
+  padding-left: 0.5rem;
+}
+#pr-funnel .pr-ty-deck-carousel .pr-ty-deck-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+}
+#pr-funnel .pr-ty-deck-carousel .ps-carousel-previous {
+  left: 0;
+}
+#pr-funnel .pr-ty-deck-carousel .ps-carousel-next {
+  right: 0;
+}
 #pr-funnel .pr-ty-deck-controls {
   display: flex;
   margin-top: 0.55rem;
@@ -321,6 +350,13 @@ body {
     min-height: 25rem;
     overflow-y: auto;
     aspect-ratio: auto;
+  }
+  #pr-funnel .pr-ty-deck-carousel {
+    padding-right: 0;
+    padding-left: 0;
+  }
+  #pr-funnel .pr-ty-deck-carousel .pr-ty-deck-arrow {
+    display: none;
   }
   #pr-funnel .pr-ty-deck-grid {
     grid-template-columns: minmax(0, 1fr) 4.5rem;

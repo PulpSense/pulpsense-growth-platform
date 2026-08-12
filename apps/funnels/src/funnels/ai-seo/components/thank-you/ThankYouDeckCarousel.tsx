@@ -1,4 +1,13 @@
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
+
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 
 type BriefingSlide = {
   eyebrow: string;
@@ -111,93 +120,68 @@ const briefingSlides: readonly BriefingSlide[] = [
 
 export function ThankYouDeckCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const touchStartX = useRef<number | null>(null);
-  const slide = briefingSlides[activeIndex] ?? briefingSlides[0]!;
+  const [api, setApi] = useState<CarouselApi>();
 
-  const previous = () => {
-    setActiveIndex((current) => Math.max(0, current - 1));
-  };
-
-  const next = () => {
-    setActiveIndex((current) =>
-      Math.min(briefingSlides.length - 1, current + 1),
-    );
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "ArrowLeft") previous();
-    if (event.key === "ArrowRight") next();
-  };
-
-  const handleTouchStart = (event: React.TouchEvent) => {
-    touchStartX.current = event.touches[0]?.clientX ?? null;
-  };
-
-  const handleTouchEnd = (event: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-    const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
-    const distance = endX - touchStartX.current;
-    touchStartX.current = null;
-    if (Math.abs(distance) < 40) return;
-    if (distance > 0) previous();
-    else next();
-  };
+  useEffect(() => {
+    if (!api) return;
+    const updateIndex = () => setActiveIndex(api.selectedScrollSnap());
+    updateIndex();
+    api.on("select", updateIndex);
+    return () => {
+      api.off("select", updateIndex);
+    };
+  }, [api]);
 
   return (
     <section
       className="pr-ty-deck"
       aria-label="Regional Visibility Audit briefing"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={() => {
-        touchStartX.current = null;
-      }}
     >
-      <div className="pr-ty-deck-shell">
-        <button
-          className="pr-ty-deck-arrow pr-ty-deck-arrow-left"
-          type="button"
-          aria-label="Previous briefing slide"
-          onClick={previous}
-          disabled={activeIndex === 0}
-        >
-          <span aria-hidden="true">‹</span>
-        </button>
-        <div className="pr-ty-deck-stage">
-          <div className="pr-ty-deck-grid" aria-live="polite">
-            <div className="pr-ty-deck-copy">
-              <p className="pr-ty-deck-eyebrow">{slide.eyebrow}</p>
-              <h2>{slide.title}</h2>
-              <p className="pr-ty-deck-body">{slide.body}</p>
-              {slide.points ? (
-                <ul className="pr-ty-deck-points">
-                  {slide.points.map((point) => (
-                    <li key={point}>{point}</li>
-                  ))}
-                </ul>
-              ) : null}
-              {slide.accent ? (
-                <p className="pr-ty-deck-accent">{slide.accent}</p>
-              ) : null}
-            </div>
-            <div className="pr-ty-deck-mark" aria-hidden="true">
-              <span>{String(activeIndex + 1).padStart(2, "0")}</span>
-              <small>PULPSENSE</small>
-            </div>
-          </div>
-        </div>
-        <button
-          className="pr-ty-deck-arrow pr-ty-deck-arrow-right"
-          type="button"
-          aria-label="Next briefing slide"
-          onClick={next}
-          disabled={activeIndex === briefingSlides.length - 1}
-        >
-          <span aria-hidden="true">›</span>
-        </button>
-      </div>
+      <Carousel
+        className="pr-ty-deck-carousel"
+        aria-roledescription="carousel"
+        opts={{ loop: false }}
+        setApi={setApi}
+      >
+        <CarouselContent className="pr-ty-deck-content">
+          {briefingSlides.map((briefingSlide, index) => (
+            <CarouselItem key={briefingSlide.title} className="pr-ty-deck-item">
+              <div className="pr-ty-deck-stage">
+                <div
+                  className="pr-ty-deck-grid"
+                  aria-live={index === activeIndex ? "polite" : undefined}
+                >
+                  <div className="pr-ty-deck-copy">
+                    <p className="pr-ty-deck-eyebrow">
+                      {briefingSlide.eyebrow}
+                    </p>
+                    <h2>{briefingSlide.title}</h2>
+                    <p className="pr-ty-deck-body">{briefingSlide.body}</p>
+                    {briefingSlide.points ? (
+                      <ul className="pr-ty-deck-points">
+                        {briefingSlide.points.map((point) => (
+                          <li key={point}>{point}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {briefingSlide.accent ? (
+                      <p className="pr-ty-deck-accent">
+                        {briefingSlide.accent}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="pr-ty-deck-mark" aria-hidden="true">
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    <small>PULPSENSE</small>
+                  </div>
+                </div>
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious className="pr-ty-deck-arrow" />
+        <CarouselNext className="pr-ty-deck-arrow" />
+      </Carousel>
 
       <div className="pr-ty-deck-controls">
         <p className="pr-ty-deck-progress">
@@ -212,13 +196,13 @@ export function ThankYouDeckCarousel() {
               type="button"
               aria-label={`Go to briefing slide ${index + 1}`}
               aria-current={index === activeIndex ? "true" : undefined}
-              onClick={() => setActiveIndex(index)}
+              onClick={() => api?.scrollTo(index)}
             />
           ))}
         </div>
       </div>
       <p className="pr-ty-deck-hint">
-        Swipe, use the controls, or focus the deck and use the arrow keys
+        Swipe, use the controls, or focus the carousel and use the arrow keys
       </p>
     </section>
   );

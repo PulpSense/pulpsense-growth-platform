@@ -10,6 +10,10 @@ const carouselSource = readFileSync(
   new URL("./VisibilityDeckCarousel.tsx", import.meta.url),
   "utf8",
 );
+const primitiveSource = readFileSync(
+  new URL("../../../../components/ui/carousel.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("AI SEO visibility deck", () => {
   it("replaces the VSL with the native deck carousel", () => {
@@ -19,16 +23,14 @@ describe("AI SEO visibility deck", () => {
   });
 
   it("supports tap, keyboard, and swipe navigation accessibly", () => {
-    expect(carouselSource).toContain('aria-label="Previous slide"');
-    expect(carouselSource).toContain('aria-label="Next slide"');
-    expect(carouselSource).toContain('event.key === "ArrowLeft"');
-    expect(carouselSource).toContain('event.key === "ArrowRight"');
-    expect(carouselSource).toContain("tabIndex={0}");
-    expect(carouselSource).toContain("onKeyDown={handleKeyDown}");
-    expect(carouselSource).toContain("onTouchStart");
-    expect(carouselSource).toContain("onTouchEnd");
-    expect(carouselSource).toContain("onTouchCancel");
-    expect(carouselSource).toContain('aria-live="polite"');
+    expect(carouselSource).toContain('from "@/components/ui/carousel"');
+    expect(carouselSource).toContain("CarouselPrevious");
+    expect(carouselSource).toContain("CarouselNext");
+    expect(primitiveSource).toContain('event.key === "ArrowLeft"');
+    expect(primitiveSource).toContain('event.key === "ArrowRight"');
+    expect(primitiveSource).toContain("tabIndex={0}");
+    expect(primitiveSource).toContain('aria-label="Previous slide"');
+    expect(primitiveSource).toContain('aria-label="Next slide"');
   });
 
   it("ships the full twenty-slide source-truth deck", () => {

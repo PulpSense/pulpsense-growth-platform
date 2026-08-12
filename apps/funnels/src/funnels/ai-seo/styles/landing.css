@@ -248,6 +248,37 @@ body {
 }
 #pr-funnel .pr-deck-arrow-right {
 }
+#pr-funnel .pr-deck-carousel {
+  position: relative;
+  padding-right: clamp(2.5rem, 6vw, 4rem);
+  padding-left: clamp(2.5rem, 6vw, 4rem);
+}
+#pr-funnel .ps-carousel-viewport {
+  overflow: hidden;
+}
+#pr-funnel .ps-carousel-container {
+  display: flex;
+  margin-left: -0.75rem;
+}
+#pr-funnel .ps-carousel-item {
+  min-width: 0;
+  flex: 0 0 100%;
+  padding-left: 0.75rem;
+}
+#pr-funnel .pr-deck-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  transform: translateY(-50%);
+}
+#pr-funnel .pr-deck-arrow-left,
+#pr-funnel .ps-carousel-previous {
+  left: 0;
+}
+#pr-funnel .pr-deck-arrow-right,
+#pr-funnel .ps-carousel-next {
+  right: 0;
+}
 #pr-funnel .pr-deck-controls {
   display: flex;
   align-items: center;
@@ -856,6 +887,13 @@ body {
   min-height: 560px;
 }
 @media (max-width: 767px) {
+  #pr-funnel .pr-deck-carousel {
+    padding-right: 0;
+    padding-left: 0;
+  }
+  #pr-funnel .pr-deck-carousel .pr-deck-arrow {
+    display: none;
+  }
   #pr-funnel #pr-funnel-form.pr-section {
     padding-top: 1rem;
     padding-bottom: 2rem;

@@ -14,6 +14,10 @@ const stylesSource = readFileSync(
   new URL("../../styles/thank-you.css", import.meta.url),
   "utf8",
 );
+const primitiveSource = readFileSync(
+  new URL("../../../../components/ui/carousel.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("AI SEO thank-you briefing deck", () => {
   it("replaces the outdated confirmation video with the native deck", () => {
@@ -64,13 +68,12 @@ describe("AI SEO thank-you briefing deck", () => {
   });
 
   it("supports focused keyboard, swipe, and direct slide navigation", () => {
-    expect(carouselSource).toContain("tabIndex={0}");
-    expect(carouselSource).toContain("onKeyDown={handleKeyDown}");
-    expect(carouselSource).toContain("onTouchStart");
-    expect(carouselSource).toContain("onTouchEnd");
-    expect(carouselSource).toContain("onTouchCancel");
-    expect(carouselSource).toContain('aria-live="polite"');
-    expect(carouselSource).toContain('aria-label="Previous briefing slide"');
-    expect(carouselSource).toContain('aria-label="Next briefing slide"');
+    expect(carouselSource).toContain('from "@/components/ui/carousel"');
+    expect(carouselSource).toContain("CarouselPrevious");
+    expect(carouselSource).toContain("CarouselNext");
+    expect(primitiveSource).toContain("tabIndex={0}");
+    expect(primitiveSource).toContain("onKeyDown={handleKeyDown}");
+    expect(primitiveSource).toContain('aria-label="Previous slide"');
+    expect(primitiveSource).toContain('aria-label="Next slide"');
   });
 });

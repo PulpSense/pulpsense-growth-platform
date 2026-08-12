@@ -1,4 +1,13 @@
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
+
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from "@/components/ui/carousel";
 
 const slideDescriptions = [
   "45 new calls in 90 days by ranking at the top of Google and AI, or PulpSense works free until the business gets them.",
@@ -33,81 +42,48 @@ const slides = slideDescriptions.map((description, index) => {
 
 export function VisibilityDeckCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
-  const touchStartX = useRef<number | null>(null);
+  const [api, setApi] = useState<CarouselApi>();
 
-  const previous = () => {
-    setActiveIndex((current) => Math.max(0, current - 1));
-  };
-
-  const next = () => {
-    setActiveIndex((current) => Math.min(slides.length - 1, current + 1));
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent) => {
-    if (event.key === "ArrowLeft") previous();
-    if (event.key === "ArrowRight") next();
-  };
-
-  const handleTouchStart = (event: React.TouchEvent) => {
-    touchStartX.current = event.touches[0]?.clientX ?? null;
-  };
-
-  const handleTouchEnd = (event: React.TouchEvent) => {
-    if (touchStartX.current === null) return;
-
-    const endX = event.changedTouches[0]?.clientX ?? touchStartX.current;
-    const distance = endX - touchStartX.current;
-    touchStartX.current = null;
-
-    if (Math.abs(distance) < 40) return;
-    if (distance > 0) previous();
-    else next();
-  };
-
-  const activeSlide = slides[activeIndex] ?? slides[0]!;
+  useEffect(() => {
+    if (!api) return;
+    const updateIndex = () => setActiveIndex(api.selectedScrollSnap());
+    updateIndex();
+    api.on("select", updateIndex);
+    return () => {
+      api.off("select", updateIndex);
+    };
+  }, [api]);
 
   return (
     <section
       className="pr-deck"
       aria-label="PulpSense regional visibility presentation"
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={() => {
-        touchStartX.current = null;
-      }}
     >
-      <div className="pr-deck-shell">
-        <button
-          className="pr-deck-arrow pr-deck-arrow-left"
-          type="button"
-          aria-label="Previous slide"
-          onClick={previous}
-          disabled={activeIndex === 0}
-        >
-          <span aria-hidden="true">‹</span>
-        </button>
-        <div className="pr-deck-stage">
-          <img
-            className="pr-deck-image"
-            src={activeSlide.image}
-            alt={activeSlide.alt}
-            width="1600"
-            height="900"
-            draggable="false"
-          />
-        </div>
-        <button
-          className="pr-deck-arrow pr-deck-arrow-right"
-          type="button"
-          aria-label="Next slide"
-          onClick={next}
-          disabled={activeIndex === slides.length - 1}
-        >
-          <span aria-hidden="true">›</span>
-        </button>
-      </div>
+      <Carousel
+        className="pr-deck-carousel"
+        aria-roledescription="carousel"
+        opts={{ loop: false }}
+        setApi={setApi}
+      >
+        <CarouselContent className="pr-deck-content">
+          {slides.map((slide) => (
+            <CarouselItem key={slide.image} className="pr-deck-item">
+              <div className="pr-deck-stage">
+                <img
+                  className="pr-deck-image"
+                  src={slide.image}
+                  alt={slide.alt}
+                  width="1600"
+                  height="900"
+                  draggable="false"
+                />
+              </div>
+            </CarouselItem>
+          ))}
+        </CarouselContent>
+        <CarouselPrevious className="pr-deck-arrow" />
+        <CarouselNext className="pr-deck-arrow" />
+      </Carousel>
 
       <div className="pr-deck-controls">
         <p className="pr-deck-progress" aria-live="polite">
@@ -122,13 +98,13 @@ export function VisibilityDeckCarousel() {
               type="button"
               aria-label={`Go to slide ${index + 1}`}
               aria-current={index === activeIndex ? "true" : undefined}
-              onClick={() => setActiveIndex(index)}
+              onClick={() => api?.scrollTo(index)}
             />
           ))}
         </div>
       </div>
       <p className="pr-deck-hint">
-        Tap, swipe, or use the arrow keys to continue
+        Swipe, use the controls, or focus the carousel and use the arrow keys
       </p>
     </section>
   );
