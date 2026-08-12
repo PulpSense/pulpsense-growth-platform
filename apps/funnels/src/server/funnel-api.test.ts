@@ -364,7 +364,11 @@ describe("POST /api/funnel-events", () => {
         eventType: "application_submitted",
         funnelId: "ai-seo",
         identity: contact.retry,
-        payload: { businessOwner: "yes" },
+        payload: {
+          businessOwner: "yes",
+          businessAge: "3+ years",
+          investmentIntent: "Yes, if the numbers make sense",
+        },
         sourceUrl: "https://preview.pulpsense.com/ai-seo/",
       }),
       env,
@@ -393,7 +397,13 @@ describe("POST /api/funnel-events", () => {
     expect(applicationTriggerBody.payload).toMatchObject({
       funnelId: "ai-seo",
       qualificationStatus: "qualified",
-      payload: { application: { businessOwner: "yes" } },
+      payload: {
+        application: {
+          businessOwner: "yes",
+          businessAge: "3+ years",
+          investmentIntent: "Yes, if the numbers make sense",
+        },
+      },
     });
   });
 

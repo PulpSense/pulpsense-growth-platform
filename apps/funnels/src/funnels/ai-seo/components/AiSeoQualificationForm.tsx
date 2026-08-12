@@ -43,7 +43,17 @@ declare global {
   }
 }
 
-type Step = "owner" | "contact" | "calendar" | "not-owner";
+type Step =
+  | "owner"
+  | "business-age"
+  | "investment"
+  | "contact"
+  | "calendar"
+  | "not-qualified";
+type BusinessAge = "3+ years" | "1–2 years";
+type InvestmentIntent =
+  | "Yes, if the numbers make sense"
+  | "Maybe—I’m exploring options";
 type EmailStatus = "idle" | "verifying" | "valid" | "invalid";
 type TurnstileStatus =
   | "loading"
@@ -93,6 +103,8 @@ export function AiSeoQualificationForm({
   qualifiedRedirect,
 }: Props) {
   const [step, setStep] = useState<Step>("owner");
+  const [businessAge, setBusinessAge] = useState<BusinessAge>();
+  const [investmentIntent, setInvestmentIntent] = useState<InvestmentIntent>();
   const [contact, setContact] = useState<ContactData>(initialContact);
   const [phoneCountry, setPhoneCountry] = useState<Country>(
     DEFAULT_PHONE_COUNTRY,
@@ -329,15 +341,36 @@ export function AiSeoQualificationForm({
   }, [contact.email]);
 
   const chooseOwner = (owner: "yes" | "no") => {
-    trackFunnelEvent("qualification_outcome", {
-      status: owner === "yes" ? "qualified" : "unqualified",
-    });
     if (owner === "yes") {
-      setStep("contact");
-      trackFunnelEvent("funnel_step_viewed", { step: "contact" });
+      setStep("business-age");
     } else {
-      setStep("not-owner");
+      trackFunnelEvent("qualification_outcome", { status: "unqualified" });
+      setStep("not-qualified");
     }
+  };
+
+  const chooseBusinessAge = (age: BusinessAge | "less-than-one-year") => {
+    if (age === "less-than-one-year") {
+      trackFunnelEvent("qualification_outcome", { status: "unqualified" });
+      setStep("not-qualified");
+      return;
+    }
+    setBusinessAge(age);
+    setStep("investment");
+  };
+
+  const chooseInvestmentIntent = (
+    intent: InvestmentIntent | "free-information-only",
+  ) => {
+    if (intent === "free-information-only") {
+      trackFunnelEvent("qualification_outcome", { status: "unqualified" });
+      setStep("not-qualified");
+      return;
+    }
+    setInvestmentIntent(intent);
+    trackFunnelEvent("qualification_outcome", { status: "qualified" });
+    setStep("contact");
+    trackFunnelEvent("funnel_step_viewed", { step: "contact" });
   };
 
   const validateContact = () => {
@@ -370,6 +403,10 @@ export function AiSeoQualificationForm({
       setSubmissionError(
         "We couldn't submit your details yet. Please try again.",
       );
+      return;
+    }
+    if (!businessAge || !investmentIntent) {
+      setStep("owner");
       return;
     }
     setSubmitting(true);
@@ -425,7 +462,11 @@ export function AiSeoQualificationForm({
       );
 
       const applicationResult = await submitApplication({
-        data: { businessOwner: "yes" },
+        data: {
+          businessOwner: "yes",
+          businessAge,
+          investmentIntent,
+        },
         ...sharedContext,
       });
       if (
@@ -462,37 +503,132 @@ export function AiSeoQualificationForm({
   };
 
   const currentStep =
-    step === "owner" || step === "not-owner" ? 1 : step === "contact" ? 2 : 3;
+    step === "owner" || step === "not-qualified"
+      ? 1
+      : step === "business-age"
+        ? 2
+        : step === "investment"
+          ? 3
+          : step === "contact"
+            ? 4
+            : 5;
 
   return (
     <div className="pr-tf">
       <div className="pr-tf-progress" aria-live="polite">
-        <span>Step {currentStep} of 3</span>
+        <span>Step {currentStep} of 5</span>
         <div className="pr-tf-progress-bar">
           <div
             className="pr-tf-progress-fill"
-            style={{ width: `${(currentStep / 3) * 100}%` }}
+            style={{ width: `${(currentStep / 5) * 100}%` }}
           />
         </div>
       </div>
       <div className="pr-tf-card">
         {step === "owner" && (
           <div className="pr-tf-step is-active">
-            <p className="pr-tf-q">Are you the owner of the business?</p>
+            <p className="pr-tf-q">
+              Are you the owner or primary decision-maker for the business?
+            </p>
             <div className="pr-tf-choices">
               <button
                 type="button"
                 className="pr-tf-choice"
                 onClick={() => chooseOwner("yes")}
               >
-                Yes, I own the business
+                Yes
               </button>
               <button
                 type="button"
                 className="pr-tf-choice"
                 onClick={() => chooseOwner("no")}
               >
-                No, I work for the business
+                No
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === "business-age" && (
+          <div className="pr-tf-step is-active">
+            <p className="pr-tf-q">
+              How long has your business been operating?
+            </p>
+            <div className="pr-tf-choices">
+              <button
+                type="button"
+                className="pr-tf-choice"
+                onClick={() => chooseBusinessAge("3+ years")}
+              >
+                3+ years
+              </button>
+              <button
+                type="button"
+                className="pr-tf-choice"
+                onClick={() => chooseBusinessAge("1–2 years")}
+              >
+                1–2 years
+              </button>
+              <button
+                type="button"
+                className="pr-tf-choice"
+                onClick={() => chooseBusinessAge("less-than-one-year")}
+              >
+                Less than 1 year
+              </button>
+            </div>
+            <div className="pr-tf-actions">
+              <button
+                type="button"
+                className="pr-tf-back"
+                onClick={() => setStep("owner")}
+              >
+                ← Back
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === "investment" && (
+          <div className="pr-tf-step is-active">
+            <p className="pr-tf-q">
+              If we identify a clear opportunity to generate more qualified
+              leads, would you be open to investing in fixing it?
+            </p>
+            <div className="pr-tf-choices">
+              <button
+                type="button"
+                className="pr-tf-choice"
+                onClick={() =>
+                  chooseInvestmentIntent("Yes, if the numbers make sense")
+                }
+              >
+                Yes, if the numbers make sense
+              </button>
+              <button
+                type="button"
+                className="pr-tf-choice"
+                onClick={() =>
+                  chooseInvestmentIntent("Maybe—I’m exploring options")
+                }
+              >
+                Maybe, I&apos;m exploring options
+              </button>
+              <button
+                type="button"
+                className="pr-tf-choice"
+                onClick={() => chooseInvestmentIntent("free-information-only")}
+              >
+                No, I&apos;m only looking for free information
+              </button>
+            </div>
+            <div className="pr-tf-actions">
+              <button
+                type="button"
+                className="pr-tf-back"
+                onClick={() => setStep("business-age")}
+              >
+                ← Back
               </button>
             </div>
           </div>
@@ -687,7 +823,7 @@ export function AiSeoQualificationForm({
                 <button
                   type="button"
                   className="pr-tf-back"
-                  onClick={() => setStep("owner")}
+                  onClick={() => setStep("investment")}
                 >
                   ← Back
                 </button>
@@ -729,14 +865,13 @@ export function AiSeoQualificationForm({
           </div>
         )}
 
-        {step === "not-owner" && (
+        {step === "not-qualified" && (
           <div className="pr-tf-step is-active">
             <p className="pr-tf-q">Thanks for sharing</p>
             <p className="pr-tf-cal-lead" style={{ margin: 0 }}>
-              The audit call only works when the business owner is on it —
-              they&apos;re the one who can act on what we find. Send this page
-              to the owner and have them book the call; we&apos;ll take great
-              care of them.
+              Based on your answers, this audit is currently designed for
+              established businesses that are ready to invest in growth. If that
+              changes, you&apos;re welcome to come back and apply again.
             </p>
             <div className="pr-tf-actions">
               <button
