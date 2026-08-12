@@ -6,6 +6,7 @@ on:
     types: [opened, reopened, synchronize, ready_for_review]
     paths:
       - "apps/softphone/**"
+      - "apps/softphone-security/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -14,6 +15,7 @@ on:
     branches: [master]
     paths:
       - "apps/softphone/**"
+      - "apps/softphone-security/**"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
@@ -60,16 +62,16 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Run softphone tests
-        run: pnpm exec vitest run apps/softphone
+        run: pnpm exec vitest run apps/softphone apps/softphone-security
 
       - name: Check softphone types
-        run: pnpm --filter @pulpsense/softphone check-types
+        run: pnpm --filter @pulpsense/softphone --filter @pulpsense/softphone-security check-types
 
       - name: Lint softphone
-        run: pnpm exec eslint apps/softphone
+        run: pnpm exec eslint apps/softphone apps/softphone-security
 
       - name: Check softphone formatting
-        run: pnpm exec prettier 'apps/softphone/**/*.{css,html,js,json,mjs,ts}' --check
+        run: pnpm exec prettier 'apps/softphone{,-security}/**/*.{css,html,js,json,mjs,ts}' --check
 
       - name: Build softphone
         run: pnpm --filter @pulpsense/softphone build
@@ -115,6 +117,16 @@ jobs:
 
       - name: Build Preview
         run: pnpm --filter @pulpsense/softphone build
+
+      - name: Deploy Preview security service
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: pnpm
+          workingDirectory: apps/softphone-security
+          wranglerVersion: "4.120.0"
+          command: deploy
 
       - name: Deploy Preview
         id: deploy
@@ -174,6 +186,19 @@ jobs:
 
       - name: Build Production
         run: pnpm --filter @pulpsense/softphone build
+
+      - name: Deploy Production security service
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          packageManager: pnpm
+          workingDirectory: apps/softphone-security
+          wranglerVersion: "4.120.0"
+          command: deploy --config wrangler.production.toml
+
+      - name: Select Production Pages config
+        run: cp apps/softphone/wrangler.production.toml apps/softphone/wrangler.toml
 
       - name: Deploy Production
         id: deploy
