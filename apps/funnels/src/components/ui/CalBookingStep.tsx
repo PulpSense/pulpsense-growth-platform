@@ -29,11 +29,11 @@ export function CalBookingStep({
     theme: "light",
     useSlotsViewOnSmallScreen: "true",
     firstName: prefill.firstName,
+    lastName: prefill.lastName ?? "",
     email: prefill.email,
     "metadata[pulpsenseSubmissionId]": bookingIdentity.submissionId,
     "metadata[pulpsenseBookingToken]": bookingIdentity.token,
   };
-  if (prefill.lastName) config.lastName = prefill.lastName;
 
   useEffect(() => {
     trackFunnelEvent("booking_interaction", { action: "widget_viewed" });
