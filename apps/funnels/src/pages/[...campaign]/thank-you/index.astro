@@ -33,6 +33,7 @@ const metaPixelId = resolveAiSeoBrowserPixelId(campaign, import.meta.env);
 const pixels = createBrowserTrackingConfig({
   environment: deploymentEnvironment,
   metaPixelId,
+  allowPreview: import.meta.env.PUBLIC_ENABLE_META_PIXEL_IN_PREVIEW === "true",
 });
 ---
 

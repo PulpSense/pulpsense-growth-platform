@@ -21,6 +21,19 @@ describe("funnel runtime configuration", () => {
     ).toEqual({});
   });
 
+  it("allows an explicit preview opt-in for browser Pixel validation", () => {
+    expect(
+      createBrowserTrackingConfig({
+        environment: "preview",
+        metaPixelId: "828948073514575",
+        allowPreview: true,
+      }),
+    ).toEqual({
+      facebookPixelId: "828948073514575",
+      facebookEvents: [{ name: "PageView", type: "standard" }],
+    });
+  });
+
   it("requires an explicit Cal link in preview and allows a local fallback", () => {
     expect(() =>
       resolveCalConfig({

@@ -19,11 +19,13 @@ export function parseDeploymentEnvironment(
 export function createBrowserTrackingConfig({
   environment = "local",
   metaPixelId,
+  allowPreview = false,
 }: {
   environment?: DeploymentEnvironment;
   metaPixelId?: string;
+  allowPreview?: boolean;
 }): PixelConfig {
-  if (environment === "preview") return {};
+  if (environment === "preview" && !allowPreview) return {};
 
   const configuredPixelId = metaPixelId?.trim();
   if (configuredPixelId && !/^\d{5,30}$/u.test(configuredPixelId)) {
