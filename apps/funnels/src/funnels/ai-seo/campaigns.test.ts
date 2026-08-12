@@ -112,6 +112,53 @@ describe("AI SEO campaigns", () => {
     expect(resolveAiSeoCampaign("missing-niche")).toBeUndefined();
   });
 
+  it("provides niche-specific PulpSense page metadata", () => {
+    expect(
+      AI_SEO_CAMPAIGNS.map(({ key, landingTitle, thankYouTitle }) => [
+        key,
+        landingTitle,
+        thankYouTitle,
+      ]),
+    ).toEqual([
+      [
+        "lawyers",
+        "45 More Calls in 90 Days for Law Firms | PulpSense",
+        "Your Law Firm Visibility Audit Is Booked | PulpSense",
+      ],
+      [
+        "dentists",
+        "45 More Calls in 90 Days for Dental Practices | PulpSense",
+        "Your Dental Visibility Audit Is Booked | PulpSense",
+      ],
+      [
+        "dental-implants",
+        "45 More Implant Calls in 90 Days | PulpSense",
+        "Your Dental Implant Visibility Audit Is Booked | PulpSense",
+      ],
+      [
+        "plastic-surgery",
+        "45 More Calls in 90 Days for Plastic Surgeons | PulpSense",
+        "Your Plastic Surgery Visibility Audit Is Booked | PulpSense",
+      ],
+      [
+        "hair-restoration",
+        "45 More Hair Restoration Calls in 90 Days | PulpSense",
+        "Your Hair Restoration Visibility Audit Is Booked | PulpSense",
+      ],
+      [
+        "med-spas",
+        "45 More Calls in 90 Days for Med Spas | PulpSense",
+        "Your Med Spa Visibility Audit Is Booked | PulpSense",
+      ],
+    ]);
+
+    for (const campaign of AI_SEO_CAMPAIGNS) {
+      expect(campaign.landingDescription).toContain("Google and AI");
+      expect(campaign.thankYouDescription).toContain("PulpSense");
+      expect(JSON.stringify(campaign)).not.toContain("Lead Oracle");
+    }
+  });
+
   it("allows a niche to override only the qualification callout", () => {
     expect(AI_SEO_CAMPAIGNS[0].qualificationCallout).toContain(
       "established businesses",
