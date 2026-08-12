@@ -74,6 +74,9 @@ export function VisibilityDeckCarousel() {
       onKeyDown={handleKeyDown}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={() => {
+        touchStartX.current = null;
+      }}
     >
       <div className="pr-deck-stage">
         <img

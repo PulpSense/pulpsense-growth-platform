@@ -227,9 +227,12 @@ body {
   background: var(--pr-blue);
   transform: translateY(-50%) scale(1.05);
 }
-#pr-funnel .pr-deck-arrow:focus-visible,
-#pr-funnel .pr-deck-dot:focus-visible {
+#pr-funnel .pr-deck-arrow:focus-visible {
   outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+#pr-funnel .pr-deck-dot:focus-visible {
+  outline: 3px solid var(--pr-blue-dark);
   outline-offset: 2px;
 }
 #pr-funnel .pr-deck-arrow:disabled {
@@ -269,21 +272,31 @@ body {
   display: none;
 }
 #pr-funnel .pr-deck-dot {
-  width: 0.45rem;
-  height: 0.45rem;
-  flex: 0 0 0.45rem;
+  position: relative;
+  width: 1.25rem;
+  height: 2rem;
+  flex: 0 0 1.25rem;
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: #cbd5e1;
+  background: transparent;
   cursor: pointer;
+}
+#pr-funnel .pr-deck-dot::before {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  width: 0.45rem;
+  height: 0.45rem;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: #cbd5e1;
+  content: "";
   transition:
     width 0.2s,
     background 0.2s;
 }
-#pr-funnel .pr-deck-dot[data-active="true"] {
+#pr-funnel .pr-deck-dot[data-active="true"]::before {
   width: 1.25rem;
-  flex-basis: 1.25rem;
   background: var(--pr-blue);
 }
 #pr-funnel .pr-deck-hint {

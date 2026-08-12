@@ -27,6 +27,7 @@ describe("AI SEO visibility deck", () => {
     expect(carouselSource).toContain("onKeyDown={handleKeyDown}");
     expect(carouselSource).toContain("onTouchStart");
     expect(carouselSource).toContain("onTouchEnd");
+    expect(carouselSource).toContain("onTouchCancel");
     expect(carouselSource).toContain('aria-live="polite"');
   });
 
