@@ -65,6 +65,129 @@
           </button>
         </div>
 
+        <div id="dial-pad" class="dial-pad" data-enabled="false">
+          <div class="dial-pad-header">
+            <div>
+              <p class="eyebrow">In-call controls</p>
+              <h3 id="dial-pad-heading">Dial pad</h3>
+            </div>
+            <p id="dial-pad-status" class="dial-pad-status" aria-live="polite">
+              Available once the call connects
+            </p>
+          </div>
+
+          <div class="dial-pad-grid" aria-labelledby="dial-pad-heading">
+            <button
+              type="button"
+              data-dtmf="1"
+              aria-label="Send tone 1"
+              disabled
+            >
+              <span class="dial-pad-number">1</span>
+              <span class="dial-pad-letters" aria-hidden="true">&nbsp;</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="2"
+              aria-label="Send tone 2, A B C"
+              disabled
+            >
+              <span class="dial-pad-number">2</span>
+              <span class="dial-pad-letters" aria-hidden="true">ABC</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="3"
+              aria-label="Send tone 3, D E F"
+              disabled
+            >
+              <span class="dial-pad-number">3</span>
+              <span class="dial-pad-letters" aria-hidden="true">DEF</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="4"
+              aria-label="Send tone 4, G H I"
+              disabled
+            >
+              <span class="dial-pad-number">4</span>
+              <span class="dial-pad-letters" aria-hidden="true">GHI</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="5"
+              aria-label="Send tone 5, J K L"
+              disabled
+            >
+              <span class="dial-pad-number">5</span>
+              <span class="dial-pad-letters" aria-hidden="true">JKL</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="6"
+              aria-label="Send tone 6, M N O"
+              disabled
+            >
+              <span class="dial-pad-number">6</span>
+              <span class="dial-pad-letters" aria-hidden="true">MNO</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="7"
+              aria-label="Send tone 7, P Q R S"
+              disabled
+            >
+              <span class="dial-pad-number">7</span>
+              <span class="dial-pad-letters" aria-hidden="true">PQRS</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="8"
+              aria-label="Send tone 8, T U V"
+              disabled
+            >
+              <span class="dial-pad-number">8</span>
+              <span class="dial-pad-letters" aria-hidden="true">TUV</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="9"
+              aria-label="Send tone 9, W X Y Z"
+              disabled
+            >
+              <span class="dial-pad-number">9</span>
+              <span class="dial-pad-letters" aria-hidden="true">WXYZ</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="*"
+              aria-label="Send star tone"
+              disabled
+            >
+              <span class="dial-pad-number">∗</span>
+              <span class="dial-pad-letters" aria-hidden="true">&nbsp;</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="0"
+              aria-label="Send tone 0"
+              disabled
+            >
+              <span class="dial-pad-number">0</span>
+              <span class="dial-pad-letters" aria-hidden="true">&nbsp;</span>
+            </button>
+            <button
+              type="button"
+              data-dtmf="#"
+              aria-label="Send pound tone"
+              disabled
+            >
+              <span class="dial-pad-number">#</span>
+              <span class="dial-pad-letters" aria-hidden="true">&nbsp;</span>
+            </button>
+          </div>
+        </div>
+
         <audio id="remote-media" autoplay></audio>
 
         <div class="privacy-note">

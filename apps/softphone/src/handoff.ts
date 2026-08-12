@@ -1,5 +1,6 @@
 export const SOFTPHONE_HANDOFF_AUDIENCE = "pulpsense-softphone";
 export const SOFTPHONE_HANDOFF_ISSUER = "pulpsense-twenty";
+export const SOFTPHONE_HANDOFF_MAX_LIFETIME_SECONDS = 120;
 
 export type SoftphoneHandoffPayload = {
   actorUserWorkspaceId: string;
@@ -103,6 +104,12 @@ export const verifySoftphoneHandoff = async (
   if (!isPayload(payload)) throw new Error("handoff_payload_is_invalid");
   if (payload.exp <= nowSeconds || payload.iat > nowSeconds + 30) {
     throw new Error("handoff_has_expired");
+  }
+  if (
+    payload.exp <= payload.iat ||
+    payload.exp - payload.iat > SOFTPHONE_HANDOFF_MAX_LIFETIME_SECONDS
+  ) {
+    throw new Error("handoff_lifetime_is_invalid");
   }
   if (!/^\+[1-9]\d{7,14}$/u.test(payload.destinationNumber)) {
     throw new Error("handoff_destination_is_invalid");

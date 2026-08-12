@@ -203,6 +203,83 @@ body {
 #pr-funnel .pr-note u {
   text-decoration: underline;
 }
+#pr-funnel .pr-client-logos {
+  position: relative;
+  left: 50%;
+  width: min(72rem, calc(100vw - 2rem));
+  margin: 1.15rem 0 0;
+  transform: translateX(-50%);
+  overflow: hidden;
+}
+#pr-funnel .pr-client-logos-label {
+  margin: 0 0 0.45rem;
+  color: #9ca3af;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+}
+#pr-funnel .pr-client-logos-window {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+#pr-funnel .pr-client-logos-track {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: 1.25rem;
+  animation: pr-client-logos-scroll 40s linear infinite;
+  will-change: transform;
+}
+#pr-funnel .pr-client-logo {
+  display: flex;
+  width: 12rem;
+  height: 4rem;
+  flex: 0 0 12rem;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.62;
+  filter: brightness(0);
+}
+#pr-funnel .pr-client-logo img {
+  display: block;
+  width: auto;
+  max-width: 10rem;
+  height: auto;
+  max-height: 3.75rem;
+  object-fit: contain;
+}
+#pr-funnel .pr-client-logos-fade {
+  position: absolute;
+  inset-block: 0;
+  z-index: 1;
+  width: 4rem;
+  pointer-events: none;
+}
+#pr-funnel .pr-client-logos-fade-left {
+  left: 0;
+  background: linear-gradient(90deg, #eff6ff, transparent);
+}
+#pr-funnel .pr-client-logos-fade-right {
+  right: 0;
+  background: linear-gradient(270deg, #eff6ff, transparent);
+}
+@keyframes pr-client-logos-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-50% - 0.625rem));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #pr-funnel .pr-client-logos-track {
+    animation-play-state: paused;
+  }
+}
 #pr-funnel .pr-section {
   padding: 3rem 1rem;
 }

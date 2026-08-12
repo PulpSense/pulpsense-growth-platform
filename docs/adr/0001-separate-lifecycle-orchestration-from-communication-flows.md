@@ -1,3 +1,3 @@
-# Separate lifecycle orchestration from communication flows
+# Keep appointment-relative communication orchestration in Trigger.dev
 
-Trigger.dev owns durable funnel lifecycle entry and exit, while Brevo owns the message count, channels, timing, cadence, copy, and delivery within Communication Flows. This keeps booking and qualification state authoritative in the platform while allowing a separate content-design process to change nurture sequences without deploying application code.
+Trigger.dev owns durable funnel lifecycle state and every appointment-relative pre-call decision: message selection, count, timing, waits, idempotency, cancellation, rescheduling, and send eligibility. Brevo's Transactional Email API is the delivery transport for those sends; canonical copy and rendering remain versioned in this repository. Brevo Automations continue to own evergreen newsletter, welcome, and lead-magnet programs whose timing is not anchored to an active appointment.

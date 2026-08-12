@@ -19,6 +19,7 @@ import {
   scheduleMeetingReminders,
   sendMeetingReminderTask,
 } from "./meeting-reminders.js";
+import { runPrecallSequenceTask } from "./precall-sequence.js";
 import { createPostHogLifecycleCapture } from "./posthog-lifecycle.js";
 import { resolveMetaEnvironment } from "./meta-destination.js";
 
@@ -81,6 +82,9 @@ type ProcessorDependencies = {
   postSlackBooking?(event: BookingCompletedEvent): Promise<unknown>;
   publishBrevoLifecycle?(event: BrevoLifecycleEvent): Promise<unknown>;
   scheduleMeetingReminders?(
+    event: BookingCompletedEvent | BookingRescheduledEvent,
+  ): Promise<unknown>;
+  schedulePrecallSequence?(
     event: BookingCompletedEvent | BookingRescheduledEvent,
   ): Promise<unknown>;
   capturePostHogLifecycle?(event: FunnelEvent): Promise<void>;
@@ -173,6 +177,25 @@ const capturePostHogSafely = async (
   }
 };
 
+const precallPayloadFromBooking = (
+  event: BookingCompletedEvent | BookingRescheduledEvent,
+) => ({
+  submissionId: event.submissionId,
+  firstName: event.payload.firstName,
+  lastName: event.payload.lastName,
+  email: event.payload.email,
+  bookingUid: event.payload.booking.uid,
+  expectedStartTime: event.payload.booking.startTime,
+  expectedEndTime: event.payload.booking.endTime,
+  attendeeTimeZone: event.payload.booking.attendeeTimeZone,
+  funnelId: event.funnelId,
+  environment: event.environment,
+  acquisitionSourceLabel: "one of our ads on Facebook or Instagram",
+  sequenceId: `precall:${event.payload.booking.uid}:${event.payload.booking.startTime}:precall-v1`,
+  sentMask: 0,
+  isNewBooking: event.eventType === "booking_completed",
+});
+
 export async function processFunnelEvent(
   event: FunnelEvent,
   dependencies: ProcessorDependencies,
@@ -192,6 +215,7 @@ export async function processFunnelEvent(
         dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
       measurement: capturePostHogSafely(event, dependencies),
     });
+    await dependencies.schedulePrecallSequence?.(event);
     return { ok: true as const, bookingUid: event.payload.booking.uid };
   }
 
@@ -248,6 +272,7 @@ export async function processFunnelEvent(
         dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
       measurement: capturePostHogSafely(event, dependencies),
     });
+    await dependencies.schedulePrecallSequence?.(event);
     const { personId, booking, eventsReceived } = destinations.core;
 
     dependencies.log.info("Processed verified funnel booking", {
@@ -356,6 +381,7 @@ export async function processFunnelEvent(
       return { personId, eventsReceived };
     })(),
     slack: dependencies.postSlackLead?.(event) ?? Promise.resolve(),
+    brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
     measurement: capturePostHogSafely(event, dependencies),
   });
   const { personId, eventsReceived } = destinations.core;
@@ -392,6 +418,15 @@ type ProcessorEnvironment = {
   CAL_INTERNAL_BOOKING_BASE_URL?: string;
   BREVO_API_KEY?: string;
   BREVO_ADS_LIST_ID?: string;
+  BREVO_NEWSLETTER_LIST_ID?: string;
+  BREVO_LEAD_MAGNETS_LIST_ID?: string;
+  BREVO_PRECALL_SENDER_EMAIL?: string;
+  BREVO_PRECALL_SENDER_NAME?: string;
+  BREVO_PRECALL_REPLY_TO_EMAIL?: string;
+  PRECALL_EMAILS_ENABLED?: string;
+  PRECALL_PUBLIC_ORIGIN?: string;
+  PULPSENSE_BUSINESS_POSTAL_ADDRESS?: string;
+  PRECALL_OPT_OUT_TOKEN_SECRET?: string;
   CAL_API_KEY?: string;
   PULPSENSE_AUTOMATION_ENVIRONMENT?: FunnelEvent["environment"];
 };
@@ -1030,9 +1065,28 @@ export function createProcessorDependencies(
   ) {
     throw new Error("BREVO_ADS_LIST_ID must be a positive integer");
   }
+  const brevoNewsletterListId = environment.BREVO_NEWSLETTER_LIST_ID
+    ? Number(environment.BREVO_NEWSLETTER_LIST_ID)
+    : undefined;
+  const brevoLeadMagnetsListId = environment.BREVO_LEAD_MAGNETS_LIST_ID
+    ? Number(environment.BREVO_LEAD_MAGNETS_LIST_ID)
+    : undefined;
+  for (const [name, value] of [
+    ["BREVO_NEWSLETTER_LIST_ID", brevoNewsletterListId],
+    ["BREVO_LEAD_MAGNETS_LIST_ID", brevoLeadMagnetsListId],
+  ] as const) {
+    if (value !== undefined && (!Number.isInteger(value) || value <= 0)) {
+      throw new Error(`${name} must be a positive integer`);
+    }
+  }
   const brevoConfig =
     environment.BREVO_API_KEY && brevoAdsListId
-      ? { apiKey: environment.BREVO_API_KEY, adsListId: brevoAdsListId }
+      ? {
+          apiKey: environment.BREVO_API_KEY,
+          adsListId: brevoAdsListId,
+          newsletterListId: brevoNewsletterListId,
+          leadMagnetsListId: brevoLeadMagnetsListId,
+        }
       : undefined;
   const twentyClient: TwentyClient = {
     fetch: runtime.fetch,
@@ -1243,6 +1297,23 @@ export function createProcessorDependencies(
             ),
         }
       : {}),
+    ...(environment.PRECALL_EMAILS_ENABLED === "true" && environment.CAL_API_KEY
+      ? {
+          schedulePrecallSequence: async (
+            event: BookingCompletedEvent | BookingRescheduledEvent,
+          ) => {
+            const payload = precallPayloadFromBooking(event);
+            return executeWithRetry(
+              { destination: "trigger", operation: "schedule_meeting_reminders" },
+              () =>
+                runPrecallSequenceTask.trigger(payload, {
+                  idempotencyKey: `precall-run:${payload.sequenceId}`,
+                  idempotencyKeyTTL: "1y",
+                }),
+            );
+          },
+        }
+      : {}),
     executeAdapter: executeWithRetry,
     alertTwentyFailure,
     ...(capturePostHogLifecycle ? { capturePostHogLifecycle } : {}),
@@ -1284,6 +1355,16 @@ export const processFunnelEventTask = schemaTask({
             process.env.CAL_INTERNAL_BOOKING_BASE_URL,
           BREVO_API_KEY: process.env.BREVO_API_KEY,
           BREVO_ADS_LIST_ID: process.env.BREVO_ADS_LIST_ID,
+          BREVO_NEWSLETTER_LIST_ID: process.env.BREVO_NEWSLETTER_LIST_ID,
+          BREVO_LEAD_MAGNETS_LIST_ID: process.env.BREVO_LEAD_MAGNETS_LIST_ID,
+          BREVO_PRECALL_SENDER_EMAIL: process.env.BREVO_PRECALL_SENDER_EMAIL,
+          BREVO_PRECALL_SENDER_NAME: process.env.BREVO_PRECALL_SENDER_NAME,
+          BREVO_PRECALL_REPLY_TO_EMAIL: process.env.BREVO_PRECALL_REPLY_TO_EMAIL,
+          PRECALL_EMAILS_ENABLED: process.env.PRECALL_EMAILS_ENABLED,
+          PRECALL_PUBLIC_ORIGIN: process.env.PRECALL_PUBLIC_ORIGIN,
+          PULPSENSE_BUSINESS_POSTAL_ADDRESS:
+            process.env.PULPSENSE_BUSINESS_POSTAL_ADDRESS,
+          PRECALL_OPT_OUT_TOKEN_SECRET: process.env.PRECALL_OPT_OUT_TOKEN_SECRET,
           CAL_API_KEY: process.env.CAL_API_KEY,
           PULPSENSE_AUTOMATION_ENVIRONMENT: process.env
             .PULPSENSE_AUTOMATION_ENVIRONMENT as

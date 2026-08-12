@@ -10,6 +10,7 @@ export type FunnelEnv = {
   MILLION_VERIFIER_API_KEY?: string;
   PULPSENSE_TRIGGER_API_ORIGIN?: string;
   PULPSENSE_TRIGGER_SECRET_KEY?: string;
+  PRECALL_OPT_OUT_TOKEN_SECRET?: string;
   CAL_WEBHOOK_SECRET?: string;
   CAL_BOOKING_LINK?: string;
   META_PIXEL_ID?: string;
