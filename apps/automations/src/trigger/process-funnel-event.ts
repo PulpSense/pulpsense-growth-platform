@@ -7,7 +7,7 @@ import {
   type ContactSubmittedEvent,
   type FunnelEvent,
 } from "@pulpsense/contracts";
-import { logger, retry, schemaTask } from "@trigger.dev/sdk";
+import { idempotencyKeys, logger, retry, schemaTask } from "@trigger.dev/sdk";
 
 import {
   postSlackBooking,
@@ -19,9 +19,13 @@ import {
   scheduleMeetingReminders,
   sendMeetingReminderTask,
 } from "./meeting-reminders.js";
-import { runPrecallSequenceTask } from "./precall-sequence.js";
+import {
+  precallRunIdempotencyKey,
+  runPrecallSequenceTask,
+} from "./precall-sequence.js";
 import { createPostHogLifecycleCapture } from "./posthog-lifecycle.js";
 import { resolveMetaEnvironment } from "./meta-destination.js";
+import { triggerRunUrl } from "./trigger-dashboard.js";
 
 type AdapterDestination = "twenty" | "meta" | "slack" | "brevo" | "trigger";
 
@@ -57,6 +61,50 @@ type TwentyFailureContext = {
   environment: FunnelEvent["environment"];
   operation: AdapterOperation;
 };
+
+const triggerRunLink = (url: string | undefined, fallback: string) =>
+  url ? `<${url}|Open in Trigger>` : fallback;
+
+const displayOperation = (operation: AdapterOperation) =>
+  ({
+    upsert_person: "Upsert person",
+    record_application: "Create application",
+    record_booking: "Record booking",
+    deliver_lead: "Send lead",
+    deliver_application: "Send application",
+    deliver_schedule: "Send booking",
+    deliver_slack_lead: "Post lead",
+    deliver_slack_booking: "Post booking",
+    publish_brevo_lifecycle: "Sync lifecycle",
+    schedule_meeting_reminders: "Schedule reminders",
+    alert_twenty_failure: "Post failure alert",
+    alert_destination_failure: "Post failure alert",
+  })[operation];
+
+export const formatTwentyFailureAlert = (
+  context: TwentyFailureContext,
+  runUrl?: string,
+) =>
+  [
+    `:rotating_light: *Twenty CRM sync failed* — ${context.environment}`,
+    `${displayOperation(context.operation)} · Funnel: \`${context.funnelId}\` · Journey: \`${context.submissionId}\``,
+    triggerRunLink(runUrl, "Trigger run unavailable"),
+  ].join("\n");
+
+export const formatBrevoFailureAlert = (
+  event: BrevoLifecycleEvent,
+  runUrl?: string,
+) =>
+  [
+    `:rotating_light: *Brevo lifecycle sync failed* — ${event.environment}`,
+    [
+      `Journey: \`${event.submissionId}\``,
+      ...("booking" in event.payload
+        ? [`Booking: \`${event.payload.booking.uid}\``]
+        : []),
+    ].join(" · "),
+    triggerRunLink(runUrl, "Trigger run unavailable"),
+  ].join("\n");
 
 type ProcessorDependencies = {
   assertEnvironment?(environment: FunnelEvent["environment"]): void;
@@ -96,12 +144,19 @@ type ProcessorDependencies = {
 };
 
 const runIndependent = async <
-  Operations extends Record<string, Promise<unknown>>,
+  Operations extends Record<string, () => Promise<unknown>>,
 >(
   operations: Operations,
 ) => {
   const entries = Object.entries(operations);
-  const settled = await Promise.allSettled(entries.map(([, value]) => value));
+  const settled = [] as PromiseSettledResult<unknown>[];
+  for (const [, operation] of entries) {
+    try {
+      settled.push({ status: "fulfilled", value: await operation() });
+    } catch (reason) {
+      settled.push({ status: "rejected", reason });
+    }
+  }
   const errors = settled.flatMap((result) =>
     result.status === "rejected" ? [result.reason] : [],
   );
@@ -114,7 +169,9 @@ const runIndependent = async <
       entries[index]![0],
       result.status === "fulfilled" ? result.value : undefined,
     ]),
-  ) as { [Key in keyof Operations]: Awaited<Operations[Key]> };
+  ) as {
+    [Key in keyof Operations]: Awaited<ReturnType<Operations[Key]>>;
+  };
 };
 
 const executeAdapter = <Result>(
@@ -209,13 +266,14 @@ export async function processFunnelEvent(
       previousBookingUid: event.payload.booking.previousUid,
       environment: event.environment,
     });
-    await runIndependent({
-      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      reminders:
-        dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
-      measurement: capturePostHogSafely(event, dependencies),
-    });
     await dependencies.schedulePrecallSequence?.(event);
+    await runIndependent({
+      brevo: () =>
+        dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      reminders: () =>
+        dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
+      measurement: () => capturePostHogSafely(event, dependencies),
+    });
     return { ok: true as const, bookingUid: event.payload.booking.uid };
   }
 
@@ -227,8 +285,9 @@ export async function processFunnelEvent(
       environment: event.environment,
     });
     await runIndependent({
-      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      measurement: capturePostHogSafely(event, dependencies),
+      brevo: () =>
+        dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      measurement: () => capturePostHogSafely(event, dependencies),
     });
     return { ok: true as const, bookingUid: event.payload.booking.uid };
   }
@@ -244,9 +303,13 @@ export async function processFunnelEvent(
       funnelId: event.funnelId,
       environment: event.environment,
     });
+    // The customer-facing sequence is independent of CRM, analytics, and Slack
+    // delivery. Schedule it first so a downstream integration failure cannot
+    // suppress a valid booked-call email sequence.
+    await dependencies.schedulePrecallSequence?.(event);
 
     const destinations = await runIndependent({
-      core: (async () => {
+      core: async () => {
         const { personId } = await executeTwenty(
           event,
           dependencies,
@@ -265,14 +328,14 @@ export async function processFunnelEvent(
           () => dependencies.sendMetaSchedule!(event),
         );
         return { personId, booking, eventsReceived };
-      })(),
-      slack: dependencies.postSlackBooking?.(event) ?? Promise.resolve(),
-      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      reminders:
+      },
+      slack: () => dependencies.postSlackBooking?.(event) ?? Promise.resolve(),
+      brevo: () =>
+        dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      reminders: () =>
         dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
-      measurement: capturePostHogSafely(event, dependencies),
+      measurement: () => capturePostHogSafely(event, dependencies),
     });
-    await dependencies.schedulePrecallSequence?.(event);
     const { personId, booking, eventsReceived } = destinations.core;
 
     dependencies.log.info("Processed verified funnel booking", {
@@ -310,7 +373,7 @@ export async function processFunnelEvent(
     });
 
     const destinations = await runIndependent({
-      core: (async () => {
+      core: async () => {
         const { personId } = await executeTwenty(
           event,
           dependencies,
@@ -329,9 +392,10 @@ export async function processFunnelEvent(
           () => dependencies.sendMetaApplication!(event),
         );
         return { personId, application, eventsReceived };
-      })(),
-      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      measurement: capturePostHogSafely(event, dependencies),
+      },
+      brevo: () =>
+        dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+      measurement: () => capturePostHogSafely(event, dependencies),
     });
     const { personId, application, eventsReceived } = destinations.core;
 
@@ -366,7 +430,7 @@ export async function processFunnelEvent(
   });
 
   const destinations = await runIndependent({
-    core: (async () => {
+    core: async () => {
       const { personId } = await executeTwenty(
         event,
         dependencies,
@@ -379,10 +443,11 @@ export async function processFunnelEvent(
         () => dependencies.sendMetaLead(event),
       );
       return { personId, eventsReceived };
-    })(),
-    slack: dependencies.postSlackLead?.(event) ?? Promise.resolve(),
-    brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-    measurement: capturePostHogSafely(event, dependencies),
+    },
+    slack: () => dependencies.postSlackLead?.(event) ?? Promise.resolve(),
+    brevo: () =>
+      dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
+    measurement: () => capturePostHogSafely(event, dependencies),
   });
   const { personId, eventsReceived } = destinations.core;
 
@@ -434,6 +499,15 @@ type ProcessorEnvironment = {
 const required = (value: string | undefined, name: string) => {
   if (!value) throw new Error(`${name} is not configured`);
   return value;
+};
+
+const responseDetail = async (response: Response) => {
+  const body = (await response.text()).trim();
+  if (!body) return "";
+  const redacted = body
+    .replace(/[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}/gu, "[redacted-email]")
+    .replace(/\+?\d[\d\s().-]{7,}\d/gu, "[redacted-phone]");
+  return `: ${redacted.slice(0, 1_000)}`;
 };
 
 const normalizeOrigin = (origin: string) => origin.replace(/\/+$/u, "");
@@ -522,14 +596,16 @@ const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
       );
       if (!updateResponse.ok) {
         throw new Error(
-          `Twenty person upsert failed (${updateResponse.status})`,
+          `Twenty person upsert failed (${updateResponse.status})${await responseDetail(updateResponse)}`,
         );
       }
 
       return { personId: concurrentId };
     }
 
-    throw new Error(`Twenty person upsert failed (${response.status})`);
+    throw new Error(
+      `Twenty person upsert failed (${response.status})${await responseDetail(response)}`,
+    );
   }
 
   const result = (await response.json()) as {
@@ -1129,9 +1205,6 @@ export function createProcessorDependencies(
         },
       ));
   const alertTwentyFailure = async (context: TwentyFailureContext) => {
-    const runReference = runtime.run
-      ? `<${runtime.run.url}|${runtime.run.id}>`
-      : "unavailable";
     await executeWithRetry(
       { destination: "slack", operation: "alert_twenty_failure" },
       async () => {
@@ -1139,16 +1212,7 @@ export function createProcessorDependencies(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: [
-              ":rotating_light: Twenty delivery exhausted retries",
-              `Environment: ${context.environment}`,
-              `Funnel: ${context.funnelId}`,
-              `Event type: ${context.eventType}`,
-              `Submission: ${context.submissionId}`,
-              `Event: ${context.eventId}`,
-              `Operation: ${context.operation}`,
-              `Trigger.dev run: ${runReference}`,
-            ].join("\n"),
+            text: formatTwentyFailureAlert(context, runtime.run?.url),
           }),
         });
         if (!response.ok) {
@@ -1157,13 +1221,7 @@ export function createProcessorDependencies(
       },
     );
   };
-  const alertDestinationFailure = async (
-    event: BrevoLifecycleEvent,
-    operation: AdapterOperation,
-  ) => {
-    const runReference = runtime.run
-      ? `<${runtime.run.url}|${runtime.run.id}>`
-      : "unavailable";
+  const alertDestinationFailure = async (event: BrevoLifecycleEvent) => {
     await executeWithRetry(
       { destination: "slack", operation: "alert_destination_failure" },
       async () => {
@@ -1171,17 +1229,7 @@ export function createProcessorDependencies(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: [
-              ":rotating_light: Lifecycle destination exhausted retries",
-              `Environment: ${event.environment}`,
-              `Destination: brevo`,
-              `Operation: ${operation}`,
-              `Lead Journey: ${event.submissionId}`,
-              ...("booking" in event.payload
-                ? [`Cal UID: ${event.payload.booking.uid}`]
-                : []),
-              `Trigger.dev run: ${runReference}`,
-            ].join("\n"),
+            text: formatBrevoFailureAlert(event, runtime.run?.url),
           }),
         });
         if (!response.ok) {
@@ -1268,7 +1316,7 @@ export function createProcessorDependencies(
               );
             } catch (error) {
               try {
-                await alertDestinationFailure(event, "publish_brevo_lifecycle");
+                await alertDestinationFailure(event);
               } catch {
                 runtime.log.info("Brevo failure alert delivery failed", {
                   submissionId: event.submissionId,
@@ -1304,10 +1352,16 @@ export function createProcessorDependencies(
           ) => {
             const payload = precallPayloadFromBooking(event);
             return executeWithRetry(
-              { destination: "trigger", operation: "schedule_meeting_reminders" },
-              () =>
+              {
+                destination: "trigger",
+                operation: "schedule_meeting_reminders",
+              },
+              async () =>
                 runPrecallSequenceTask.trigger(payload, {
-                  idempotencyKey: `precall-run:${payload.sequenceId}`,
+                  idempotencyKey: await idempotencyKeys.create(
+                    precallRunIdempotencyKey(payload.sequenceId),
+                    { scope: "global" },
+                  ),
                   idempotencyKeyTTL: "1y",
                 }),
             );
@@ -1359,12 +1413,14 @@ export const processFunnelEventTask = schemaTask({
           BREVO_LEAD_MAGNETS_LIST_ID: process.env.BREVO_LEAD_MAGNETS_LIST_ID,
           BREVO_PRECALL_SENDER_EMAIL: process.env.BREVO_PRECALL_SENDER_EMAIL,
           BREVO_PRECALL_SENDER_NAME: process.env.BREVO_PRECALL_SENDER_NAME,
-          BREVO_PRECALL_REPLY_TO_EMAIL: process.env.BREVO_PRECALL_REPLY_TO_EMAIL,
+          BREVO_PRECALL_REPLY_TO_EMAIL:
+            process.env.BREVO_PRECALL_REPLY_TO_EMAIL,
           PRECALL_EMAILS_ENABLED: process.env.PRECALL_EMAILS_ENABLED,
           PRECALL_PUBLIC_ORIGIN: process.env.PRECALL_PUBLIC_ORIGIN,
           PULPSENSE_BUSINESS_POSTAL_ADDRESS:
             process.env.PULPSENSE_BUSINESS_POSTAL_ADDRESS,
-          PRECALL_OPT_OUT_TOKEN_SECRET: process.env.PRECALL_OPT_OUT_TOKEN_SECRET,
+          PRECALL_OPT_OUT_TOKEN_SECRET:
+            process.env.PRECALL_OPT_OUT_TOKEN_SECRET,
           CAL_API_KEY: process.env.CAL_API_KEY,
           PULPSENSE_AUTOMATION_ENVIRONMENT: process.env
             .PULPSENSE_AUTOMATION_ENVIRONMENT as
@@ -1376,7 +1432,7 @@ export const processFunnelEventTask = schemaTask({
           log: logger,
           run: {
             id: ctx.run.id,
-            url: `https://cloud.trigger.dev/projects/v3/${encodeURIComponent(ctx.project.ref)}/${encodeURIComponent(ctx.environment.slug)}/runs/${encodeURIComponent(ctx.run.id)}`,
+            url: triggerRunUrl(ctx.environment.slug, ctx.run.id),
           },
         },
       ),

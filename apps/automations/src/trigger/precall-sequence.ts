@@ -6,6 +6,7 @@ import { renderPrecallEmail } from "../email/render-precall-email.js";
 import {
   buildPrecallSchedule,
   sequenceIdFor,
+  type PrecallModuleId,
 } from "./precall-schedule.js";
 import { sendBrevoTransactionalEmail } from "./brevo-transactional.js";
 
@@ -55,6 +56,19 @@ type PrecallRuntime = {
   fetch: typeof fetch;
   now?: () => Date;
 };
+
+export const precallRunIdempotencyKey = (sequenceId: string) =>
+  `precall-run:${sequenceId}`;
+
+export const precallSlotIdempotencyKey = (
+  sequenceId: string,
+  moduleId: PrecallModuleId,
+) => `precall-slot:${sequenceId}:${moduleId}`;
+
+export const precallSendIdempotencyKey = (
+  sequenceId: string,
+  moduleId: PrecallModuleId,
+) => `precall-send:${sequenceId}:${moduleId}`;
 
 const required = (value: string | undefined, name: string) => {
   if (!value) throw new Error(`${name} is not configured`);
@@ -195,7 +209,10 @@ export const deliverPrecallSequence = async (
     if (sendAt > (runtime.now?.() ?? new Date())) {
       await wait.until({
         date: sendAt,
-        idempotencyKey: `precall-slot:${payload.sequenceId}:${slot.moduleId}`,
+        idempotencyKey: await idempotencyKeys.create(
+          precallSlotIdempotencyKey(payload.sequenceId, slot.moduleId),
+          { scope: "global" },
+        ),
         idempotencyKeyTTL: "1y",
       });
     }
@@ -231,7 +248,8 @@ export const deliverPrecallSequence = async (
       sender_name: required(environment.BREVO_PRECALL_SENDER_NAME, "BREVO_PRECALL_SENDER_NAME"),
     });
     const transportKey = await idempotencyKeys.create(
-      `precall-send:${payload.sequenceId}:${slot.moduleId}`,
+      precallSendIdempotencyKey(payload.sequenceId, slot.moduleId),
+      { scope: "global" },
     );
     await sendBrevoTransactionalEmail(
       {

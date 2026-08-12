@@ -9,8 +9,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
   type AdapterExecutor,
   createProcessorDependencies,
+  formatBrevoFailureAlert,
+  formatTwentyFailureAlert,
   processFunnelEvent,
 } from "./process-funnel-event.js";
+import { triggerRunUrl } from "./trigger-dashboard.js";
 
 const retryImmediately =
   (maxAttempts: number): AdapterExecutor =>
@@ -138,6 +141,40 @@ const rescheduledEvent: BookingRescheduledEvent = {
 };
 
 describe("process-funnel-event", () => {
+  it("links to the canonical Trigger dashboard run page", () => {
+    expect(triggerRunUrl("prod", "run_123")).toBe(
+      "https://cloud.trigger.dev/orgs/pulpsense-55f9/projects/internal-automations--Y9w/env/prod/runs/run_123",
+    );
+  });
+
+  it("formats compact, scannable Slack failure alerts", () => {
+    expect(
+      formatBrevoFailureAlert(
+        bookingEvent,
+        "https://cloud.trigger.dev/runs/run_123",
+      ),
+    ).toBe(
+      [
+        ":rotating_light: *Brevo lifecycle sync failed* — preview",
+        "Journey: `b0a10d9a-68bb-4d73-95c3-3e03560f8550` · Booking: `cal_booking_123`",
+        "<https://cloud.trigger.dev/runs/run_123|Open in Trigger>",
+      ].join("\n"),
+    );
+    expect(
+      formatTwentyFailureAlert(
+        {
+          submissionId: event.submissionId,
+          eventId: event.eventId,
+          eventType: event.eventType,
+          funnelId: event.funnelId,
+          environment: event.environment,
+          operation: "upsert_person",
+        },
+        "https://cloud.trigger.dev/runs/run_123",
+      ),
+    ).toContain(":rotating_light: *Twenty CRM sync failed* — preview");
+  });
+
   it("rejects startup without the required Twenty failure alert destination", () => {
     expect(() =>
       createProcessorDependencies(
@@ -289,9 +326,9 @@ describe("process-funnel-event", () => {
     expect(slackBodies).toHaveLength(1);
     expect(slackAttempts).toBe(2);
     const alert = JSON.stringify(slackBodies[0]);
-    expect(alert).toContain("upsert_person");
+    expect(alert).toContain("Upsert person");
     expect(alert).toContain(event.submissionId);
-    expect(alert).toContain(event.eventId);
+    expect(alert).not.toContain(event.eventId);
     expect(alert).toContain("run_01recovery");
     expect(alert).toContain("preview");
     expect(alert).not.toContain(event.payload.email);
