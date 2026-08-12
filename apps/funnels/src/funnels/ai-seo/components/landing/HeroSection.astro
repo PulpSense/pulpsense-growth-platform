@@ -1,10 +1,16 @@
 ---
 import WistiaPlayer from "@/components/funnel/WistiaPlayer.astro";
 import ClientLogoCarousel from "./ClientLogoCarousel.astro";
+
+type Props = {
+  heroCallout: string;
+};
+
+const { heroCallout } = Astro.props;
 ---
 
 <div class="pr-bar">
-  📌{" "}For established, high-trust regional service businesses
+  📌{" "}{heroCallout}
 </div>
 
 <div class="pr-hero-inner pr-center">
@@ -36,12 +42,7 @@ import ClientLogoCarousel from "./ClientLogoCarousel.astro";
         ></path>
       </svg>
     </span>
-    <span
-      style="
-                font-size: clamp(0.72rem, 3vw, 0.875rem);
-                font-weight: 600;
-                color: #374151;
-              "
+    <span class="pr-badge-copy"
       >Rated 4.9/5 by 500+ Service Business Owners</span
     >
   </div>
