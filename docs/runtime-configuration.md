@@ -38,7 +38,7 @@ The rate-limiter Worker owns the Workers-only `FUNNEL_RATE_LIMITER` binding and 
 | `TELNYX_TELEPHONY_CREDENTIAL_ID`  | Yes    | Selects the per-device credential attached to the `PulpSense Browser Softphone` Credential Connection.          | Cloudflare Pages secret; credential expires 2027-08-11 |
 | `TELNYX_CALLER_NUMBER`            | No     | Caller ID sent for browser-originated PSTN calls. The number remains assigned to the existing Call Control app. | `+13072490829`                                         |
 | `SOFTPHONE_ENVIRONMENT`           | No     | Labels session responses for diagnostics without exposing credentials.                                          | `production`                                           |
-| Twenty `SOFTPHONE_BASE_URL`       | No     | Origin inserted into the fragment-only launch URL returned to the authenticated Person widget.                  | `https://pulpsense-softphone-preview.pages.dev`        |
+| Twenty `SOFTPHONE_BASE_URL`       | No     | Origin inserted into the fragment-only launch URL returned to the authenticated Person widget.                  | `https://softphone.pulpsense.com`                      |
 | Twenty `SOFTPHONE_HANDOFF_SECRET` | Yes    | Signs the same handoff Cloudflare verifies. It is independent from both Telnyx API keys.                        | Twenty application secret                              |
 
 The API key, shared signing secret, SIP password, and Telnyx JWT never enter committed files or Twenty front-component code. The browser receives only a short-lived Telnyx JWT after Cloudflare verifies the signed Person handoff.
