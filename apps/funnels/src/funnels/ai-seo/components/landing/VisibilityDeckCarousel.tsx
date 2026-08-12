@@ -54,6 +54,12 @@ export function VisibilityDeckCarousel() {
     };
   }, [api]);
 
+  const handleSlideTap = () => {
+    if (window.matchMedia("(max-width: 767px)").matches) {
+      api?.scrollNext();
+    }
+  };
+
   return (
     <section
       className="pr-deck"
@@ -76,6 +82,7 @@ export function VisibilityDeckCarousel() {
                   width="1600"
                   height="900"
                   draggable="false"
+                  onClick={handleSlideTap}
                 />
               </div>
             </CarouselItem>
@@ -103,9 +110,7 @@ export function VisibilityDeckCarousel() {
           ))}
         </div>
       </div>
-      <p className="pr-deck-hint">
-        Swipe, use the controls, or focus the carousel and use the arrow keys
-      </p>
+      <p className="pr-deck-hint">Swipe or tap to continue</p>
     </section>
   );
 }

@@ -371,7 +371,7 @@ body {
     background 0.2s;
 }
 #pr-funnel .pr-deck-dot[data-active="true"]::before {
-  width: 1.25rem;
+  width: 0.45rem;
   background: var(--pr-blue);
 }
 #pr-funnel .pr-deck-hint {

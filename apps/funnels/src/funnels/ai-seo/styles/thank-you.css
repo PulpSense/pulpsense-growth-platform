@@ -288,7 +288,7 @@ body {
     background 0.2s;
 }
 #pr-funnel .pr-ty-deck-dot[data-active="true"]::before {
-  width: 1.15rem;
+  width: 0.45rem;
   background: var(--pr-blue);
 }
 #pr-funnel .pr-ty-deck-dot:focus-visible {
