@@ -50,9 +50,9 @@ describe("AI SEO thank-you briefing deck", () => {
       "utf8",
     );
 
-    expect(calendarSource).toContain("calendar-confirmation.webp");
-    expect(calendarSource).toContain("pr-inbox-guide");
-    expect(calendarSource).not.toContain("pr-calendar-preview");
+    expect(calendarSource).not.toContain("calendar-confirmation.webp");
+    expect(calendarSource).toContain("pr-calendar-preview");
+    expect(calendarSource).not.toContain("pr-inbox-guide");
   });
 
   it("preserves the true 16:9 image frame and compliant dot targets", () => {
