@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
@@ -28,13 +28,13 @@ describe("AI SEO thank-you briefing deck", () => {
   });
 
   it("covers call preparation and the approved Growth Platform delivery model", () => {
-    expect(carouselSource).toContain("Confirm your calendar invitation");
+    expect(carouselSource).toContain("Confirm the calendar invitation");
     expect(carouselSource).toContain(
-      "Reschedule from the link in your invitation",
+      "reschedule from the invitation instead of missing the call",
     );
-    expect(carouselSource).toContain("We benchmark your market");
-    expect(carouselSource).toContain("We build your authority foundation");
-    expect(carouselSource).toContain("We expand and maintain visibility");
+    expect(carouselSource).toContain("benchmarks the market");
+    expect(carouselSource).toContain("builds the authority foundation");
+    expect(carouselSource).toContain("expands and maintains visibility");
     expect(carouselSource).toContain("45 additional calls in 90 days");
   });
 
@@ -55,16 +55,28 @@ describe("AI SEO thank-you briefing deck", () => {
     expect(calendarSource).not.toContain("pr-calendar-preview");
   });
 
-  it("keeps mobile slide content visible and provides compliant dot targets", () => {
-    expect(stylesSource).toContain("min-height:");
+  it("preserves the true 16:9 image frame and compliant dot targets", () => {
+    expect(stylesSource).toMatch(
+      /\.pr-ty-deck-stage \{[\s\S]*?aspect-ratio: 16 \/ 9;/,
+    );
+    expect(stylesSource).toMatch(
+      /\.pr-ty-deck-image \{[\s\S]*?object-fit: contain;/,
+    );
     expect(stylesSource).toMatch(/\.pr-ty-deck-dot \{[\s\S]*?width: 1\.5rem;/);
     expect(stylesSource).toMatch(/\.pr-ty-deck-dot \{[\s\S]*?height: 2rem;/);
-    expect(stylesSource).toMatch(
-      /@media \(max-width: 560px\)[\s\S]*?aspect-ratio: auto;/,
-    );
-    expect(stylesSource).toMatch(
-      /@media \(max-width: 560px\)[\s\S]*?overflow-y: auto;/,
-    );
+  });
+
+  it("ships sixteen flattened AI briefing images with accessible equivalents", () => {
+    const deckFiles = readdirSync(
+      new URL("../../../../../public/ai-seo/thank-you-deck/", import.meta.url),
+    ).filter((file) => file.startsWith("slide-") && file.endsWith(".webp"));
+
+    expect(deckFiles).toHaveLength(16);
+    expect(carouselSource.match(/^  ".+",$/gm)).toHaveLength(16);
+    expect(carouselSource).toContain("slideDescriptions.map");
+    expect(carouselSource).toContain("/ai-seo/thank-you-deck/slide-");
+    expect(carouselSource).toContain('width="1600"');
+    expect(carouselSource).toContain('height="900"');
   });
 
   it("supports focused keyboard, swipe, and direct slide navigation", () => {
