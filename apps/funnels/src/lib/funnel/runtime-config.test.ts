@@ -34,6 +34,19 @@ describe("funnel runtime configuration", () => {
     });
   });
 
+  it("allows the thank-you page to use a custom Meta event", () => {
+    expect(
+      createBrowserTrackingConfig({
+        environment: "production",
+        metaPixelId: "828948073514575",
+        facebookEvents: [{ name: "ThankYouView", type: "custom" }],
+      }),
+    ).toEqual({
+      facebookPixelId: "828948073514575",
+      facebookEvents: [{ name: "ThankYouView", type: "custom" }],
+    });
+  });
+
   it("requires an explicit Cal link in preview and allows a local fallback", () => {
     expect(() =>
       resolveCalConfig({

@@ -20,10 +20,12 @@ export function createBrowserTrackingConfig({
   environment = "local",
   metaPixelId,
   allowPreview = false,
+  facebookEvents,
 }: {
   environment?: DeploymentEnvironment;
   metaPixelId?: string;
   allowPreview?: boolean;
+  facebookEvents?: PixelConfig["facebookEvents"];
 }): PixelConfig {
   if (environment === "preview" && !allowPreview) return {};
 
@@ -35,7 +37,7 @@ export function createBrowserTrackingConfig({
 
   return {
     facebookPixelId: configuredPixelId,
-    facebookEvents: [{ name: "PageView", type: "standard" }],
+    facebookEvents: facebookEvents ?? [{ name: "PageView", type: "standard" }],
   };
 }
 
