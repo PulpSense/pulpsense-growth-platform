@@ -230,7 +230,7 @@ body {
 #pr-funnel .pr-deck-arrow:hover:not(:disabled),
 #pr-funnel .pr-deck-arrow:focus-visible {
   background: var(--pr-blue);
-  transform: scale(1.05);
+  transform: translateY(-50%);
 }
 #pr-funnel .pr-deck-arrow:focus-visible {
   outline: 3px solid #fff;
@@ -241,7 +241,7 @@ body {
   outline-offset: 2px;
 }
 #pr-funnel .pr-deck-arrow:disabled {
-  opacity: 0.18;
+  opacity: 0.5;
   cursor: default;
 }
 #pr-funnel .pr-deck-arrow-left {
@@ -250,8 +250,8 @@ body {
 }
 #pr-funnel .pr-deck-carousel {
   position: relative;
-  padding-right: clamp(2.5rem, 6vw, 4rem);
-  padding-left: clamp(2.5rem, 6vw, 4rem);
+  padding-right: 3rem;
+  padding-left: 3rem;
 }
 #pr-funnel .ps-carousel-viewport {
   overflow: hidden;
@@ -269,15 +269,56 @@ body {
   position: absolute;
   top: 50%;
   z-index: 2;
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
   transform: translateY(-50%);
+  border: 1px solid var(--pr-border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--pr-text);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  font-size: 1rem;
+}
+#pr-funnel .pr-deck-arrow svg {
+  width: 1rem;
+  height: 1rem;
+}
+#pr-funnel .pr-deck-arrow:hover:not(:disabled),
+#pr-funnel .pr-deck-arrow:focus-visible {
+  background: #f8fafc;
+  transform: translateY(-50%);
+}
+#pr-funnel .pr-deck-arrow:focus-visible {
+  outline: 2px solid var(--pr-blue);
+  outline-offset: 2px;
+}
+#pr-funnel .pr-deck-arrow:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+#pr-funnel .ps-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 #pr-funnel .pr-deck-arrow-left,
 #pr-funnel .ps-carousel-previous {
-  left: 0;
+  left: -3rem;
 }
 #pr-funnel .pr-deck-arrow-right,
 #pr-funnel .ps-carousel-next {
-  right: 0;
+  right: -3rem;
 }
 #pr-funnel .pr-deck-controls {
   display: flex;

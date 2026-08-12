@@ -1,6 +1,7 @@
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
 } from "embla-carousel-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import {
   createContext,
   forwardRef,
@@ -145,7 +146,8 @@ export const CarouselPrevious = forwardRef<
       }}
       {...props}
     >
-      <span aria-hidden="true">‹</span>
+      <ArrowLeft aria-hidden="true" />
+      <span className="ps-sr-only">Previous slide</span>
     </button>
   );
 });
@@ -169,7 +171,8 @@ export const CarouselNext = forwardRef<
       }}
       {...props}
     >
-      <span aria-hidden="true">›</span>
+      <ArrowRight aria-hidden="true" />
+      <span className="ps-sr-only">Next slide</span>
     </button>
   );
 });
