@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 
 import {
   Carousel,
@@ -54,9 +55,11 @@ export function VisibilityDeckCarousel() {
     };
   }, [api]);
 
-  const handleSlideTap = () => {
+  const handleSlideTap = (event: MouseEvent<HTMLDivElement>) => {
     if (window.matchMedia("(max-width: 767px)").matches) {
-      api?.scrollNext();
+      const { left, width } = event.currentTarget.getBoundingClientRect();
+      const tapPosition = (event.clientX - left) / width;
+      api?.[tapPosition <= 0.25 ? "scrollPrev" : "scrollNext"]();
     }
   };
 
@@ -74,7 +77,7 @@ export function VisibilityDeckCarousel() {
         <CarouselContent className="pr-deck-content">
           {slides.map((slide, index) => (
             <CarouselItem key={slide.image} className="pr-deck-item">
-              <div className="pr-deck-stage">
+              <div className="pr-deck-stage" onClick={handleSlideTap}>
                 <img
                   className="pr-deck-image"
                   src={slide.image}
@@ -82,7 +85,6 @@ export function VisibilityDeckCarousel() {
                   width="1600"
                   height="900"
                   draggable="false"
-                  onClick={handleSlideTap}
                 />
                 {index === 0 ? (
                   <span className="pr-deck-tap-hint" aria-hidden="true">

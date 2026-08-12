@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { MouseEvent } from "react";
 
 import {
   Carousel,
@@ -132,9 +133,11 @@ export function ThankYouDeckCarousel() {
     };
   }, [api]);
 
-  const handleSlideTap = () => {
+  const handleSlideTap = (event: MouseEvent<HTMLDivElement>) => {
     if (window.matchMedia("(max-width: 560px)").matches) {
-      api?.scrollNext();
+      const { left, width } = event.currentTarget.getBoundingClientRect();
+      const tapPosition = (event.clientX - left) / width;
+      api?.[tapPosition <= 0.25 ? "scrollPrev" : "scrollNext"]();
     }
   };
 
