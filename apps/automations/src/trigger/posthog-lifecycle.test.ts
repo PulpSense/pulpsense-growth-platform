@@ -9,7 +9,7 @@ import { createPostHogLifecycleCapture } from "./posthog-lifecycle.js";
 const contactEvent: ContactSubmittedEvent = {
   schemaVersion: 1,
   eventType: "contact_submitted",
-  funnelId: "creative-multiplier-sprint",
+  funnelId: "ai-seo",
   submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   eventId: "contact_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   occurredAt: "2026-08-09T12:00:00.000Z",
@@ -23,8 +23,8 @@ const contactEvent: ContactSubmittedEvent = {
   attribution: {
     firstTouch: {
       utmSource: "meta",
-      utmCampaign: "creative-sprint",
-      landingPage: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      utmCampaign: "ai-seo",
+      landingPage: "https://preview.pulpsense.com/ai-seo/",
       referrer: "https://partner.example/review",
     },
     lastTouch: { utmSource: "newsletter" },
@@ -32,7 +32,7 @@ const contactEvent: ContactSubmittedEvent = {
   requestContext: {
     clientIp: "203.0.113.10",
     userAgent: "Test Browser",
-    sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+    sourceUrl: "https://preview.pulpsense.com/ai-seo/",
     analyticsId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
   },
   environment: "preview",
@@ -41,16 +41,14 @@ const contactEvent: ContactSubmittedEvent = {
 const applicationEvent: ApplicationSubmittedEvent = {
   ...contactEvent,
   eventType: "application_submitted",
-  funnelId: "creative-multiplier-sprint",
+  funnelId: "ai-seo",
   eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   payload: {
     ...contactEvent.payload,
     application: {
-      brandUrl: "https://brand.com/private-product",
-      paidSocialSpend: "$50k - $150k/month",
-      winnerStatus: "Yes, one clear winner",
-      platforms: ["Meta"],
-      deliveryTimeline: "This week",
+      businessOwner: "yes",
+      marketingBudget: "$1,500+/month",
+      investmentIntent: "Yes, if the numbers make sense",
     },
   },
   qualificationStatus: "qualified",
@@ -86,7 +84,7 @@ describe("createPostHogLifecycleCapture", () => {
         environment: "preview",
         qualification_status: "qualified",
         first_utm_source: "meta",
-        first_utm_campaign: "creative-sprint",
+        first_utm_campaign: "ai-seo",
         first_referrer_host: "partner.example",
         last_utm_source: "newsletter",
         $process_person_profile: false,

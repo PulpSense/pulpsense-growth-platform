@@ -35,7 +35,7 @@ Set `TWENTY_QUALIFIED_STAGE_VALUE` to the API value for the Twenty stage labelle
 
 Set `TWENTY_CALL_BOOKED_STAGE_VALUE` to the API value for the Twenty stage labelled **Call Booked**. A verified `booking_completed` event records an idempotent booking activity derived from the Cal UID, advances the matching open Opportunity, and sends Meta `Schedule` with the same deterministic event ID.
 
-The Twenty Opportunity object must expose the custom API fields `brandUrl`, `paidSocialSpend`, `winnerStatus`, `platforms`, and `deliveryTimeline`. The processor projects those sales fields on both create and repeat-update operations while the immutable Person Note remains the complete application record. Funnel-event runs are serialized to protect the one-open-Opportunity invariant.
+Funnel-event runs are serialized to protect the one-open-Opportunity invariant. The immutable Person Note remains the complete application record.
 
 Twenty owns Company creation and Person-to-Company linking. Trigger.dev never creates a Company; it only matches an existing Company by the normalized business-email domain before linking a qualified Opportunity. The audit and operational constraint are documented in [`docs/twenty-company-ownership.md`](../../docs/twenty-company-ownership.md).
 

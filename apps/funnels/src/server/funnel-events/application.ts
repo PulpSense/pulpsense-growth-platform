@@ -12,16 +12,11 @@ import { createBookingToken, readRetryToken } from "./submission-identity";
 import { createRequestContext } from "./request-context";
 
 const determineQualificationStatus = (request: ApplicationSubmissionRequest) =>
-  request.funnelId === "creative-multiplier-sprint"
-    ? request.payload.paidSocialSpend === "Less than $20k/month" ||
-      request.payload.winnerStatus === "No proven winner yet"
-      ? ("unqualified" as const)
-      : ("qualified" as const)
-    : request.payload.marketingBudget === "Under $500/month or not set yet" ||
-        request.payload.investmentIntent ===
-          "No, I’m only looking for free information"
-      ? ("unqualified" as const)
-      : ("qualified" as const);
+  request.payload.marketingBudget === "Under $500/month or not set yet" ||
+  request.payload.investmentIntent ===
+    "No, I’m only looking for free information"
+    ? ("unqualified" as const)
+    : ("qualified" as const);
 
 const createCalBookingLink = (
   configuredLink: string | undefined,

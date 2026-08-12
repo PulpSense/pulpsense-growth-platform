@@ -45,11 +45,9 @@ const allowedFields = new Set([
   "lastName",
   "email",
   "phone",
-  "brandUrl",
-  "paidSocialSpend",
-  "winnerStatus",
-  "platforms",
-  "deliveryTimeline",
+  "businessOwner",
+  "marketingBudget",
+  "investmentIntent",
 ]);
 
 const allowedValues = {

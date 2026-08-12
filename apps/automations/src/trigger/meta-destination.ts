@@ -37,11 +37,6 @@ const metaEnvironmentKeysByFunnel = {
     accessToken: "META_CAPI_ACCESS_TOKEN_AI_SEO_MS",
     testEventCode: "META_TEST_EVENT_CODE_AI_SEO_MS",
   },
-  "creative-multiplier-sprint": {
-    pixelId: "META_PIXEL_ID",
-    accessToken: "META_CAPI_ACCESS_TOKEN",
-    testEventCode: "META_TEST_EVENT_CODE",
-  },
 } satisfies Record<FunnelId, MetaEnvironmentKeys>;
 
 export const resolveMetaEnvironment = (

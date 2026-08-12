@@ -14,15 +14,15 @@ describe("captureFunnelAttribution", () => {
   it("preserves the first touch while refreshing the last touch and anonymous ID", () => {
     const storage = memoryStorage();
     const first = captureFunnelAttribution({
-      funnelId: "creative-multiplier-sprint",
-      href: "https://preview.pulpsense.com/creative-multiplier-sprint/?utm_source=meta&utm_campaign=launch&fbclid=fb-click&email=private%40example.com",
+      funnelId: "ai-seo",
+      href: "https://preview.pulpsense.com/ai-seo/?utm_source=meta&utm_campaign=launch&fbclid=fb-click&email=private%40example.com",
       referrer: "https://partner.example/review?email=private%40example.com",
       storage,
       createAnalyticsId: () => "311de7bf-a46f-49f9-a107-5cc030e960c3",
     });
     const returning = captureFunnelAttribution({
-      funnelId: "creative-multiplier-sprint",
-      href: "https://preview.pulpsense.com/creative-multiplier-sprint/?utm_source=newsletter&gclid=google-click",
+      funnelId: "ai-seo",
+      href: "https://preview.pulpsense.com/ai-seo/?utm_source=newsletter&gclid=google-click",
       referrer: "https://newsletter.example/archive?subscriber=private",
       storage,
       createAnalyticsId: () => "different-id",
@@ -34,13 +34,13 @@ describe("captureFunnelAttribution", () => {
       utmSource: "meta",
       utmCampaign: "launch",
       fbclid: "fb-click",
-      landingPage: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      landingPage: "https://preview.pulpsense.com/ai-seo/",
       referrer: "https://partner.example/review",
     });
     expect(returning.attribution.lastTouch).toEqual({
       utmSource: "newsletter",
       gclid: "google-click",
-      landingPage: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      landingPage: "https://preview.pulpsense.com/ai-seo/",
       referrer: "https://newsletter.example/archive",
     });
     expect(JSON.stringify(returning)).not.toContain("private");
@@ -48,8 +48,8 @@ describe("captureFunnelAttribution", () => {
 
   it("keeps capture best-effort when storage is unavailable", () => {
     const result = captureFunnelAttribution({
-      funnelId: "creative-multiplier-sprint",
-      href: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      funnelId: "ai-seo",
+      href: "https://preview.pulpsense.com/ai-seo/",
       referrer: "",
       storage: {
         getItem: () => {

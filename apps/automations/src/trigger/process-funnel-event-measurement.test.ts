@@ -6,7 +6,7 @@ import { processFunnelEvent } from "./process-funnel-event.js";
 const event: ContactSubmittedEvent = {
   schemaVersion: 1,
   eventType: "contact_submitted",
-  funnelId: "creative-multiplier-sprint",
+  funnelId: "ai-seo",
   submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   eventId: "contact_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   occurredAt: "2026-08-09T12:00:00.000Z",
@@ -21,7 +21,7 @@ const event: ContactSubmittedEvent = {
   requestContext: {
     clientIp: "203.0.113.10",
     userAgent: "Test Browser",
-    sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+    sourceUrl: "https://preview.pulpsense.com/ai-seo/",
   },
   environment: "preview",
 };

@@ -32,7 +32,7 @@ const retryImmediately =
 const event: ContactSubmittedEvent = {
   schemaVersion: 1,
   eventType: "contact_submitted",
-  funnelId: "creative-multiplier-sprint",
+  funnelId: "ai-seo",
   submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   eventId: "contact_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   occurredAt: "2026-08-08T12:00:00.000Z",
@@ -50,7 +50,7 @@ const event: ContactSubmittedEvent = {
   requestContext: {
     clientIp: "203.0.113.10",
     userAgent: "Test Browser",
-    sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+    sourceUrl: "https://preview.pulpsense.com/ai-seo/",
     fbp: "fb.1.123.456",
   },
   environment: "preview",
@@ -59,18 +59,16 @@ const event: ContactSubmittedEvent = {
 const applicationEvent: ApplicationSubmittedEvent = {
   schemaVersion: 1,
   eventType: "application_submitted",
-  funnelId: "creative-multiplier-sprint",
+  funnelId: "ai-seo",
   submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   occurredAt: "2026-08-08T12:05:00.000Z",
   payload: {
     ...event.payload,
     application: {
-      brandUrl: "https://www.brand.com/products",
-      paidSocialSpend: "Less than $20k/month",
-      winnerStatus: "Yes, several winners",
-      platforms: ["Meta", "TikTok"],
-      deliveryTimeline: "Next 2 weeks",
+      businessOwner: "yes",
+      marketingBudget: "Under $500/month or not set yet",
+      investmentIntent: "Yes, if the numbers make sense",
     },
   },
   qualificationStatus: "unqualified",
@@ -86,7 +84,7 @@ const qualifiedApplicationEvent: ApplicationSubmittedEvent = {
     ...applicationEvent.payload,
     application: {
       ...applicationEvent.payload.application,
-      paidSocialSpend: "$50k - $150k/month",
+      marketingBudget: "$1,500+/month",
     },
   },
   qualificationStatus: "qualified",
@@ -95,7 +93,7 @@ const qualifiedApplicationEvent: ApplicationSubmittedEvent = {
 const bookingEvent: BookingCompletedEvent = {
   schemaVersion: 1,
   eventType: "booking_completed",
-  funnelId: "creative-multiplier-sprint",
+  funnelId: "ai-seo",
   submissionId: applicationEvent.submissionId,
   eventId: "booking_completed:cal_booking_123",
   occurredAt: "2026-08-09T12:00:00.000Z",
@@ -107,7 +105,7 @@ const bookingEvent: BookingCompletedEvent = {
     emailVerification: { status: "verified", result: "business" },
     booking: {
       uid: "cal_booking_123",
-      title: "Creative Multiplier Sprint Fit Call",
+      title: "AI SEO Fit Call",
       startTime: "2026-08-10T14:00:00.000Z",
       endTime: "2026-08-10T14:15:00.000Z",
       attendeeTimeZone: "America/New_York",
@@ -546,9 +544,7 @@ describe("process-funnel-event", () => {
       id: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
       title: "Booking cal_booking_123",
       bodyV2: {
-        markdown: expect.stringContaining(
-          "Creative Multiplier Sprint Fit Call",
-        ),
+        markdown: expect.stringContaining("AI SEO Fit Call"),
       },
     });
     expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
@@ -743,7 +739,7 @@ describe("process-funnel-event", () => {
       title: `Application ${applicationEvent.submissionId}`,
       bodyV2: {
         markdown: expect.stringContaining(
-          '"paidSocialSpend": "Less than $20k/month"',
+          '"marketingBudget": "Under $500/month or not set yet"',
         ),
       },
     });
@@ -760,7 +756,7 @@ describe("process-funnel-event", () => {
       }),
     ]);
     expect(JSON.stringify(requests[5]?.body)).not.toContain(
-      applicationEvent.payload.application.paidSocialSpend,
+      applicationEvent.payload.application.marketingBudget,
     );
   });
 
@@ -828,19 +824,10 @@ describe("process-funnel-event", () => {
     expect(createInit?.method).toBe("POST");
     expect(JSON.parse(String(createInit?.body))).toEqual({
       id: "400953f0-8304-58d1-a36e-afe0e2282e9d",
-      name: "Creative Multiplier Sprint – brand.com",
+      name: "AI SEO – brand.com",
       stage: "QUALIFIED_AWAITING_BOOKING",
       pointOfContactId: "person_existing",
       companyId: "company_brand",
-      brandUrl: {
-        primaryLinkUrl: "https://www.brand.com/products",
-        primaryLinkLabel: "www.brand.com",
-        secondaryLinks: null,
-      },
-      paidSocialSpend: "FROM_50K_TO_150K_MONTH",
-      winnerStatus: "SEVERAL_WINNERS",
-      platforms: ["META", "TIKTOK"],
-      deliveryTimeline: "NEXT_2_WEEKS",
     });
     expect(
       JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
