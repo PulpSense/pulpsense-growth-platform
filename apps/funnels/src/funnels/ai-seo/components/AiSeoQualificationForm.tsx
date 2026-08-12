@@ -45,12 +45,12 @@ declare global {
 
 type Step =
   | "owner"
-  | "business-age"
+  | "marketing-budget"
   | "investment"
   | "contact"
   | "calendar"
   | "not-qualified";
-type BusinessAge = "3+ years" | "1–2 years";
+type MarketingBudget = "$500–$1,500/month" | "$1,500+/month";
 type InvestmentIntent =
   | "Yes, if the numbers make sense"
   | "Maybe—I’m exploring options";
@@ -103,7 +103,7 @@ export function AiSeoQualificationForm({
   qualifiedRedirect,
 }: Props) {
   const [step, setStep] = useState<Step>("owner");
-  const [businessAge, setBusinessAge] = useState<BusinessAge>();
+  const [marketingBudget, setMarketingBudget] = useState<MarketingBudget>();
   const [investmentIntent, setInvestmentIntent] = useState<InvestmentIntent>();
   const [contact, setContact] = useState<ContactData>(initialContact);
   const [phoneCountry, setPhoneCountry] = useState<Country>(
@@ -342,20 +342,22 @@ export function AiSeoQualificationForm({
 
   const chooseOwner = (owner: "yes" | "no") => {
     if (owner === "yes") {
-      setStep("business-age");
+      setStep("marketing-budget");
     } else {
       trackFunnelEvent("qualification_outcome", { status: "unqualified" });
       setStep("not-qualified");
     }
   };
 
-  const chooseBusinessAge = (age: BusinessAge | "less-than-one-year") => {
-    if (age === "less-than-one-year") {
+  const chooseMarketingBudget = (
+    budget: MarketingBudget | "under-500-per-month",
+  ) => {
+    if (budget === "under-500-per-month") {
       trackFunnelEvent("qualification_outcome", { status: "unqualified" });
       setStep("not-qualified");
       return;
     }
-    setBusinessAge(age);
+    setMarketingBudget(budget);
     setStep("investment");
   };
 
@@ -405,7 +407,7 @@ export function AiSeoQualificationForm({
       );
       return;
     }
-    if (!businessAge || !investmentIntent) {
+    if (!marketingBudget || !investmentIntent) {
       setStep("owner");
       return;
     }
@@ -464,7 +466,7 @@ export function AiSeoQualificationForm({
       const applicationResult = await submitApplication({
         data: {
           businessOwner: "yes",
-          businessAge,
+          marketingBudget,
           investmentIntent,
         },
         ...sharedContext,
@@ -505,7 +507,7 @@ export function AiSeoQualificationForm({
   const currentStep =
     step === "owner" || step === "not-qualified"
       ? 1
-      : step === "business-age"
+      : step === "marketing-budget"
         ? 2
         : step === "investment"
           ? 3
@@ -549,32 +551,33 @@ export function AiSeoQualificationForm({
           </div>
         )}
 
-        {step === "business-age" && (
+        {step === "marketing-budget" && (
           <div className="pr-tf-step is-active">
             <p className="pr-tf-q">
-              How long has your business been operating?
+              What monthly marketing budget have you set aside to generate more
+              qualified leads?
             </p>
             <div className="pr-tf-choices">
               <button
                 type="button"
                 className="pr-tf-choice"
-                onClick={() => chooseBusinessAge("3+ years")}
+                onClick={() => chooseMarketingBudget("$1,500+/month")}
               >
-                3+ years
+                $1,500+/month
               </button>
               <button
                 type="button"
                 className="pr-tf-choice"
-                onClick={() => chooseBusinessAge("1–2 years")}
+                onClick={() => chooseMarketingBudget("$500–$1,500/month")}
               >
-                1–2 years
+                $500–$1,500/month
               </button>
               <button
                 type="button"
                 className="pr-tf-choice"
-                onClick={() => chooseBusinessAge("less-than-one-year")}
+                onClick={() => chooseMarketingBudget("under-500-per-month")}
               >
-                Less than 1 year
+                Under $500/month or not set yet
               </button>
             </div>
             <div className="pr-tf-actions">
@@ -626,7 +629,7 @@ export function AiSeoQualificationForm({
               <button
                 type="button"
                 className="pr-tf-back"
-                onClick={() => setStep("business-age")}
+                onClick={() => setStep("marketing-budget")}
               >
                 ← Back
               </button>

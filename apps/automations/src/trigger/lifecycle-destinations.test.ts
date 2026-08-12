@@ -52,7 +52,7 @@ const applicationEvent: ApplicationSubmittedEvent = {
     ...contactEvent.payload,
     application: {
       businessOwner: "yes",
-      businessAge: "3+ years",
+      marketingBudget: "$1,500+/month",
       investmentIntent: "Yes, if the numbers make sense",
     },
   },

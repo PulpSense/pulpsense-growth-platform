@@ -366,7 +366,7 @@ describe("POST /api/funnel-events", () => {
         identity: contact.retry,
         payload: {
           businessOwner: "yes",
-          businessAge: "3+ years",
+          marketingBudget: "$1,500+/month",
           investmentIntent: "Yes, if the numbers make sense",
         },
         sourceUrl: "https://preview.pulpsense.com/ai-seo/",
@@ -400,7 +400,7 @@ describe("POST /api/funnel-events", () => {
       payload: {
         application: {
           businessOwner: "yes",
-          businessAge: "3+ years",
+          marketingBudget: "$1,500+/month",
           investmentIntent: "Yes, if the numbers make sense",
         },
       },
