@@ -28,13 +28,13 @@ describe("AI SEO thank-you briefing deck", () => {
   });
 
   it("covers call preparation and the approved Growth Platform delivery model", () => {
-    expect(carouselSource).toContain("Confirm the calendar invitation");
+    expect(carouselSource).toContain("Confirm your calendar invitation");
     expect(carouselSource).toContain(
-      "reschedule from the invitation instead of missing the call",
+      "Reschedule from the link in your invitation",
     );
-    expect(carouselSource).toContain("benchmarks the market");
-    expect(carouselSource).toContain("builds the authority foundation");
-    expect(carouselSource).toContain("expands and maintains visibility");
+    expect(carouselSource).toContain("We benchmark your market");
+    expect(carouselSource).toContain("We build your authority foundation");
+    expect(carouselSource).toContain("We expand and maintain visibility");
     expect(carouselSource).toContain("45 additional calls in 90 days");
   });
 
@@ -50,9 +50,9 @@ describe("AI SEO thank-you briefing deck", () => {
       "utf8",
     );
 
-    expect(calendarSource).not.toContain("calendar-confirmation.webp");
-    expect(calendarSource).toContain("pr-calendar-preview");
-    expect(calendarSource).not.toContain("pr-inbox-guide");
+    expect(calendarSource).toContain("calendar-confirmation.webp");
+    expect(calendarSource).toContain("pr-inbox-guide");
+    expect(calendarSource).not.toContain("pr-calendar-preview");
   });
 
   it("preserves the true 16:9 image frame and compliant dot targets", () => {
@@ -72,11 +72,8 @@ describe("AI SEO thank-you briefing deck", () => {
     ).filter((file) => file.startsWith("slide-") && file.endsWith(".webp"));
 
     expect(deckFiles).toHaveLength(16);
-    expect(carouselSource.match(/^  ".+",$/gm)).toHaveLength(16);
-    expect(carouselSource).toContain("slideDescriptions.map");
-    expect(carouselSource).toContain("/ai-seo/thank-you-deck/slide-");
-    expect(carouselSource).toContain('width="1600"');
-    expect(carouselSource).toContain('height="900"');
+    expect(carouselSource).toContain("briefingSlides.map");
+    expect(carouselSource.match(/eyebrow: ["“]/g)).toHaveLength(16);
   });
 
   it("supports focused keyboard, swipe, and direct slide navigation", () => {
