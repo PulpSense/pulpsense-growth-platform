@@ -25,7 +25,9 @@ Gmail reminders remain fail-closed until `GMAIL_REMINDERS_ENABLED=true` and all 
 
 Preview deployments must set `PULPSENSE_AUTOMATION_ENVIRONMENT=preview` and use only sandbox Twenty and Meta credentials. The task rejects an event whose environment does not match its configured destinations.
 
-Meta destinations are selected explicitly by funnel identity. `ai-seo` uses the lawyers-specific `META_PIXEL_ID_AI_SEO_L`, `META_CAPI_ACCESS_TOKEN_AI_SEO_L`, and optional `META_TEST_EVENT_CODE_AI_SEO_L` variables. `ai-seo-dentists` uses the corresponding `_AI_SEO_D` variables and never falls back to the lawyers dataset. Set test event codes only while validating against Meta Events Manager's Test Events view.
+Meta destinations are selected explicitly by funnel identity. The AI SEO campaigns use their matching `META_PIXEL_ID_AI_SEO_*`, `META_CAPI_ACCESS_TOKEN_AI_SEO_*`, and optional `META_TEST_EVENT_CODE_AI_SEO_*` variables, and never fall back to another niche's dataset. Set test event codes only while validating against Meta Events Manager's Test Events view.
+
+Test event codes may remain saved in the Development environment without affecting delivery. Set `META_TEST_EVENTS_ENABLED=true` only during a Meta Test Events session, then set it back to `false`; the codes do not need to be deleted. Production should keep this unset or set to `false`.
 
 Set `POSTHOG_PROJECT_KEY` and the region-appropriate `POSTHOG_HOST` to emit the redacted `funnel_contact_submitted`, `funnel_application_submitted`, and authoritative `funnel_booking_completed` lifecycle. The adapter uses the anonymous browser analytics ID when available, excludes contact and application-answer payloads, and logs a redacted delivery failure without failing the lifecycle run.
 

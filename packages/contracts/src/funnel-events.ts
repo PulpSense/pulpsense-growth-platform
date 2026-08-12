@@ -10,6 +10,10 @@ export const BOOKING_CANCELLED_EVENT = "booking_cancelled" as const;
 export const funnelIdSchema = z.enum([
   "ai-seo",
   "ai-seo-dentists",
+  "ai-seo-dental-implants",
+  "ai-seo-plastic-surgery",
+  "ai-seo-hair-restoration",
+  "ai-seo-med-spas",
   "creative-multiplier-sprint",
 ]);
 
@@ -198,6 +202,34 @@ export const applicationSubmittedEventSchema = z.discriminatedUnion(
     }),
     applicationSubmittedEventBase.extend({
       funnelId: z.literal("ai-seo-dentists"),
+      payload: verifiedContactPayloadSchema.extend({
+        application: aiSeoApplicationAnswersSchema,
+      }),
+      qualificationStatus: z.literal("qualified"),
+    }),
+    applicationSubmittedEventBase.extend({
+      funnelId: z.literal("ai-seo-dental-implants"),
+      payload: verifiedContactPayloadSchema.extend({
+        application: aiSeoApplicationAnswersSchema,
+      }),
+      qualificationStatus: z.literal("qualified"),
+    }),
+    applicationSubmittedEventBase.extend({
+      funnelId: z.literal("ai-seo-plastic-surgery"),
+      payload: verifiedContactPayloadSchema.extend({
+        application: aiSeoApplicationAnswersSchema,
+      }),
+      qualificationStatus: z.literal("qualified"),
+    }),
+    applicationSubmittedEventBase.extend({
+      funnelId: z.literal("ai-seo-hair-restoration"),
+      payload: verifiedContactPayloadSchema.extend({
+        application: aiSeoApplicationAnswersSchema,
+      }),
+      qualificationStatus: z.literal("qualified"),
+    }),
+    applicationSubmittedEventBase.extend({
+      funnelId: z.literal("ai-seo-med-spas"),
       payload: verifiedContactPayloadSchema.extend({
         application: aiSeoApplicationAnswersSchema,
       }),

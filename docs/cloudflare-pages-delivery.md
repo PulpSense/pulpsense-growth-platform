@@ -22,6 +22,10 @@ Configure the `Preview` GitHub environment with:
 | Variable | `CLOUDFLARE_PAGES_PROJECT`      | `pulpsense-funnels-preview`                                               |
 | Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_L` | The non-production lawyers Meta dataset used by the AI SEO funnel         |
 | Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_D` | The non-production dentist Meta dataset used by the dentist route         |
+| Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_DI` | The non-production dental implants Meta dataset                         |
+| Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_PS` | The non-production plastic surgery Meta dataset                          |
+| Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_HR` | The non-production hair restoration Meta dataset                         |
+| Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_MS` | The non-production med spa Meta dataset                                  |
 | Variable | `PUBLIC_POSTHOG_KEY`            | The public PostHog project key used for privacy-allowlisted funnel events |
 | Variable | `PUBLIC_POSTHOG_HOST`           | The region-appropriate PostHog ingestion host                             |
 | Variable | `PUBLIC_CAL_LINK`               | The non-production Cal event link                                         |

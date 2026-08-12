@@ -87,6 +87,12 @@ describe("production deployment isolation", () => {
     expect(validation).toContain(
       "PUBLIC_META_PIXEL_ID_AI_SEO_D: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_D }}",
     );
+    for (const suffix of ["DI", "PS", "HR", "MS"]) {
+      const variableName = `PUBLIC_META_PIXEL_ID_AI_SEO_${suffix}`;
+      expect(validation).toContain(
+        variableName + ": ${{ vars." + variableName + " }}",
+      );
+    }
     expect(validation).not.toContain("PUBLIC_AI_SEO_VERTICAL");
     expect(validation).not.toContain(
       "PUBLIC_META_PIXEL_ID: ${{ vars.PUBLIC_META_PIXEL_ID }}",
@@ -95,5 +101,11 @@ describe("production deployment isolation", () => {
     expect(productionJob).toContain("META_CAPI_ACCESS_TOKEN_AI_SEO_L");
     expect(productionJob).toContain("META_PIXEL_ID_AI_SEO_D");
     expect(productionJob).toContain("META_CAPI_ACCESS_TOKEN_AI_SEO_D");
+    for (const suffix of ["DI", "PS", "HR", "MS"]) {
+      expect(productionJob).toContain(`META_PIXEL_ID_AI_SEO_${suffix}`);
+      expect(productionJob).toContain(
+        `META_CAPI_ACCESS_TOKEN_AI_SEO_${suffix}`,
+      );
+    }
   });
 });

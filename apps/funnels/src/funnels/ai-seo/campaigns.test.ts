@@ -1,16 +1,27 @@
 import { describe, expect, it } from "vitest";
 
-import { AI_SEO_CAMPAIGNS, resolveAiSeoBrowserPixelId } from "./campaigns";
+import {
+  AI_SEO_CAMPAIGNS,
+  getAiSeoCampaignStaticPaths,
+  resolveAiSeoBrowserPixelId,
+  resolveAiSeoCampaign,
+} from "./campaigns";
 
 describe("AI SEO campaigns", () => {
   it("gives every campaign a distinct descriptive route and thank-you route", () => {
-    expect(AI_SEO_CAMPAIGNS).toHaveLength(2);
-    expect(new Set(AI_SEO_CAMPAIGNS.map(({ slug }) => slug))).toHaveLength(2);
+    expect(AI_SEO_CAMPAIGNS).toHaveLength(6);
+    expect(new Set(AI_SEO_CAMPAIGNS.map(({ slug }) => slug))).toHaveLength(6);
+
+    expect(AI_SEO_CAMPAIGNS.map(({ slug }) => slug)).toEqual([
+      "regional-visibility-audit/law-firms",
+      "regional-visibility-audit/dental-practices",
+      "regional-visibility-audit/dental-implants",
+      "regional-visibility-audit/plastic-surgery",
+      "regional-visibility-audit/hair-restoration",
+      "regional-visibility-audit/med-spas",
+    ]);
 
     for (const campaign of AI_SEO_CAMPAIGNS) {
-      expect(campaign.slug).toMatch(
-        /^regional-visibility-audit\/(law-firms|dental-practices)$/u,
-      );
       expect(campaign.landingPath).toBe(`/${campaign.slug}/`);
       expect(campaign.thankYouPath).toBe(`/${campaign.slug}/thank-you/`);
     }
@@ -22,25 +33,94 @@ describe("AI SEO campaigns", () => {
     ).toEqual([
       ["lawyers", "ai-seo"],
       ["dentists", "ai-seo-dentists"],
+      ["dental-implants", "ai-seo-dental-implants"],
+      ["plastic-surgery", "ai-seo-plastic-surgery"],
+      ["hair-restoration", "ai-seo-hair-restoration"],
+      ["med-spas", "ai-seo-med-spas"],
+    ]);
+    expect(
+      new Set(AI_SEO_CAMPAIGNS.map(({ funnelId }) => funnelId)),
+    ).toHaveLength(AI_SEO_CAMPAIGNS.length);
+  });
+
+  it("keeps browser and server Meta destinations in the campaign registry", () => {
+    expect(
+      AI_SEO_CAMPAIGNS.map(
+        ({ key, browserPixelEnvKey, serverMetaDestination }) => [
+          key,
+          browserPixelEnvKey,
+          serverMetaDestination,
+        ],
+      ),
+    ).toEqual([
+      ["lawyers", "PUBLIC_META_PIXEL_ID_AI_SEO_L", "AI_SEO_L"],
+      ["dentists", "PUBLIC_META_PIXEL_ID_AI_SEO_D", "AI_SEO_D"],
+      ["dental-implants", "PUBLIC_META_PIXEL_ID_AI_SEO_DI", "AI_SEO_DI"],
+      ["plastic-surgery", "PUBLIC_META_PIXEL_ID_AI_SEO_PS", "AI_SEO_PS"],
+      ["hair-restoration", "PUBLIC_META_PIXEL_ID_AI_SEO_HR", "AI_SEO_HR"],
+      ["med-spas", "PUBLIC_META_PIXEL_ID_AI_SEO_MS", "AI_SEO_MS"],
     ]);
   });
 
-  it("selects browser pixels from the route-local campaign", () => {
-    const pixels = { lawyers: "11111", dentists: "22222" };
+  it("selects browser pixels from the campaign-owned environment key", () => {
+    const environment = {
+      PUBLIC_META_PIXEL_ID_AI_SEO_L: "11111",
+      PUBLIC_META_PIXEL_ID_AI_SEO_D: "22222",
+      PUBLIC_META_PIXEL_ID_AI_SEO_DI: "33333",
+      PUBLIC_META_PIXEL_ID_AI_SEO_PS: "44444",
+      PUBLIC_META_PIXEL_ID_AI_SEO_HR: "55555",
+      PUBLIC_META_PIXEL_ID_AI_SEO_MS: "66666",
+    };
 
-    expect(resolveAiSeoBrowserPixelId(AI_SEO_CAMPAIGNS[0], pixels)).toBe(
+    expect(resolveAiSeoBrowserPixelId(AI_SEO_CAMPAIGNS[0], environment)).toBe(
       "11111",
     );
-    expect(resolveAiSeoBrowserPixelId(AI_SEO_CAMPAIGNS[1], pixels)).toBe(
+    expect(resolveAiSeoBrowserPixelId(AI_SEO_CAMPAIGNS[1], environment)).toBe(
       "22222",
+    );
+    expect(resolveAiSeoBrowserPixelId(AI_SEO_CAMPAIGNS[2], environment)).toBe(
+      "33333",
+    );
+    expect(resolveAiSeoBrowserPixelId(AI_SEO_CAMPAIGNS[3], environment)).toBe(
+      "44444",
+    );
+    expect(resolveAiSeoBrowserPixelId(AI_SEO_CAMPAIGNS[4], environment)).toBe(
+      "55555",
+    );
+    expect(resolveAiSeoBrowserPixelId(AI_SEO_CAMPAIGNS[5], environment)).toBe(
+      "66666",
     );
   });
 
   it("never falls back to another campaign's browser pixel", () => {
     expect(
       resolveAiSeoBrowserPixelId(AI_SEO_CAMPAIGNS[1], {
-        lawyers: "11111",
+        PUBLIC_META_PIXEL_ID_AI_SEO_L: "11111",
       }),
     ).toBeUndefined();
+  });
+
+  it("resolves the same campaign registry for route generation and lookup", () => {
+    const paths = getAiSeoCampaignStaticPaths();
+
+    expect(paths).toHaveLength(AI_SEO_CAMPAIGNS.length);
+    for (const path of paths) {
+      expect(resolveAiSeoCampaign(path.params.campaign)).toBe(
+        path.props.campaign,
+      );
+    }
+    expect(resolveAiSeoCampaign("missing-niche")).toBeUndefined();
+  });
+
+  it("allows a niche to override only the qualification callout", () => {
+    expect(AI_SEO_CAMPAIGNS[0].qualificationCallout).toContain(
+      "established businesses",
+    );
+    expect(AI_SEO_CAMPAIGNS[1].qualificationCallout).toContain(
+      "dental practices",
+    );
+    expect(AI_SEO_CAMPAIGNS[2].qualificationCallout).toContain(
+      "implant practices",
+    );
   });
 });

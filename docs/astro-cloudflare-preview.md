@@ -23,7 +23,7 @@ The page shell and outcome pages are static HTML. React hydration is limited to:
 - interaction- or idle-delayed browser tracking;
 - the mobile sticky CTA.
 
-Hero and proof video sources are attached only when their active players approach the viewport. Cal.com is imported and mounted only after the server returns a signed booking identity for a qualified applicant with a verified business email. AI SEO browser Meta tracking uses `PUBLIC_META_PIXEL_ID_AI_SEO_L` on the lawyer route and `PUBLIC_META_PIXEL_ID_AI_SEO_D` on the dentist route. Tracking attaches after the first visitor interaction or after the two-second idle fallback, ensuring a passive visit still emits `PageView`.
+Hero and proof video sources are attached only when their active players approach the viewport. Cal.com is imported and mounted only after the server returns a signed booking identity for a qualified applicant with a verified business email. AI SEO browser Meta tracking uses the campaign-specific `PUBLIC_META_PIXEL_ID_AI_SEO_*` variable for each route. Tracking attaches after the first visitor interaction or after the two-second idle fallback, ensuring a passive visit still emits `PageView`.
 
 ## Preview deployment
 

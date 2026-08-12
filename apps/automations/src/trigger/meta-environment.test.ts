@@ -13,6 +13,7 @@ describe("resolveMetaEnvironment", () => {
           META_CAPI_ACCESS_TOKEN_AI_SEO_L: "lawyer-token",
           META_TEST_EVENT_CODE: "GENERIC",
           META_TEST_EVENT_CODE_AI_SEO_L: "LAWYER",
+          META_TEST_EVENTS_ENABLED: "true",
         },
         "ai-seo",
       ),
@@ -47,6 +48,7 @@ describe("resolveMetaEnvironment", () => {
           META_PIXEL_ID_AI_SEO_L: "lawyer-pixel",
           META_CAPI_ACCESS_TOKEN_AI_SEO_L: "lawyer-token",
           META_TEST_EVENT_CODE_AI_SEO_L: "LAWYER",
+          META_TEST_EVENTS_ENABLED: "true",
           META_PIXEL_ID_AI_SEO_D: "dentist-pixel",
           META_CAPI_ACCESS_TOKEN_AI_SEO_D: "dentist-token",
           META_TEST_EVENT_CODE_AI_SEO_D: "DENTIST",
@@ -77,6 +79,62 @@ describe("resolveMetaEnvironment", () => {
     });
   });
 
+  it("has isolated CAPI destinations for every new AI SEO niche", () => {
+    const environment = {
+      META_PIXEL_ID_AI_SEO_DI: "implants-pixel",
+      META_CAPI_ACCESS_TOKEN_AI_SEO_DI: "implants-token",
+      META_TEST_EVENT_CODE_AI_SEO_DI: "IMPLANTS",
+      META_PIXEL_ID_AI_SEO_PS: "plastic-pixel",
+      META_CAPI_ACCESS_TOKEN_AI_SEO_PS: "plastic-token",
+      META_TEST_EVENT_CODE_AI_SEO_PS: "PLASTIC",
+      META_PIXEL_ID_AI_SEO_HR: "hair-pixel",
+      META_CAPI_ACCESS_TOKEN_AI_SEO_HR: "hair-token",
+      META_TEST_EVENT_CODE_AI_SEO_HR: "HAIR",
+      META_PIXEL_ID_AI_SEO_MS: "med-spa-pixel",
+      META_CAPI_ACCESS_TOKEN_AI_SEO_MS: "med-spa-token",
+      META_TEST_EVENT_CODE_AI_SEO_MS: "MED_SPA",
+      META_TEST_EVENTS_ENABLED: "true",
+    };
+
+    expect(resolveMetaEnvironment(environment, "ai-seo-dental-implants")).toEqual({
+      META_PIXEL_ID: "implants-pixel",
+      META_CAPI_ACCESS_TOKEN: "implants-token",
+      META_TEST_EVENT_CODE: "IMPLANTS",
+    });
+    expect(resolveMetaEnvironment(environment, "ai-seo-plastic-surgery")).toEqual({
+      META_PIXEL_ID: "plastic-pixel",
+      META_CAPI_ACCESS_TOKEN: "plastic-token",
+      META_TEST_EVENT_CODE: "PLASTIC",
+    });
+    expect(resolveMetaEnvironment(environment, "ai-seo-hair-restoration")).toEqual({
+      META_PIXEL_ID: "hair-pixel",
+      META_CAPI_ACCESS_TOKEN: "hair-token",
+      META_TEST_EVENT_CODE: "HAIR",
+    });
+    expect(resolveMetaEnvironment(environment, "ai-seo-med-spas")).toEqual({
+      META_PIXEL_ID: "med-spa-pixel",
+      META_CAPI_ACCESS_TOKEN: "med-spa-token",
+      META_TEST_EVENT_CODE: "MED_SPA",
+    });
+  });
+
+  it("keeps saved test event codes inactive until explicitly enabled", () => {
+    expect(
+      resolveMetaEnvironment(
+        {
+          META_PIXEL_ID_AI_SEO_DI: "implants-pixel",
+          META_CAPI_ACCESS_TOKEN_AI_SEO_DI: "implants-token",
+          META_TEST_EVENT_CODE_AI_SEO_DI: "IMPLANTS",
+        },
+        "ai-seo-dental-implants",
+      ),
+    ).toEqual({
+      META_PIXEL_ID: "implants-pixel",
+      META_CAPI_ACCESS_TOKEN: "implants-token",
+      META_TEST_EVENT_CODE: undefined,
+    });
+  });
+
   it("keeps the legacy funnel on its existing destination", () => {
     expect(
       resolveMetaEnvironment(
@@ -84,6 +142,7 @@ describe("resolveMetaEnvironment", () => {
           META_PIXEL_ID: "generic-pixel",
           META_CAPI_ACCESS_TOKEN: "generic-token",
           META_TEST_EVENT_CODE: "GENERIC",
+          META_TEST_EVENTS_ENABLED: "true",
         },
         "creative-multiplier-sprint",
       ),

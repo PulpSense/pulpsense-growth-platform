@@ -39,6 +39,22 @@ export const applicationSubmissionRequestSchema = z.discriminatedUnion(
       funnelId: z.literal("ai-seo-dentists"),
       payload: aiSeoApplicationAnswersSchema,
     }),
+    applicationSubmissionRequestBase.extend({
+      funnelId: z.literal("ai-seo-dental-implants"),
+      payload: aiSeoApplicationAnswersSchema,
+    }),
+    applicationSubmissionRequestBase.extend({
+      funnelId: z.literal("ai-seo-plastic-surgery"),
+      payload: aiSeoApplicationAnswersSchema,
+    }),
+    applicationSubmissionRequestBase.extend({
+      funnelId: z.literal("ai-seo-hair-restoration"),
+      payload: aiSeoApplicationAnswersSchema,
+    }),
+    applicationSubmissionRequestBase.extend({
+      funnelId: z.literal("ai-seo-med-spas"),
+      payload: aiSeoApplicationAnswersSchema,
+    }),
   ],
 );
 

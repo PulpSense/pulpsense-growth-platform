@@ -1,7 +1,7 @@
 ---
 import { FunnelAnalytics, TrackingPixels } from "@/components/ui";
 import {
-  AI_SEO_CAMPAIGNS,
+  getAiSeoCampaignStaticPaths,
   resolveAiSeoBrowserPixelId,
   type AiSeoCampaign,
 } from "@/funnels/ai-seo/campaigns";
@@ -29,10 +29,7 @@ import {
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
 export function getStaticPaths() {
-  return AI_SEO_CAMPAIGNS.map((campaign) => ({
-    params: { campaign: campaign.slug },
-    props: { campaign },
-  }));
+  return getAiSeoCampaignStaticPaths();
 }
 
 type Props = { campaign: AiSeoCampaign };
@@ -41,13 +38,11 @@ const { campaign } = Astro.props;
 const deploymentEnvironment = parseDeploymentEnvironment(
   import.meta.env.PUBLIC_PULPSENSE_ENVIRONMENT,
 );
-const metaPixelId = resolveAiSeoBrowserPixelId(campaign, {
-  lawyers: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_L,
-  dentists: import.meta.env.PUBLIC_META_PIXEL_ID_AI_SEO_D,
-});
+const metaPixelId = resolveAiSeoBrowserPixelId(campaign, import.meta.env);
 const pixels = createBrowserTrackingConfig({
   environment: deploymentEnvironment,
   metaPixelId,
+  allowPreview: import.meta.env.PUBLIC_ENABLE_META_PIXEL_IN_PREVIEW === "true",
 });
 const cal = resolveCalConfig({
   environment: deploymentEnvironment,
@@ -93,6 +88,7 @@ const cal = resolveCalConfig({
       <QualificationSection
         funnelId={campaign.funnelId}
         qualifiedRedirect={campaign.thankYouPath}
+        qualificationCallout={campaign.qualificationCallout}
         calLink={cal.calLink}
         calNamespace={cal.namespace}
         turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}
