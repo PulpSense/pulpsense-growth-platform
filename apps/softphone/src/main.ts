@@ -1,5 +1,6 @@
 import { TelnyxRTC } from "@telnyx/webrtc";
 
+import { sendDtmfTone } from "./dialpad";
 import "./style.css";
 
 type VoiceSession = {
@@ -13,6 +14,7 @@ type VoiceSession = {
 };
 
 type TelnyxCall = {
+  dtmf: (tone: string) => void;
   hangup: () => Promise<void> | void;
   muteAudio: () => void;
   state?: string;
@@ -39,14 +41,31 @@ const callDetail = byId<HTMLDivElement>("call-detail");
 const callButton = byId<HTMLButtonElement>("call-button");
 const muteButton = byId<HTMLButtonElement>("mute-button");
 const hangupButton = byId<HTMLButtonElement>("hangup-button");
+const dialPad = byId<HTMLDivElement>("dial-pad");
+const dialPadStatus = byId<HTMLParagraphElement>("dial-pad-status");
+const dialPadButtons = Array.from(
+  dialPad.querySelectorAll<HTMLButtonElement>("[data-dtmf]"),
+);
 const remoteMedia = byId<HTMLAudioElement>("remote-media");
 const errorPanel = byId<HTMLElement>("error-panel");
 const errorMessage = byId<HTMLParagraphElement>("error-message");
 
 let client: TelnyxRTC | undefined;
 let activeCall: TelnyxCall | undefined;
+let callConnected = false;
 let muted = false;
 let session: VoiceSession | undefined;
+
+const setDialPadEnabled = (enabled: boolean) => {
+  callConnected = enabled;
+  dialPad.dataset.enabled = String(enabled);
+  dialPadButtons.forEach((button) => {
+    button.disabled = !enabled;
+  });
+  dialPadStatus.textContent = enabled
+    ? "Ready for automated menus"
+    : "Available once the call connects";
+};
 
 const setConnection = (label: string, tone: "error" | "ready" | "waiting") => {
   connectionPill.textContent = label;
@@ -59,6 +78,7 @@ const showError = (message: string) => {
   callButton.disabled = true;
   muteButton.disabled = true;
   hangupButton.disabled = true;
+  setDialPadEnabled(false);
   setConnection("Unavailable", "error");
   callState.textContent = "Call unavailable";
   callDetail.textContent = "The secure call session could not be prepared.";
@@ -84,9 +104,11 @@ const updateCallState = (state = "active") => {
   callState.textContent = labels[normalized] ?? `Call ${normalized}`;
 
   const ended = ["destroy", "hangup", "purge"].includes(normalized);
+  const connected = ["active", "answer", "answered"].includes(normalized);
   callButton.disabled = !ended;
   muteButton.disabled = ended;
   hangupButton.disabled = ended;
+  setDialPadEnabled(connected);
   if (ended) {
     activeCall = undefined;
     muted = false;
@@ -190,6 +212,21 @@ hangupButton.addEventListener("click", () => {
   void activeCall.hangup();
   hangupButton.disabled = true;
   callState.textContent = "Ending call…";
+});
+
+dialPad.addEventListener("click", (event) => {
+  const button = (event.target as HTMLElement).closest<HTMLButtonElement>(
+    "button[data-dtmf]",
+  );
+  const tone = button?.dataset.dtmf;
+  if (!button || !tone || !activeCall || !callConnected) return;
+
+  try {
+    sendDtmfTone(activeCall, tone);
+    dialPadStatus.textContent = `Tone ${tone} sent`;
+  } catch {
+    dialPadStatus.textContent = "Couldn’t send that tone";
+  }
 });
 
 window.addEventListener("beforeunload", () => client?.disconnect());
