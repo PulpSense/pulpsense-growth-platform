@@ -313,7 +313,7 @@ body {
   outline-offset: 1px;
 }
 #pr-funnel .pr-ty-deck-tap-hint {
-  display: none;
+  display: flex;
   position: absolute;
   top: 50%;
   right: 0.25rem;
@@ -349,9 +349,6 @@ body {
   }
 }
 @media (max-width: 560px) {
-  #pr-funnel .pr-ty-deck-tap-hint {
-    display: flex;
-  }
   #pr-funnel .pr-ty-deck-hint {
     display: none;
   }
