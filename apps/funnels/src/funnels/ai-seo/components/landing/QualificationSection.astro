@@ -5,13 +5,20 @@ import type { AiSeoFunnelId } from "@/funnels/ai-seo/campaigns";
 type Props = {
   funnelId: AiSeoFunnelId;
   qualifiedRedirect: string;
+  qualificationCallout: string;
   calLink: string;
   calNamespace?: string;
   turnstileSiteKey?: string;
 };
 
-const { funnelId, qualifiedRedirect, calLink, calNamespace, turnstileSiteKey } =
-  Astro.props;
+const {
+  funnelId,
+  qualifiedRedirect,
+  qualificationCallout,
+  calLink,
+  calNamespace,
+  turnstileSiteKey,
+} = Astro.props;
 ---
 
 <section class="pr-section pr-section-gray" id="pr-funnel-form">
@@ -117,10 +124,7 @@ const { funnelId, qualifiedRedirect, calLink, calNamespace, turnstileSiteKey } =
           </li>
         </ul>
         <div class="pr-expect-callout">
-          <strong>Many established businesses have no idea</strong> their next customer
-          just went to a competitor that Google or ChatGPT recommended first. On the
-          call, you&apos;ll see exactly who&apos;s getting picked ahead of you, and
-          what it&apos;s costing you.
+          {qualificationCallout}
         </div>
         <div class="pr-expect-proof">
           <span class="pr-stars" aria-hidden="true">

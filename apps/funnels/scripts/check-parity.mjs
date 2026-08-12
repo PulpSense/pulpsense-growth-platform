@@ -65,6 +65,46 @@ const publicRoutes = [
     path: "/regional-visibility-audit/dental-practices/thank-you/",
     markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
   },
+  {
+    path: "/regional-visibility-audit/dental-implants/",
+    funnelId: "ai-seo-dental-implants",
+    thankYouPath: "/regional-visibility-audit/dental-implants/thank-you/",
+    markers: ["45 New Calls", "Get Your Visibility Audit"],
+  },
+  {
+    path: "/regional-visibility-audit/dental-implants/thank-you/",
+    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+  },
+  {
+    path: "/regional-visibility-audit/plastic-surgery/",
+    funnelId: "ai-seo-plastic-surgery",
+    thankYouPath: "/regional-visibility-audit/plastic-surgery/thank-you/",
+    markers: ["45 New Calls", "Get Your Visibility Audit"],
+  },
+  {
+    path: "/regional-visibility-audit/plastic-surgery/thank-you/",
+    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+  },
+  {
+    path: "/regional-visibility-audit/hair-restoration/",
+    funnelId: "ai-seo-hair-restoration",
+    thankYouPath: "/regional-visibility-audit/hair-restoration/thank-you/",
+    markers: ["45 New Calls", "Get Your Visibility Audit"],
+  },
+  {
+    path: "/regional-visibility-audit/hair-restoration/thank-you/",
+    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+  },
+  {
+    path: "/regional-visibility-audit/med-spas/",
+    funnelId: "ai-seo-med-spas",
+    thankYouPath: "/regional-visibility-audit/med-spas/thank-you/",
+    markers: ["45 New Calls", "Get Your Visibility Audit"],
+  },
+  {
+    path: "/regional-visibility-audit/med-spas/thank-you/",
+    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+  },
 ];
 const landerHtmlByFunnelId = new Map();
 

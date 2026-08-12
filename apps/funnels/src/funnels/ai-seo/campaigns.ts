@@ -1,22 +1,54 @@
 import type { FunnelId } from "@pulpsense/contracts";
 
-export type AiSeoCampaignKey = "lawyers" | "dentists";
-export type AiSeoFunnelId = Extract<FunnelId, "ai-seo" | "ai-seo-dentists">;
+export type AiSeoCampaignKey =
+  | "lawyers"
+  | "dentists"
+  | "dental-implants"
+  | "plastic-surgery"
+  | "hair-restoration"
+  | "med-spas";
+export type AiSeoFunnelId = Extract<
+  FunnelId,
+  | "ai-seo"
+  | "ai-seo-dentists"
+  | "ai-seo-dental-implants"
+  | "ai-seo-plastic-surgery"
+  | "ai-seo-hair-restoration"
+  | "ai-seo-med-spas"
+>;
 
 export type AiSeoCampaign = {
   key: AiSeoCampaignKey;
   slug: string;
   funnelId: AiSeoFunnelId;
+  browserPixelEnvKey: `PUBLIC_${string}`;
+  serverMetaDestination:
+    | "AI_SEO_L"
+    | "AI_SEO_D"
+    | "AI_SEO_DI"
+    | "AI_SEO_PS"
+    | "AI_SEO_HR"
+    | "AI_SEO_MS";
   landingPath: string;
   thankYouPath: string;
+  qualificationCallout: string;
 };
 
+export const DEFAULT_AI_SEO_QUALIFICATION_CALLOUT =
+  "Many established businesses have no idea their next customer just went to a competitor that Google or ChatGPT recommended first. On the call, you'll see exactly who's getting picked ahead of you, and what it's costing you.";
+
 const defineCampaign = (
-  campaign: Omit<AiSeoCampaign, "landingPath" | "thankYouPath">,
+  campaign: Omit<
+    AiSeoCampaign,
+    "landingPath" | "thankYouPath" | "qualificationCallout"
+  > &
+    Partial<Pick<AiSeoCampaign, "qualificationCallout">>,
 ): AiSeoCampaign => ({
   ...campaign,
   landingPath: `/${campaign.slug}/`,
   thankYouPath: `/${campaign.slug}/thank-you/`,
+  qualificationCallout:
+    campaign.qualificationCallout ?? DEFAULT_AI_SEO_QUALIFICATION_CALLOUT,
 });
 
 export const AI_SEO_CAMPAIGNS = [
@@ -24,17 +56,74 @@ export const AI_SEO_CAMPAIGNS = [
     key: "lawyers",
     slug: "regional-visibility-audit/law-firms",
     funnelId: "ai-seo",
+    browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_L",
+    serverMetaDestination: "AI_SEO_L",
   }),
   defineCampaign({
     key: "dentists",
     slug: "regional-visibility-audit/dental-practices",
     funnelId: "ai-seo-dentists",
+    browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_D",
+    serverMetaDestination: "AI_SEO_D",
+    qualificationCallout:
+      "Many dental practices have no idea their next patient just called the practice Google or ChatGPT recommended first. On the call, you'll see exactly who is getting picked ahead of you, and what it's costing you.",
+  }),
+  defineCampaign({
+    key: "dental-implants",
+    slug: "regional-visibility-audit/dental-implants",
+    funnelId: "ai-seo-dental-implants",
+    browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_DI",
+    serverMetaDestination: "AI_SEO_DI",
+    qualificationCallout:
+      "Many implant practices have no idea their next high-value patient just called the practice Google or ChatGPT recommended first. On the call, you'll see exactly who is getting picked ahead of you, and what it's costing you.",
+  }),
+  defineCampaign({
+    key: "plastic-surgery",
+    slug: "regional-visibility-audit/plastic-surgery",
+    funnelId: "ai-seo-plastic-surgery",
+    browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_PS",
+    serverMetaDestination: "AI_SEO_PS",
+    qualificationCallout:
+      "Many plastic surgery practices have no idea their next patient just called the practice Google or ChatGPT recommended first. On the call, you'll see exactly who is getting picked ahead of you, and what it's costing you.",
+  }),
+  defineCampaign({
+    key: "hair-restoration",
+    slug: "regional-visibility-audit/hair-restoration",
+    funnelId: "ai-seo-hair-restoration",
+    browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_HR",
+    serverMetaDestination: "AI_SEO_HR",
+    qualificationCallout:
+      "Many hair restoration practices have no idea their next patient just called the practice Google or ChatGPT recommended first. On the call, you'll see exactly who is getting picked ahead of you, and what it's costing you.",
+  }),
+  defineCampaign({
+    key: "med-spas",
+    slug: "regional-visibility-audit/med-spas",
+    funnelId: "ai-seo-med-spas",
+    browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_MS",
+    serverMetaDestination: "AI_SEO_MS",
+    qualificationCallout:
+      "Many med spas have no idea their next client just called the practice Google or ChatGPT recommended first. On the call, you'll see exactly who is getting picked ahead of you, and what it's costing you.",
   }),
 ] as const satisfies readonly AiSeoCampaign[];
 
+const campaignsBySlug = new Map(
+  AI_SEO_CAMPAIGNS.map((campaign) => [campaign.slug, campaign]),
+);
+
+export function getAiSeoCampaignStaticPaths() {
+  return AI_SEO_CAMPAIGNS.map((campaign) => ({
+    params: { campaign: campaign.slug },
+    props: { campaign },
+  }));
+}
+
+export function resolveAiSeoCampaign(slug: string) {
+  return campaignsBySlug.get(slug);
+}
+
 export function resolveAiSeoBrowserPixelId(
   campaign: AiSeoCampaign,
-  pixels: Partial<Record<AiSeoCampaignKey, string | undefined>>,
+  environment: Readonly<Record<string, string | undefined>>,
 ) {
-  return pixels[campaign.key];
+  return environment[campaign.browserPixelEnvKey];
 }
