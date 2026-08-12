@@ -63,14 +63,24 @@ describe("funnel event contract", () => {
         eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
         payload: {
           ...aiSeoContact.payload,
-          application: { businessOwner: "yes" },
+          application: {
+            businessOwner: "yes",
+            businessAge: "3+ years",
+            investmentIntent: "Yes, if the numbers make sense",
+          },
         },
         qualificationStatus: "qualified",
         companyDomain: "brand.com",
       }),
     ).toMatchObject({
       funnelId: "ai-seo",
-      payload: { application: { businessOwner: "yes" } },
+      payload: {
+        application: {
+          businessOwner: "yes",
+          businessAge: "3+ years",
+          investmentIntent: "Yes, if the numbers make sense",
+        },
+      },
     });
   });
 
@@ -91,14 +101,24 @@ describe("funnel event contract", () => {
         eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
         payload: {
           ...dentistContact.payload,
-          application: { businessOwner: "yes" },
+          application: {
+            businessOwner: "yes",
+            businessAge: "3+ years",
+            investmentIntent: "Yes, if the numbers make sense",
+          },
         },
         qualificationStatus: "qualified",
         companyDomain: "brand.com",
       }),
     ).toMatchObject({
       funnelId: "ai-seo-dentists",
-      payload: { application: { businessOwner: "yes" } },
+      payload: {
+        application: {
+          businessOwner: "yes",
+          businessAge: "3+ years",
+          investmentIntent: "Yes, if the numbers make sense",
+        },
+      },
     });
   });
 

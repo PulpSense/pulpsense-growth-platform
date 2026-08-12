@@ -17,7 +17,11 @@ const determineQualificationStatus = (request: ApplicationSubmissionRequest) =>
       request.payload.winnerStatus === "No proven winner yet"
       ? ("unqualified" as const)
       : ("qualified" as const)
-    : ("qualified" as const);
+    : request.payload.businessAge === "Less than 1 year" ||
+        request.payload.investmentIntent ===
+          "No, I’m only looking for free information"
+      ? ("unqualified" as const)
+      : ("qualified" as const);
 
 const createCalBookingLink = (
   configuredLink: string | undefined,
