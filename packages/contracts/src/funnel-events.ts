@@ -14,7 +14,6 @@ export const funnelIdSchema = z.enum([
   "ai-seo-plastic-surgery",
   "ai-seo-hair-restoration",
   "ai-seo-med-spas",
-  "creative-multiplier-sprint",
 ]);
 
 export type FunnelId = z.infer<typeof funnelIdSchema>;
@@ -92,42 +91,6 @@ export const contactSubmittedEventSchema = z
 
 export type ContactSubmittedEvent = z.infer<typeof contactSubmittedEventSchema>;
 
-export const applicationAnswersSchema = z
-  .object({
-    brandUrl: z.url().max(2048),
-    paidSocialSpend: z.enum([
-      "Less than $20k/month",
-      "$20k - $50k/month",
-      "$50k - $150k/month",
-      "$150k+/month",
-    ]),
-    winnerStatus: z.enum([
-      "Yes, one clear winner",
-      "Yes, several winners",
-      "Promising ad, not fully proven",
-      "No proven winner yet",
-    ]),
-    platforms: z
-      .array(
-        z.enum([
-          "Meta",
-          "TikTok",
-          "Reels",
-          "Shorts",
-          "TikTok Shop",
-          "Other paid social",
-        ]),
-      )
-      .min(1),
-    deliveryTimeline: z.enum([
-      "This week",
-      "Next 2 weeks",
-      "This month",
-      "Just researching",
-    ]),
-  })
-  .strict();
-
 export const aiSeoApplicationAnswersSchema = z
   .object({
     businessOwner: z.literal("yes"),
@@ -197,12 +160,6 @@ const bookingLifecycleEventBase = z.object({
 export const applicationSubmittedEventSchema = z.discriminatedUnion(
   "funnelId",
   [
-    applicationSubmittedEventBase.extend({
-      funnelId: z.literal("creative-multiplier-sprint"),
-      payload: verifiedContactPayloadSchema.extend({
-        application: applicationAnswersSchema,
-      }),
-    }),
     applicationSubmittedEventBase.extend({
       funnelId: z.literal("ai-seo"),
       payload: verifiedContactPayloadSchema.extend({
@@ -311,7 +268,6 @@ export const funnelEventSchema = z.discriminatedUnion("eventType", [
   bookingCancelledEventSchema,
 ]);
 
-export type ApplicationAnswers = z.infer<typeof applicationAnswersSchema>;
 export type AiSeoApplicationAnswers = z.infer<
   typeof aiSeoApplicationAnswersSchema
 >;

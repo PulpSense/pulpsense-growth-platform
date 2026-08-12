@@ -19,7 +19,7 @@ const contactRequest = (origin: string) =>
     body: JSON.stringify({
       schemaVersion: 1,
       eventType: "contact_submitted",
-      funnelId: "creative-multiplier-sprint",
+      funnelId: "ai-seo",
       attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
       turnstileToken: "turnstile-token",
       payload: {
@@ -32,7 +32,7 @@ const contactRequest = (origin: string) =>
         firstTouch: { utmSource: "meta" },
         lastTouch: { utmSource: "meta" },
       },
-      sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      sourceUrl: "https://preview.pulpsense.com/ai-seo/",
     }),
   });
 
@@ -59,16 +59,14 @@ const qualifiedApplicationRequest = (identity: {
   requestWithBody({
     schemaVersion: 1,
     eventType: "application_submitted",
-    funnelId: "creative-multiplier-sprint",
+    funnelId: "ai-seo",
     identity,
     payload: {
-      brandUrl: "https://www.brand.com/products",
-      paidSocialSpend: "$50k - $150k/month",
-      winnerStatus: "Yes, several winners",
-      platforms: ["Meta", "TikTok"],
-      deliveryTimeline: "Next 2 weeks",
+      businessOwner: "yes",
+      marketingBudget: "$1,500+/month",
+      investmentIntent: "Yes, if the numbers make sense",
     },
-    sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+    sourceUrl: "https://preview.pulpsense.com/ai-seo/",
   });
 
 const signCalBody = async (body: string, secret: string) => {
@@ -106,7 +104,7 @@ describe("POST /api/funnel-events", () => {
       requestWithBody({
         schemaVersion: 999,
         eventType: "contact_submitted",
-        funnelId: "creative-multiplier-sprint",
+        funnelId: "ai-seo",
         payload: { email: "not-an-email" },
       }),
       {},
@@ -123,7 +121,7 @@ describe("POST /api/funnel-events", () => {
       requestWithBody({
         schemaVersion: 1,
         eventType: "contact_submitted",
-        funnelId: "creative-multiplier-sprint",
+        funnelId: "ai-seo",
         attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
         turnstileToken: "turnstile-token",
         payload: {
@@ -133,7 +131,7 @@ describe("POST /api/funnel-events", () => {
           phone: "+1 555 123 4567",
         },
         attribution: { firstTouch: {}, lastTouch: {} },
-        sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
       }),
       {
         FUNNEL_RATE_LIMIT_SERVICE: {
@@ -158,7 +156,7 @@ describe("POST /api/funnel-events", () => {
       requestWithBody({
         schemaVersion: 1,
         eventType: "contact_submitted",
-        funnelId: "creative-multiplier-sprint",
+        funnelId: "ai-seo",
         attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
         turnstileToken: "turnstile-token",
         payload: {
@@ -168,7 +166,7 @@ describe("POST /api/funnel-events", () => {
           phone: "+1 555 123 4567",
         },
         attribution: { firstTouch: {}, lastTouch: {} },
-        sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
       }),
       {
         ...allowingRateLimit,
@@ -200,7 +198,7 @@ describe("POST /api/funnel-events", () => {
       requestWithBody({
         schemaVersion: 1,
         eventType: "contact_submitted",
-        funnelId: "creative-multiplier-sprint",
+        funnelId: "ai-seo",
         attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
         turnstileToken: "turnstile-token",
         payload: {
@@ -210,7 +208,7 @@ describe("POST /api/funnel-events", () => {
           phone: "+1 555 123 4567",
         },
         attribution: { firstTouch: {}, lastTouch: {} },
-        sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
       }),
       {
         ...allowingRateLimit,
@@ -244,7 +242,7 @@ describe("POST /api/funnel-events", () => {
       requestWithBody({
         schemaVersion: 1,
         eventType: "contact_submitted",
-        funnelId: "creative-multiplier-sprint",
+        funnelId: "ai-seo",
         attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
         turnstileToken: "turnstile-token",
         payload: {
@@ -257,7 +255,7 @@ describe("POST /api/funnel-events", () => {
           firstTouch: { utmSource: "meta" },
           lastTouch: { utmSource: "newsletter" },
         },
-        sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
         fbp: "fb.1.123.456",
       }),
       {
@@ -442,16 +440,14 @@ describe("POST /api/funnel-events", () => {
       requestWithBody({
         schemaVersion: 1,
         eventType: "application_submitted",
-        funnelId: "creative-multiplier-sprint",
+        funnelId: "ai-seo",
         identity: contact.retry,
         payload: {
-          brandUrl: "https://www.brand.com/products",
-          paidSocialSpend: "Less than $20k/month",
-          winnerStatus: "Yes, several winners",
-          platforms: ["Meta", "TikTok"],
-          deliveryTimeline: "Next 2 weeks",
+          businessOwner: "yes",
+          marketingBudget: "Under $500/month or not set yet",
+          investmentIntent: "Yes, if the numbers make sense",
         },
-        sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
       }),
       env,
     );
@@ -498,20 +494,18 @@ describe("POST /api/funnel-events", () => {
       requestWithBody({
         schemaVersion: 1,
         eventType: "application_submitted",
-        funnelId: "creative-multiplier-sprint",
+        funnelId: "ai-seo",
         identity: {
           submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
           token: "client-token",
         },
         payload: {
-          brandUrl: "https://brand.com",
-          paidSocialSpend: "Less than $20k/month",
-          winnerStatus: "No proven winner yet",
-          platforms: ["Meta"],
-          deliveryTimeline: "This week",
+          businessOwner: "yes",
+          marketingBudget: "Under $500/month or not set yet",
+          investmentIntent: "No, I’m only looking for free information",
           qualificationStatus: "qualified",
         },
-        sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
       }),
       allowingRateLimit,
     );
@@ -555,16 +549,14 @@ describe("POST /api/funnel-events", () => {
     const applicationBody = {
       schemaVersion: 1,
       eventType: "application_submitted",
-      funnelId: "creative-multiplier-sprint",
+      funnelId: "ai-seo",
       identity: contact.retry,
       payload: {
-        brandUrl: "https://brand.com",
-        paidSocialSpend: "$20k - $50k/month",
-        winnerStatus: "Yes, one clear winner",
-        platforms: ["Meta"],
-        deliveryTimeline: "This week",
+        businessOwner: "yes",
+        marketingBudget: "$1,500+/month",
+        investmentIntent: "Yes, if the numbers make sense",
       },
-      sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      sourceUrl: "https://preview.pulpsense.com/ai-seo/",
     };
 
     const failedResponse = await handleFunnelEvent(
@@ -596,7 +588,7 @@ describe("POST /api/funnel-events", () => {
     const body = {
       schemaVersion: 1,
       eventType: "contact_submitted",
-      funnelId: "creative-multiplier-sprint",
+      funnelId: "ai-seo",
       attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
       turnstileToken: "turnstile-token",
       payload: {
@@ -606,7 +598,7 @@ describe("POST /api/funnel-events", () => {
         phone: "+1 555 123 4567",
       },
       attribution: { firstTouch: {}, lastTouch: {} },
-      sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      sourceUrl: "https://preview.pulpsense.com/ai-seo/",
     };
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -675,7 +667,7 @@ describe("POST /api/funnel-events", () => {
     const body = {
       schemaVersion: 1,
       eventType: "contact_submitted",
-      funnelId: "creative-multiplier-sprint",
+      funnelId: "ai-seo",
       attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
       turnstileToken: "turnstile-token",
       payload: {
@@ -685,7 +677,7 @@ describe("POST /api/funnel-events", () => {
         phone: "+1 555 123 4567",
       },
       attribution: { firstTouch: {}, lastTouch: {} },
-      sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      sourceUrl: "https://preview.pulpsense.com/ai-seo/",
     };
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -737,7 +729,7 @@ describe("POST /api/funnel-events", () => {
     const body = {
       schemaVersion: 1,
       eventType: "contact_submitted",
-      funnelId: "creative-multiplier-sprint",
+      funnelId: "ai-seo",
       attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
       turnstileToken: "turnstile-token",
       payload: {
@@ -747,7 +739,7 @@ describe("POST /api/funnel-events", () => {
         phone: "+1 555 123 4567",
       },
       attribution: { firstTouch: {}, lastTouch: {} },
-      sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      sourceUrl: "https://preview.pulpsense.com/ai-seo/",
     };
     const turnstileResult = {
       success: true,
@@ -817,7 +809,7 @@ describe("POST /api/funnel-events", () => {
     const requestBody = {
       schemaVersion: 1,
       eventType: "contact_submitted",
-      funnelId: "creative-multiplier-sprint",
+      funnelId: "ai-seo",
       turnstileToken: "turnstile-token",
       payload: {
         firstName: "Maya",
@@ -826,7 +818,7 @@ describe("POST /api/funnel-events", () => {
         phone: "+1 555 123 4567",
       },
       attribution: { firstTouch: {}, lastTouch: {} },
-      sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+      sourceUrl: "https://preview.pulpsense.com/ai-seo/",
     };
 
     const firstResponse = await handleFunnelEvent(
@@ -991,7 +983,7 @@ describe("POST /api/webhooks/cal", () => {
         type: "funnel",
         status: "ACCEPTED",
         uid: "cal_booking_123",
-        title: "Creative Multiplier Sprint Fit Call",
+        title: "AI SEO Fit Call",
         startTime: "2026-08-10T14:00:00.000Z",
         endTime: "2026-08-10T14:15:00.000Z",
         attendees: [{ email: "maya@brand.com", timeZone: "America/New_York" }],
@@ -1058,7 +1050,7 @@ describe("POST /api/webhooks/cal", () => {
         type: "funnel",
         status: "ACCEPTED",
         uid: "cal_booking_456",
-        title: "Creative Multiplier Sprint Fit Call",
+        title: "AI SEO Fit Call",
         startTime: "2026-08-11T14:00:00.000Z",
         endTime: "2026-08-11T14:15:00.000Z",
         rescheduleUid: "cal_booking_123",
@@ -1111,7 +1103,7 @@ describe("POST /api/webhooks/cal", () => {
         type: "funnel",
         status: "CANCELLED",
         uid: "cal_booking_456",
-        title: "Creative Multiplier Sprint Fit Call",
+        title: "AI SEO Fit Call",
         startTime: "2026-08-11T14:00:00.000Z",
         endTime: "2026-08-11T14:15:00.000Z",
         cancellationReason: "No longer available",
@@ -1240,7 +1232,7 @@ describe("POST /api/webhooks/cal", () => {
         type: "funnel",
         status: "ACCEPTED",
         uid: "cal_booking_forged",
-        title: "Creative Multiplier Sprint Fit Call",
+        title: "AI SEO Fit Call",
         startTime: "2026-08-10T14:00:00.000Z",
         endTime: "2026-08-10T14:15:00.000Z",
         attendees: [{ email: "maya@brand.com", timeZone: "America/New_York" }],
@@ -1285,8 +1277,7 @@ describe("browser booking boundaries", () => {
         body: JSON.stringify({
           event_name: "Schedule",
           event_id: "browser-forged-schedule",
-          event_source_url:
-            "https://preview.pulpsense.com/creative-multiplier-sprint/",
+          event_source_url: "https://preview.pulpsense.com/ai-seo/",
         }),
       }),
       {

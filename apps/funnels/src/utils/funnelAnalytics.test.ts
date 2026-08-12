@@ -10,7 +10,7 @@ describe("createFunnelAnalyticsClient", () => {
         apiKey: "phc_preview",
         host: "https://eu.i.posthog.com/",
         analyticsId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
-        funnelId: "creative-multiplier-sprint",
+        funnelId: "ai-seo",
       },
       { fetch: fetchMock, now: () => new Date("2026-08-09T12:00:00.000Z") },
     );
@@ -19,7 +19,7 @@ describe("createFunnelAnalyticsClient", () => {
       step: "contact",
       fields: ["email", "phone"],
       email: "maya@brand.com",
-      rawApplicationAnswers: { paidSocialSpend: "$150k+/month" },
+      rawApplicationAnswers: { marketingBudget: "$1,500+/month" },
     } as never);
 
     const [url, init] = fetchMock.mock.calls[0]!;
@@ -30,7 +30,7 @@ describe("createFunnelAnalyticsClient", () => {
       timestamp: "2026-08-09T12:00:00.000Z",
       properties: {
         distinct_id: "311de7bf-a46f-49f9-a107-5cc030e960c3",
-        funnel_id: "creative-multiplier-sprint",
+        funnel_id: "ai-seo",
         step: "contact",
         fields: ["email", "phone"],
         $process_person_profile: false,
@@ -45,7 +45,7 @@ describe("createFunnelAnalyticsClient", () => {
         apiKey: "phc_preview",
         host: "https://eu.i.posthog.com",
         analyticsId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
-        funnelId: "creative-multiplier-sprint",
+        funnelId: "ai-seo",
       },
       {
         fetch: vi.fn().mockRejectedValue(new Error("network failure")),

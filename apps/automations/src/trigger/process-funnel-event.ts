@@ -1,6 +1,5 @@
 import {
   funnelEventSchema,
-  type ApplicationAnswers,
   type ApplicationSubmittedEvent,
   type BookingCompletedEvent,
   type BookingRescheduledEvent,
@@ -144,7 +143,7 @@ const runIndependent = async <
 >(
   operations: Operations,
 ) => {
-    const entries = Object.entries(operations);
+  const entries = Object.entries(operations);
   const settled: PromiseSettledResult<unknown>[] = [];
   for (const [, operation] of entries) {
     try {
@@ -598,7 +597,8 @@ const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
 
     if (isDuplicateCreate) {
       const concurrentId = await findTwentyPersonId(client, normalizedEmail);
-      const personId = concurrentId ??
+      const personId =
+        concurrentId ??
         (await findTwentyPersonId(client, normalizedEmail, true));
       if (!personId) {
         throw new Error("Twenty person conflict could not be reconciled");
@@ -615,7 +615,9 @@ const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
         },
       );
       if (!updateResponse.ok) {
-        throw new Error(`Twenty person upsert failed (${updateResponse.status})`);
+        throw new Error(
+          `Twenty person upsert failed (${updateResponse.status})`,
+        );
       }
       return { personId };
     }
@@ -737,48 +739,6 @@ const deterministicUuid = async (identity: string) => {
 
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
-
-const paidSocialSpendValues = {
-  "Less than $20k/month": "LESS_THAN_20K_MONTH",
-  "$20k - $50k/month": "FROM_20K_TO_50K_MONTH",
-  "$50k - $150k/month": "FROM_50K_TO_150K_MONTH",
-  "$150k+/month": "FROM_150K_MONTH",
-} satisfies Record<ApplicationAnswers["paidSocialSpend"], string>;
-
-const winnerStatusValues = {
-  "Yes, one clear winner": "ONE_CLEAR_WINNER",
-  "Yes, several winners": "SEVERAL_WINNERS",
-  "Promising ad, not fully proven": "PROMISING_NOT_PROVEN",
-  "No proven winner yet": "NO_PROVEN_WINNER",
-} satisfies Record<ApplicationAnswers["winnerStatus"], string>;
-
-const platformValues = {
-  Meta: "META",
-  TikTok: "TIKTOK",
-  Reels: "REELS",
-  Shorts: "SHORTS",
-  "TikTok Shop": "TIKTOK_SHOP",
-  "Other paid social": "OTHER_PAID_SOCIAL",
-} satisfies Record<ApplicationAnswers["platforms"][number], string>;
-
-const deliveryTimelineValues = {
-  "This week": "THIS_WEEK",
-  "Next 2 weeks": "NEXT_2_WEEKS",
-  "This month": "THIS_MONTH",
-  "Just researching": "JUST_RESEARCHING",
-} satisfies Record<ApplicationAnswers["deliveryTimeline"], string>;
-
-const twentyOpportunityProjection = (application: ApplicationAnswers) => ({
-  brandUrl: {
-    primaryLinkUrl: application.brandUrl,
-    primaryLinkLabel: new URL(application.brandUrl).hostname,
-    secondaryLinks: null,
-  },
-  paidSocialSpend: paidSocialSpendValues[application.paidSocialSpend],
-  winnerStatus: winnerStatusValues[application.winnerStatus],
-  platforms: application.platforms.map((platform) => platformValues[platform]),
-  deliveryTimeline: deliveryTimelineValues[application.deliveryTimeline],
-});
 
 const findOpenTwentyOpportunity = async (
   client: TwentyClient,
@@ -917,16 +877,10 @@ const recordTwentyApplication = async (
     client,
     {
       ...(attemptOpportunityId ? { id: attemptOpportunityId } : {}),
-      name:
-        event.funnelId === "creative-multiplier-sprint"
-          ? `Creative Multiplier Sprint – ${event.companyDomain}`
-          : `AI SEO – ${event.companyDomain}`,
+      name: `AI SEO – ${event.companyDomain}`,
       ...(openOpportunity ? {} : { stage }),
       pointOfContactId: personId,
       ...(companyId ? { companyId } : {}),
-      ...(event.funnelId === "creative-multiplier-sprint"
-        ? twentyOpportunityProjection(event.payload.application)
-        : {}),
     },
     openOpportunity?.id,
   );
@@ -1396,7 +1350,10 @@ export function createProcessorDependencies(
           ) => {
             const payload = precallPayloadFromBooking(event);
             return executeWithRetry(
-              { destination: "trigger", operation: "schedule_meeting_reminders" },
+              {
+                destination: "trigger",
+                operation: "schedule_meeting_reminders",
+              },
               () =>
                 runPrecallSequenceTask.trigger(payload, {
                   idempotencyKey: `precall-run:${payload.sequenceId}`,
@@ -1451,12 +1408,14 @@ export const processFunnelEventTask = schemaTask({
           BREVO_LEAD_MAGNETS_LIST_ID: process.env.BREVO_LEAD_MAGNETS_LIST_ID,
           BREVO_PRECALL_SENDER_EMAIL: process.env.BREVO_PRECALL_SENDER_EMAIL,
           BREVO_PRECALL_SENDER_NAME: process.env.BREVO_PRECALL_SENDER_NAME,
-          BREVO_PRECALL_REPLY_TO_EMAIL: process.env.BREVO_PRECALL_REPLY_TO_EMAIL,
+          BREVO_PRECALL_REPLY_TO_EMAIL:
+            process.env.BREVO_PRECALL_REPLY_TO_EMAIL,
           PRECALL_EMAILS_ENABLED: process.env.PRECALL_EMAILS_ENABLED,
           PRECALL_PUBLIC_ORIGIN: process.env.PRECALL_PUBLIC_ORIGIN,
           PULPSENSE_BUSINESS_POSTAL_ADDRESS:
             process.env.PULPSENSE_BUSINESS_POSTAL_ADDRESS,
-          PRECALL_OPT_OUT_TOKEN_SECRET: process.env.PRECALL_OPT_OUT_TOKEN_SECRET,
+          PRECALL_OPT_OUT_TOKEN_SECRET:
+            process.env.PRECALL_OPT_OUT_TOKEN_SECRET,
           CAL_API_KEY: process.env.CAL_API_KEY,
           PULPSENSE_AUTOMATION_ENVIRONMENT: process.env
             .PULPSENSE_AUTOMATION_ENVIRONMENT as

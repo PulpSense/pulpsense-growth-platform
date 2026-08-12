@@ -12,7 +12,7 @@ import {
 const acceptedEvent = {
   schemaVersion: 1,
   eventType: "contact_submitted",
-  funnelId: "creative-multiplier-sprint",
+  funnelId: "ai-seo",
   submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   eventId: "contact_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   occurredAt: "2026-08-08T12:00:00.000Z",
@@ -27,7 +27,7 @@ const acceptedEvent = {
   requestContext: {
     clientIp: "203.0.113.10",
     userAgent: "Test Browser",
-    sourceUrl: "https://preview.pulpsense.com/creative-multiplier-sprint/",
+    sourceUrl: "https://preview.pulpsense.com/ai-seo/",
   },
   environment: "preview",
 };
@@ -77,7 +77,7 @@ describe("funnel event contract", () => {
       payload: {
         application: {
           businessOwner: "yes",
-            marketingBudget: "$1,500+/month",
+          marketingBudget: "$1,500+/month",
           investmentIntent: "Yes, if the numbers make sense",
         },
       },
@@ -115,7 +115,7 @@ describe("funnel event contract", () => {
       payload: {
         application: {
           businessOwner: "yes",
-            marketingBudget: "$1,500+/month",
+          marketingBudget: "$1,500+/month",
           investmentIntent: "Yes, if the numbers make sense",
         },
       },
@@ -131,7 +131,7 @@ describe("funnel event contract", () => {
     ).toBe(false);
   });
 
-  it("accepts a server-qualified application event in the shared union", () => {
+  it("accepts an AI SEO application event in the shared union", () => {
     const applicationEvent = {
       ...acceptedEvent,
       eventType: "application_submitted",
@@ -139,11 +139,9 @@ describe("funnel event contract", () => {
       payload: {
         ...acceptedEvent.payload,
         application: {
-          brandUrl: "https://brand.com",
-          paidSocialSpend: "$20k - $50k/month",
-          winnerStatus: "Yes, one clear winner",
-          platforms: ["Meta"],
-          deliveryTimeline: "This week",
+          businessOwner: "yes",
+          marketingBudget: "$1,500+/month",
+          investmentIntent: "Yes, if the numbers make sense",
         },
       },
       qualificationStatus: "qualified",
@@ -165,7 +163,7 @@ describe("funnel event contract", () => {
         ...acceptedEvent.payload,
         booking: {
           uid: "cal_booking_123",
-          title: "Creative Multiplier Sprint Fit Call",
+          title: "AI SEO Fit Call",
           startTime: "2026-08-10T14:00:00.000Z",
           endTime: "2026-08-10T14:15:00.000Z",
           attendeeTimeZone: "America/New_York",
