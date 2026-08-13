@@ -62,12 +62,14 @@ const calBookingPayloadSchema = z.object({
     )
     .min(1),
   metadata: z.record(z.string(), z.unknown()),
-  rescheduleUid: z.string().trim().min(1).max(200).optional(),
-  rescheduleStartTime: z.iso.datetime({ offset: true }).optional(),
-  rescheduleEndTime: z.iso.datetime({ offset: true }).optional(),
-  cancellationReason: z.string().trim().max(2000).optional(),
-  videoCallData: z.object({ url: z.url() }).optional(),
-  references: z.array(z.object({ meetingUrl: z.url().optional() })).optional(),
+  rescheduleUid: z.string().trim().min(1).max(200).nullish(),
+  rescheduleStartTime: z.iso.datetime({ offset: true }).nullish(),
+  rescheduleEndTime: z.iso.datetime({ offset: true }).nullish(),
+  cancellationReason: z.string().trim().max(2000).nullish(),
+  videoCallData: z.object({ url: z.unknown().optional() }).nullish(),
+  references: z
+    .array(z.object({ meetingUrl: z.unknown().optional() }))
+    .nullish(),
 });
 
 const calBookingWebhookSchema = z.object({
@@ -96,8 +98,11 @@ const meetingUrlFromPayload = (
   const metadataUrl = payload.metadata.videoCallUrl;
   if (isUrl(metadataUrl)) return metadataUrl;
   if (isUrl(payload.location)) return payload.location;
-  if (payload.videoCallData?.url) return payload.videoCallData.url;
-  return payload.references?.find(({ meetingUrl }) => meetingUrl)?.meetingUrl;
+  if (isUrl(payload.videoCallData?.url)) return payload.videoCallData.url;
+  for (const reference of payload.references ?? []) {
+    if (isUrl(reference.meetingUrl)) return reference.meetingUrl;
+  }
+  return undefined;
 };
 
 export async function handleCalWebhook(request: Request, env: FunnelEnv) {

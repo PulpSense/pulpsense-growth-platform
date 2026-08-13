@@ -1054,6 +1054,13 @@ describe("POST /api/webhooks/cal", () => {
         title: "AI SEO Fit Call",
         startTime: "2026-08-10T15:00:00.000Z",
         endTime: "2026-08-10T15:15:00.000Z",
+        location: null,
+        videoCallData: null,
+        references: [{ meetingUrl: null }],
+        rescheduleUid: null,
+        rescheduleStartTime: null,
+        rescheduleEndTime: null,
+        cancellationReason: null,
         attendees: [{ email: "maya@brand.com", timeZone: "America/New_York" }],
         metadata: {
           pulpsenseSubmissionId: application.bookingIdentity?.submissionId,
