@@ -268,6 +268,41 @@ describe("Brevo lifecycle delivery", () => {
     );
   });
 
+  it("publishes a booking without requiring a meeting join URL", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
+      .mockResolvedValueOnce(new Response(null, { status: 201 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    const bookingDetailsWithoutMeetingUrl = {
+      ...bookingEvent.payload.booking,
+    };
+    delete bookingDetailsWithoutMeetingUrl.meetingUrl;
+    const bookingWithoutMeetingUrl: BookingCompletedEvent = {
+      ...bookingEvent,
+      payload: {
+        ...bookingEvent.payload,
+        booking: bookingDetailsWithoutMeetingUrl,
+      },
+    };
+
+    await expect(
+      publishBrevoLifecycle(
+        bookingWithoutMeetingUrl,
+        { apiKey: "brevo-test", adsListId: 7 },
+        fetcher,
+      ),
+    ).resolves.toMatchObject({
+      published: true,
+      eventName: "pulpsense_booking_created",
+    });
+    const contactBody = JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body));
+    expect(contactBody.attributes.PULPSENSE_LIFECYCLE_STATE).toBe("booked");
+    expect(contactBody.attributes).not.toHaveProperty(
+      "PULPSENSE_MEETING_JOIN_URL",
+    );
+  });
+
   it("does not regress a booked recipient into unbooked nurture", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
       Response.json({

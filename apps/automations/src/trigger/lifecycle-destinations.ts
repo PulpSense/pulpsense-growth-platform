@@ -335,7 +335,9 @@ const lifecycleProjection = (event: BrevoLifecycleEvent) => {
     PULPSENSE_APPOINTMENT_START: booking.startTime,
     PULPSENSE_APPOINTMENT_END: booking.endTime,
     PULPSENSE_ATTENDEE_TIMEZONE: booking.attendeeTimeZone,
-    PULPSENSE_MEETING_JOIN_URL: booking.meetingUrl,
+    ...(booking.meetingUrl
+      ? { PULPSENSE_MEETING_JOIN_URL: booking.meetingUrl }
+      : {}),
   };
   if (event.eventType === "booking_completed") {
     return {

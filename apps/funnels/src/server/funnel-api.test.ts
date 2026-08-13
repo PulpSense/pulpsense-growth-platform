@@ -926,7 +926,7 @@ describe("POST /api/webhooks/cal", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("accepts a verified booking and reuses its idempotency key for a duplicate webhook", async () => {
+  it("accepts verified bookings with Cal's location or without a join URL and reuses duplicate idempotency", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -941,6 +941,7 @@ describe("POST /api/webhooks/cal", () => {
       .mockResolvedValueOnce(Response.json({ id: "run_application" }))
       .mockResolvedValueOnce(Response.json({ id: "run_booking" }))
       .mockResolvedValueOnce(Response.json({ id: "run_booking" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_booking_no_url" }))
       .mockResolvedValueOnce(Response.json({ id: "run_reschedule" }))
       .mockResolvedValueOnce(Response.json({ id: "run_cancel" }));
     vi.stubGlobal("fetch", fetchMock);
@@ -986,11 +987,11 @@ describe("POST /api/webhooks/cal", () => {
         title: "AI SEO Fit Call",
         startTime: "2026-08-10T14:00:00.000Z",
         endTime: "2026-08-10T14:15:00.000Z",
+        location: "https://meet.example.com/cal_booking_123",
         attendees: [{ email: "maya@brand.com", timeZone: "America/New_York" }],
         metadata: {
           pulpsenseSubmissionId: application.bookingIdentity?.submissionId,
           pulpsenseBookingToken: application.bookingIdentity?.token,
-          videoCallUrl: "https://meet.example.com/cal_booking_123",
         },
       },
     });
@@ -1043,6 +1044,50 @@ describe("POST /api/webhooks/cal", () => {
       triggerBody.payload.eventId,
     );
 
+    const noUrlBody = JSON.stringify({
+      triggerEvent: "BOOKING_CREATED",
+      createdAt: "2026-08-09T12:05:00.000Z",
+      payload: {
+        type: "funnel",
+        status: "ACCEPTED",
+        uid: "cal_booking_no_url",
+        title: "AI SEO Fit Call",
+        startTime: "2026-08-10T15:00:00.000Z",
+        endTime: "2026-08-10T15:15:00.000Z",
+        attendees: [{ email: "maya@brand.com", timeZone: "America/New_York" }],
+        metadata: {
+          pulpsenseSubmissionId: application.bookingIdentity?.submissionId,
+          pulpsenseBookingToken: application.bookingIdentity?.token,
+        },
+      },
+    });
+    const noUrlResponse = await handleCalWebhook(
+      new Request("https://preview.pulpsense.com/api/webhooks/cal", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-cal-signature-256": await signCalBody(
+            noUrlBody,
+            env.CAL_WEBHOOK_SECRET,
+          ),
+        },
+        body: noUrlBody,
+      }),
+      env,
+    );
+    expect(noUrlResponse.status).toBe(200);
+    await expect(noUrlResponse.json()).resolves.toMatchObject({
+      accepted: true,
+      eventId: "booking_completed:cal_booking_no_url",
+      runId: "run_booking_no_url",
+    });
+    const noUrlTriggerBody = JSON.parse(
+      String(fetchMock.mock.calls[6]?.[1]?.body),
+    );
+    expect(noUrlTriggerBody.payload.payload.booking).not.toHaveProperty(
+      "meetingUrl",
+    );
+
     const rescheduleBody = JSON.stringify({
       triggerEvent: "BOOKING_RESCHEDULED",
       createdAt: "2026-08-09T13:00:00.000Z",
@@ -1080,7 +1125,7 @@ describe("POST /api/webhooks/cal", () => {
     );
     expect(rescheduleResponse.status).toBe(200);
     const rescheduleTrigger = JSON.parse(
-      String(fetchMock.mock.calls[6]?.[1]?.body),
+      String(fetchMock.mock.calls[7]?.[1]?.body),
     );
     expect(rescheduleTrigger).toMatchObject({
       payload: {
@@ -1131,7 +1176,7 @@ describe("POST /api/webhooks/cal", () => {
     );
     expect(cancellationResponse.status).toBe(200);
     const cancellationTrigger = JSON.parse(
-      String(fetchMock.mock.calls[7]?.[1]?.body),
+      String(fetchMock.mock.calls[8]?.[1]?.body),
     );
     expect(cancellationTrigger).toMatchObject({
       payload: {
