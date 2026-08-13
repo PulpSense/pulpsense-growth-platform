@@ -52,6 +52,7 @@ const calBookingPayloadSchema = z.object({
   title: z.string().trim().min(1).max(500),
   startTime: z.iso.datetime({ offset: true }),
   endTime: z.iso.datetime({ offset: true }),
+  location: z.unknown().optional(),
   attendees: z
     .array(
       z.object({
@@ -94,6 +95,7 @@ const meetingUrlFromPayload = (
 ) => {
   const metadataUrl = payload.metadata.videoCallUrl;
   if (isUrl(metadataUrl)) return metadataUrl;
+  if (isUrl(payload.location)) return payload.location;
   if (payload.videoCallData?.url) return payload.videoCallData.url;
   return payload.references?.find(({ meetingUrl }) => meetingUrl)?.meetingUrl;
 };
@@ -163,9 +165,6 @@ export async function handleCalWebhook(request: Request, env: FunnelEnv) {
   }
 
   const meetingUrl = meetingUrlFromPayload(parsed.data.payload);
-  if (!meetingUrl) {
-    return json({ error: "booking_join_url_unavailable" }, 422);
-  }
   const commonEvent = {
     schemaVersion: 1,
     funnelId: claims.funnelId,
@@ -179,7 +178,7 @@ export async function handleCalWebhook(request: Request, env: FunnelEnv) {
         startTime: parsed.data.payload.startTime,
         endTime: parsed.data.payload.endTime,
         attendeeTimeZone: matchingAttendee.timeZone,
-        meetingUrl,
+        ...(meetingUrl ? { meetingUrl } : {}),
       },
     },
     qualificationStatus: claims.qualificationStatus,

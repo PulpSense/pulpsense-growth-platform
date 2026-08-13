@@ -167,7 +167,6 @@ describe("funnel event contract", () => {
           startTime: "2026-08-10T14:00:00.000Z",
           endTime: "2026-08-10T14:15:00.000Z",
           attendeeTimeZone: "America/New_York",
-          meetingUrl: "https://meet.example.com/cal_booking_123",
         },
       },
       qualificationStatus: "qualified",

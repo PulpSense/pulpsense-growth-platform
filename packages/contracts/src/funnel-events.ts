@@ -130,7 +130,7 @@ const bookingDetailsSchema = z
     startTime: z.string().datetime({ offset: true }),
     endTime: z.string().datetime({ offset: true }),
     attendeeTimeZone: z.string().trim().min(1).max(100),
-    meetingUrl: z.url().max(2048),
+    meetingUrl: z.url().max(2048).optional(),
     internalBookingUrl: z.url().max(2048).optional(),
   })
   .strict();
