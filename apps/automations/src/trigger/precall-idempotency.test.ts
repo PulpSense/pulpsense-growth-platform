@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  conversationalSenderName,
   precallRunIdempotencyKey,
   precallSendIdempotencyKey,
   precallSlotIdempotencyKey,
@@ -26,5 +27,11 @@ describe("pre-call idempotency keys", () => {
     expect(precallSendIdempotencyKey(sequenceId, "confirmation")).toBe(
       `precall-send:${sequenceId}:confirmation`,
     );
+  });
+});
+
+describe("pre-call sender name", () => {
+  it("keeps the full display sender out of conversational copy", () => {
+    expect(conversationalSenderName("Santi Leoni")).toBe("Santi");
   });
 });

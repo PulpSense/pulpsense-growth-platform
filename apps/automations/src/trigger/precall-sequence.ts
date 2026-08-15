@@ -70,6 +70,9 @@ export const precallSendIdempotencyKey = (
   moduleId: PrecallModuleId,
 ) => `precall-send:${sequenceId}:${moduleId}`;
 
+export const conversationalSenderName = (displayName: string) =>
+  displayName.trim().split(/\s+/)[0] ?? displayName;
+
 const required = (value: string | undefined, name: string) => {
   if (!value) throw new Error(`${name} is not configured`);
   return value;
@@ -246,7 +249,9 @@ export const deliverPrecallSequence = async (
         environment.PULPSENSE_BUSINESS_POSTAL_ADDRESS,
         "PULPSENSE_BUSINESS_POSTAL_ADDRESS",
       ),
-      sender_name: required(environment.BREVO_PRECALL_SENDER_NAME, "BREVO_PRECALL_SENDER_NAME"),
+      sender_name: conversationalSenderName(
+        required(environment.BREVO_PRECALL_SENDER_NAME, "BREVO_PRECALL_SENDER_NAME"),
+      ),
     });
     const transportKey = await idempotencyKeys.create(
       precallSendIdempotencyKey(payload.sequenceId, slot.moduleId),
