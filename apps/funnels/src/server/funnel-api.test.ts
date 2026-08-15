@@ -320,6 +320,52 @@ describe("POST /api/funnel-events", () => {
     expect(triggerBody.options.idempotencyKey).toBe(result.eventId);
   });
 
+  it("fails closed in production when Prospect identity is not configured", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ result: "ok" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleFunnelEvent(
+      requestWithBody({
+        schemaVersion: 1,
+        eventType: "contact_submitted",
+        funnelId: "ai-seo",
+        attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
+        turnstileToken: "turnstile-token",
+        payload: {
+          firstName: "Maya",
+          lastName: "Chen",
+          email: "maya@brand.com",
+          phone: "+1 555 123 4567",
+        },
+        attribution: { firstTouch: {}, lastTouch: {} },
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
+      }),
+      {
+        ...allowingRateLimit,
+        TURNSTILE_SECRET_KEY: "turnstile-secret",
+        MILLION_VERIFIER_API_KEY: "million-verifier-key",
+        SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+        PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+        PULPSENSE_ENVIRONMENT: "production",
+      },
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: "prospect_identity_unavailable",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("accepts an AI SEO owner with an optional last name and returns a signed Cal identity", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

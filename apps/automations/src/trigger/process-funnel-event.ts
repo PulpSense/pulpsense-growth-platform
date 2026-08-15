@@ -217,16 +217,18 @@ const executeTwenty = async <Result>(
   }
 };
 
-const capturePostHogSafely = async (
+const deliverPostHogSafely = async (
   event: FunnelEvent,
   dependencies: ProcessorDependencies,
+  delivery: (() => Promise<void>) | undefined,
+  failureMessage: string,
 ) => {
-  if (!dependencies.capturePostHogLifecycle) return;
+  if (!delivery) return;
 
   try {
-    await dependencies.capturePostHogLifecycle(event);
+    await delivery();
   } catch {
-    dependencies.log.info("PostHog lifecycle delivery failed", {
+    dependencies.log.info(failureMessage, {
       submissionId: event.submissionId,
       eventId: event.eventId,
       eventType: event.eventType,
@@ -234,21 +236,31 @@ const capturePostHogSafely = async (
   }
 };
 
+const capturePostHogSafely = (
+  event: FunnelEvent,
+  dependencies: ProcessorDependencies,
+) => {
+  const capture = dependencies.capturePostHogLifecycle;
+  return deliverPostHogSafely(
+    event,
+    dependencies,
+    capture ? () => capture(event) : undefined,
+    "PostHog lifecycle delivery failed",
+  );
+};
+
 const capturePostHogPersonLinkSafely = async (
   event: FunnelEvent,
   personId: string,
   dependencies: ProcessorDependencies,
 ) => {
-  if (!dependencies.capturePostHogPersonLink) return;
-  try {
-    await dependencies.capturePostHogPersonLink(event, personId);
-  } catch {
-    dependencies.log.info("PostHog person link delivery failed", {
-      submissionId: event.submissionId,
-      eventId: event.eventId,
-      eventType: event.eventType,
-    });
-  }
+  const capture = dependencies.capturePostHogPersonLink;
+  return deliverPostHogSafely(
+    event,
+    dependencies,
+    capture ? () => capture(event, personId) : undefined,
+    "PostHog person link delivery failed",
+  );
 };
 
 const precallPayloadFromBooking = (

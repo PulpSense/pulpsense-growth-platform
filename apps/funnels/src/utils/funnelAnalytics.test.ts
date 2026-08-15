@@ -43,10 +43,14 @@ describe("createFunnelAnalyticsClient", () => {
     release(posthog);
     await configuring;
 
-    expect(posthog.capture).toHaveBeenCalledWith("cta_clicked", {
-      funnel_id: "ai-seo",
-      placement: "hero",
-    });
+    expect(posthog.capture).toHaveBeenCalledWith(
+      "cta_clicked",
+      {
+        funnel_id: "ai-seo",
+        placement: "hero",
+      },
+      { timestamp: expect.any(Date) },
+    );
   });
 
   it("records production funnels with replay privacy and clean custom events", () => {
@@ -74,6 +78,7 @@ describe("createFunnelAnalyticsClient", () => {
         capture_performance: { network_timing: true, web_vitals: false },
         disable_session_recording: false,
         person_profiles: "identified_only",
+        sanitize_properties: expect.any(Function),
         session_recording: expect.objectContaining({ maskAllInputs: true }),
       }),
     );
@@ -94,23 +99,33 @@ describe("createFunnelAnalyticsClient", () => {
     expect(
       config.session_recording.maskCapturedNetworkRequestFn({
         name: "https://example.com/api/funnel-events?token=secret",
+        entryType: "resource",
+        startTime: 12,
         method: "POST",
         requestBody: "private",
         responseBody: "private",
         headers: { authorization: "secret" },
-        statusCode: 202,
+        status: 202,
         duration: 42,
       }),
-    ).toEqual(
-      expect.objectContaining({
-        name: "https://example.com/api/funnel-events",
-        method: "POST",
-        requestBody: null,
-        responseBody: null,
-        statusCode: 202,
-        duration: 42,
+    ).toEqual({
+      name: "https://example.com/api/funnel-events",
+      entryType: "resource",
+      startTime: 12,
+      method: "POST",
+      status: 202,
+      duration: 42,
+      failure_class: "none",
+    });
+    expect(
+      config.sanitize_properties({
+        $current_url: "https://example.com/landing?email=maya@example.com",
+        $elements: [{ href: "https://example.com/book?token=secret#calendar" }],
       }),
-    );
+    ).toEqual({
+      $current_url: "https://example.com/landing",
+      $elements: [{ href: "https://example.com/book" }],
+    });
   });
 
   it("does not initialize or capture outside production", () => {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import type { MouseEvent } from "react";
 
 import {
@@ -9,7 +9,7 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
-import { trackFunnelEvent } from "@/utils/funnelAnalytics";
+import { useDeckSlideAnalytics } from "@/utils/deckSlideAnalytics";
 
 const slideDescriptions = [
   "45 new calls in 90 days by ranking at the top of Google and AI, or PulpSense works free until the business gets them.",
@@ -44,26 +44,7 @@ const slides = slideDescriptions.map((description, index) => {
 
 export function VisibilityDeckCarousel() {
   const [api, setApi] = useState<CarouselApi>();
-  const viewedSlides = useRef(new Set<number>());
-
-  useEffect(() => {
-    if (!api) return;
-    const recordSlide = () => {
-      const slideIndex = api.selectedScrollSnap();
-      if (viewedSlides.current.has(slideIndex)) return;
-      viewedSlides.current.add(slideIndex);
-      trackFunnelEvent("funnel_deck_slide_viewed", {
-        deck_id: "ai-seo-visibility",
-        slide_id: `slide-${String(slideIndex + 1).padStart(2, "0")}`,
-        slide_index: slideIndex,
-      });
-    };
-    recordSlide();
-    api.on("select", recordSlide);
-    return () => {
-      api.off("select", recordSlide);
-    };
-  }, [api]);
+  useDeckSlideAnalytics(api, "ai-seo-visibility");
 
   const handleSlideTap = (event: MouseEvent<HTMLDivElement>) => {
     const { left, width } = event.currentTarget.getBoundingClientRect();

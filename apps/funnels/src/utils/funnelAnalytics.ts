@@ -199,6 +199,43 @@ const normalizeHost = (host: string) => {
   return url.toString().replace(/\/$/u, "");
 };
 
+const stripUrlQuery = (value: string) => {
+  if (value.startsWith("/")) return value.split(/[?#]/u)[0] ?? value;
+  if (!/^https?:\/\//iu.test(value)) return value;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return value;
+    return `${url.origin}${url.pathname}`;
+  } catch {
+    return value;
+  }
+};
+
+const sanitizePostHogValue = (value: unknown): unknown => {
+  if (typeof value === "string") return stripUrlQuery(value);
+  if (Array.isArray(value)) return value.map(sanitizePostHogValue);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nested]) => [
+        key,
+        sanitizePostHogValue(nested),
+      ]),
+    );
+  }
+  return value;
+};
+
+const sanitizePostHogProperties = (properties: Record<string, unknown>) =>
+  sanitizePostHogValue(properties) as Record<string, unknown>;
+
+const networkFailureClass = (status: number | undefined) => {
+  if (status === undefined) return "unknown";
+  if (status === 0) return "network_error";
+  if (status >= 500) return "server_error";
+  if (status >= 400) return "client_error";
+  return "none";
+};
+
 export function createFunnelAnalyticsClient(
   config: AnalyticsConfig,
   runtime: AnalyticsRuntime,
@@ -220,22 +257,21 @@ export function createFunnelAnalyticsClient(
       capture_pageview: false,
       disable_session_recording: false,
       person_profiles: "identified_only",
+      sanitize_properties: sanitizePostHogProperties,
       session_recording: {
         maskAllInputs: true,
         maskCapturedNetworkRequestFn: (request) => {
-          try {
-            const url = new URL(request.name);
-            url.search = "";
-            url.hash = "";
-            request.name = url.toString();
-          } catch {
-            request.name = request.name.split("?")[0] ?? request.name;
-          }
-          request.requestBody = null;
-          request.responseBody = null;
-          delete request.requestHeaders;
-          delete request.responseHeaders;
-          return request;
+          return {
+            name: stripUrlQuery(request.name),
+            entryType: request.entryType,
+            startTime: request.startTime,
+            duration: request.duration,
+            ...(request.method ? { method: request.method } : {}),
+            ...(typeof request.status === "number"
+              ? { status: request.status }
+              : {}),
+            failure_class: networkFailureClass(request.status),
+          } as typeof request;
         },
       },
     });
@@ -245,13 +281,18 @@ export function createFunnelAnalyticsClient(
     capture<Event extends FunnelAnalyticsEvent>(
       event: Event,
       properties: FunnelAnalyticsEventProperties[Event],
+      capturedAt?: Date,
     ) {
       if (!enabled) return false;
       try {
-        client.capture(event, {
-          funnel_id: config.funnelId,
-          ...sanitizedProperties(event, properties),
-        });
+        client.capture(
+          event,
+          {
+            funnel_id: config.funnelId,
+            ...sanitizedProperties(event, properties),
+          },
+          ...(capturedAt ? [{ timestamp: capturedAt }] : []),
+        );
         return true;
       } catch {
         reportFailure({ code: "posthog_delivery_failed", event });
@@ -288,6 +329,7 @@ type QueuedEvent = {
   [Event in FunnelAnalyticsEvent]: {
     event: Event;
     properties: FunnelAnalyticsEventProperties[Event];
+    capturedAt: Date;
   };
 }[FunnelAnalyticsEvent];
 
@@ -320,7 +362,11 @@ export async function configureFunnelAnalytics(
       posthog: await loader(),
     });
     for (const queued of queuedEvents.splice(0)) {
-      sharedClient.capture(queued.event, queued.properties as never);
+      sharedClient.capture(
+        queued.event,
+        queued.properties as never,
+        queued.capturedAt,
+      );
     }
     if (pendingIdentification) {
       const pending = pendingIdentification;
@@ -361,6 +407,10 @@ export function trackFunnelEvent<Event extends FunnelAnalyticsEvent>(
   }
 
   if (queuedEvents.length < 50) {
-    queuedEvents.push({ event, properties } as QueuedEvent);
+    queuedEvents.push({
+      event,
+      properties,
+      capturedAt: new Date(),
+    } as QueuedEvent);
   }
 }
