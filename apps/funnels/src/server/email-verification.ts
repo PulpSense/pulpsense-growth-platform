@@ -80,6 +80,34 @@ export const verifyBusinessEmail = async (
   }
 };
 
+export const verifyLeadMagnetEmail = async (
+  email: string,
+  apiKey: string | undefined,
+): Promise<"valid" | "uncertain" | "invalid"> => {
+  if (!apiKey) {
+    return (await isNonexistentEmailDomain(email)) ? "invalid" : "uncertain";
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.millionverifier.com/api/v3/?api=${apiKey}&email=${encodeURIComponent(email)}&timeout=10`,
+    );
+    if (!response.ok) throw new Error("Verifier request failed");
+    const verification = (await response.json()) as { result?: string };
+    if (
+      verification.result === "invalid" ||
+      verification.result === "disposable"
+    ) {
+      return "invalid";
+    }
+    if (verification.result === "ok") return "valid";
+    if (verification.result === "catch_all") return "uncertain";
+    return (await isNonexistentEmailDomain(email)) ? "invalid" : "uncertain";
+  } catch {
+    return (await isNonexistentEmailDomain(email)) ? "invalid" : "uncertain";
+  }
+};
+
 export async function handleVerifyEmail(request: Request, env: FunnelEnv) {
   const originError = rejectCrossOrigin(request);
   if (originError) return originError;
