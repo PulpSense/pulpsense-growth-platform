@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@pulpsense/contracts": "file:../../packages/contracts",
+    "@pulpsense/lead-magnets": "workspace:*",
     "@trigger.dev/sdk": "4.5.9",
     "zod": "^4.3.6"
   },

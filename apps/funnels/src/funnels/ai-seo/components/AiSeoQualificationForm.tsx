@@ -95,6 +95,27 @@ const initialContact: ContactData = {
   website: "",
 };
 
+const qualificationQuestions = {
+  business_owner:
+    "Are you the owner or primary decision-maker for the business?",
+  marketing_budget:
+    "What monthly marketing budget have you set aside to generate more leads?",
+  investment_intent:
+    "If there is a clear opportunity to generate more leads, would you be open to investing in fixing it?",
+} as const;
+
+const recordQualificationSnapshot = (
+  status: "qualified" | "unqualified",
+  answers: Record<string, unknown>,
+) =>
+  trackFunnelEvent("funnel_qualification_submitted", {
+    qualification_status: status,
+    qualification_form_id: "ai-seo",
+    qualification_form_version: "2026-08-15",
+    qualification_questions: qualificationQuestions,
+    qualification_answers: answers,
+  });
+
 export function AiSeoQualificationForm({
   funnelId,
   calLink,
@@ -123,8 +144,7 @@ export function AiSeoQualificationForm({
   }>();
   const measurement = useRef<{
     attribution: FunnelAttribution;
-    analyticsId: string;
-  }>({ attribution: { firstTouch: {}, lastTouch: {} }, analyticsId: "" });
+  }>({ attribution: { firstTouch: {}, lastTouch: {} } });
   const turnstileContainerRef = useRef<HTMLDivElement>(null);
   const turnstileWidgetRef = useRef<string | undefined>(undefined);
   const emailAbortRef = useRef<AbortController | undefined>(undefined);
@@ -138,7 +158,6 @@ export function AiSeoQualificationForm({
       href: window.location.href,
       referrer: document.referrer,
       storage: window.localStorage,
-      createAnalyticsId: () => crypto.randomUUID(),
     });
     trackFunnelEvent("funnel_step_viewed", { step: "qualification" });
   }, [funnelId]);
@@ -345,6 +364,7 @@ export function AiSeoQualificationForm({
       setStep("marketing-budget");
     } else {
       trackFunnelEvent("qualification_outcome", { status: "unqualified" });
+      recordQualificationSnapshot("unqualified", { business_owner: "no" });
       setStep("not-qualified");
     }
   };
@@ -354,6 +374,10 @@ export function AiSeoQualificationForm({
   ) => {
     if (budget === "under-500-per-month") {
       trackFunnelEvent("qualification_outcome", { status: "unqualified" });
+      recordQualificationSnapshot("unqualified", {
+        business_owner: "yes",
+        marketing_budget: "Under $500/month or not set yet",
+      });
       setStep("not-qualified");
       return;
     }
@@ -366,6 +390,11 @@ export function AiSeoQualificationForm({
   ) => {
     if (intent === "free-information-only") {
       trackFunnelEvent("qualification_outcome", { status: "unqualified" });
+      recordQualificationSnapshot("unqualified", {
+        business_owner: "yes",
+        marketing_budget: marketingBudget,
+        investment_intent: "No, I’m only looking for free information",
+      });
       setStep("not-qualified");
       return;
     }
@@ -419,7 +448,6 @@ export function AiSeoQualificationForm({
     const fbp = getBrowserCookie("_fbp");
     const fbc = getBrowserCookie("_fbc");
     const sharedContext = {
-      analyticsId: measurement.current.analyticsId,
       sourceUrl,
       ...(referrer ? { referrer } : {}),
       ...(fbp ? { fbp } : {}),
@@ -483,6 +511,11 @@ export function AiSeoQualificationForm({
       }
 
       trackFunnelEvent("funnel_step_completed", { step: "qualification" });
+      recordQualificationSnapshot("qualified", {
+        business_owner: "yes",
+        marketing_budget: marketingBudget,
+        investment_intent: investmentIntent,
+      });
       trackMetaEvent(
         "SubmitApplication",
         { qualification_status: "qualified" },

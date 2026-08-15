@@ -257,12 +257,14 @@ describe("POST /api/funnel-events", () => {
         },
         sourceUrl: "https://preview.pulpsense.com/ai-seo/",
         fbp: "fb.1.123.456",
+        sessionId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
       }),
       {
         ...allowingRateLimit,
         TURNSTILE_SECRET_KEY: "turnstile-secret",
         MILLION_VERIFIER_API_KEY: "million-verifier-key",
         SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+        PROSPECT_ID_SECRET: "preview-prospect-secret",
         PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
         PULPSENSE_ENVIRONMENT: "preview",
       },
@@ -272,6 +274,7 @@ describe("POST /api/funnel-events", () => {
     const result = (await response.json()) as {
       accepted: boolean;
       submissionId: string;
+      prospectId: string;
       eventId: string;
       runId: string;
       retry: { submissionId: string; token: string };
@@ -284,6 +287,7 @@ describe("POST /api/funnel-events", () => {
     expect(result.submissionId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
+    expect(result.prospectId).toMatch(/^prospect_v1_[0-9a-f]{64}$/u);
     expect(result.eventId).toBe(`contact_submitted:${result.submissionId}`);
     expect(result.retry.token).not.toContain("maya@brand.com");
 
@@ -294,20 +298,72 @@ describe("POST /api/funnel-events", () => {
     const triggerBody = JSON.parse(String(triggerInit?.body)) as {
       payload: {
         submissionId: string;
+        prospectId: string;
         eventId: string;
         payload: { email: string; emailVerification: unknown };
+        requestContext: { sessionId?: string };
       };
       options: { idempotencyKey: string };
     };
     expect(triggerBody.payload).toMatchObject({
       submissionId: result.submissionId,
+      prospectId: result.prospectId,
       eventId: result.eventId,
       payload: {
         email: "maya@brand.com",
         emailVerification: { status: "verified", result: "business" },
       },
     });
+    expect(triggerBody.payload.requestContext).toMatchObject({
+      sessionId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
+    });
     expect(triggerBody.options.idempotencyKey).toBe(result.eventId);
+  });
+
+  it("fails closed in production when Prospect identity is not configured", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ result: "ok" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await handleFunnelEvent(
+      requestWithBody({
+        schemaVersion: 1,
+        eventType: "contact_submitted",
+        funnelId: "ai-seo",
+        attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
+        turnstileToken: "turnstile-token",
+        payload: {
+          firstName: "Maya",
+          lastName: "Chen",
+          email: "maya@brand.com",
+          phone: "+1 555 123 4567",
+        },
+        attribution: { firstTouch: {}, lastTouch: {} },
+        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
+      }),
+      {
+        ...allowingRateLimit,
+        TURNSTILE_SECRET_KEY: "turnstile-secret",
+        MILLION_VERIFIER_API_KEY: "million-verifier-key",
+        SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+        PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+        PULPSENSE_ENVIRONMENT: "production",
+      },
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: "prospect_identity_unavailable",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("accepts an AI SEO owner with an optional last name and returns a signed Cal identity", async () => {
@@ -1245,6 +1301,54 @@ describe("POST /api/webhooks/cal", () => {
       }),
     );
     expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  it("allows booking for a qualified applicant with a catch-all business email", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ result: "catch_all", free: false }),
+      )
+      .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_application" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const env = {
+      ...allowingRateLimit,
+      TURNSTILE_SECRET_KEY: "turnstile-secret",
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+      PULPSENSE_ENVIRONMENT: "preview" as const,
+      CAL_WEBHOOK_SECRET: "cal-webhook-secret",
+    };
+    const contactResponse = await handleFunnelEvent(
+      contactRequest("https://preview.pulpsense.com"),
+      env,
+    );
+    const contact = (await contactResponse.json()) as {
+      retry: { submissionId: string; token: string };
+    };
+    const applicationResponse = await handleFunnelEvent(
+      qualifiedApplicationRequest(contact.retry),
+      env,
+    );
+
+    await expect(applicationResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        accepted: true,
+        qualificationStatus: "qualified",
+        nextStep: "booking",
+        bookingIdentity: expect.any(Object),
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it("rejects a booking correlated with contact identity instead of qualified booking identity", async () => {

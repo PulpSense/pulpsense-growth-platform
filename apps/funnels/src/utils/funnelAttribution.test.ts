@@ -11,25 +11,22 @@ const memoryStorage = () => {
 };
 
 describe("captureFunnelAttribution", () => {
-  it("preserves the first touch while refreshing the last touch and anonymous ID", () => {
+  it("preserves the first touch while refreshing the last touch", () => {
     const storage = memoryStorage();
     const first = captureFunnelAttribution({
       funnelId: "ai-seo",
       href: "https://preview.pulpsense.com/ai-seo/?utm_source=meta&utm_campaign=launch&fbclid=fb-click&email=private%40example.com",
       referrer: "https://partner.example/review?email=private%40example.com",
       storage,
-      createAnalyticsId: () => "311de7bf-a46f-49f9-a107-5cc030e960c3",
     });
     const returning = captureFunnelAttribution({
       funnelId: "ai-seo",
       href: "https://preview.pulpsense.com/ai-seo/?utm_source=newsletter&gclid=google-click",
       referrer: "https://newsletter.example/archive?subscriber=private",
       storage,
-      createAnalyticsId: () => "different-id",
     });
 
-    expect(first.analyticsId).toBe("311de7bf-a46f-49f9-a107-5cc030e960c3");
-    expect(returning.analyticsId).toBe(first.analyticsId);
+    expect(first.attribution.firstTouch.utmSource).toBe("meta");
     expect(returning.attribution.firstTouch).toEqual({
       utmSource: "meta",
       utmCampaign: "launch",
@@ -59,10 +56,8 @@ describe("captureFunnelAttribution", () => {
           throw new Error("blocked");
         },
       },
-      createAnalyticsId: () => "311de7bf-a46f-49f9-a107-5cc030e960c3",
     });
 
-    expect(result.analyticsId).toBe("311de7bf-a46f-49f9-a107-5cc030e960c3");
     expect(result.attribution.firstTouch).toEqual(result.attribution.lastTouch);
   });
 });

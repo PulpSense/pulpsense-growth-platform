@@ -25,7 +25,6 @@ type CaptureFunnelAttributionInput = {
   href: string;
   referrer: string;
   storage: AttributionStorage;
-  createAnalyticsId(): string;
 };
 
 const campaignParameters = {
@@ -40,9 +39,6 @@ const campaignParameters = {
   ttclid: ["ttclid", 500],
   li_fat_id: ["liFatId", 500],
 } as const;
-
-const anonymousIdPattern =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/iu;
 
 const safePageUrl = (value: string) => {
   if (!value) return undefined;
@@ -122,16 +118,12 @@ export function captureFunnelAttribution({
   href,
   referrer,
   storage,
-  createAnalyticsId,
 }: CaptureFunnelAttributionInput): {
   attribution: FunnelAttribution;
-  analyticsId: string;
 } {
   const touch = touchFrom(href, referrer);
   const firstTouchKey = `pulpsense:first-touch:${funnelId}`;
-  const analyticsIdKey = `pulpsense:analytics-id:${funnelId}`;
   let firstTouch = touch;
-  let analyticsId = createAnalyticsId();
 
   try {
     const storedFirstTouch = readStoredTouch(storage, firstTouchKey);
@@ -140,19 +132,11 @@ export function captureFunnelAttribution({
     } else {
       storage.setItem(firstTouchKey, JSON.stringify(touch));
     }
-
-    const storedAnalyticsId = storage.getItem(analyticsIdKey);
-    if (storedAnalyticsId && anonymousIdPattern.test(storedAnalyticsId)) {
-      analyticsId = storedAnalyticsId;
-    } else {
-      storage.setItem(analyticsIdKey, analyticsId);
-    }
   } catch {
     // Attribution is best effort and must never interrupt the funnel.
   }
 
   return {
     attribution: { firstTouch, lastTouch: touch },
-    analyticsId,
   };
 }

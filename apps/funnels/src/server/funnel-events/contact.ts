@@ -12,10 +12,12 @@ import {
 import type { FunnelEnv } from "../funnel-env";
 import { getClientIp, json } from "../http";
 import { consumeRateLimit } from "../rate-limit";
+import { verifyTurnstile } from "../turnstile-verification";
 import { enqueueFunnelEvent } from "./delivery";
 import { createRequestContext } from "./request-context";
 import {
   createRetryToken,
+  deriveProspectId,
   deriveSubmissionId,
   digestContactSubmission,
   readRetryToken,
@@ -23,39 +25,9 @@ import {
 
 type SubmissionIdentity = {
   submissionId: string;
+  prospectId: string;
   emailVerification: EmailVerification;
   retryToken: string;
-};
-
-const verifyTurnstile = async (
-  request: Request,
-  submission: ContactSubmissionRequest,
-  clientIp: string,
-  secret: string,
-) => {
-  const turnstileBody = new FormData();
-  turnstileBody.set("secret", secret);
-  turnstileBody.set("response", submission.turnstileToken);
-  turnstileBody.set("remoteip", clientIp);
-
-  try {
-    const response = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      { method: "POST", body: turnstileBody },
-    );
-    const result = (await response.json()) as {
-      success?: boolean;
-      action?: string;
-      hostname?: string;
-    };
-    return Boolean(
-      result.success &&
-      result.action === "contact_submit" &&
-      result.hostname === new URL(request.url).hostname,
-    );
-  } catch {
-    return undefined;
-  }
 };
 
 const restoreRetryIdentity = async (
@@ -76,6 +48,7 @@ const restoreRetryIdentity = async (
 
   return {
     submissionId: retryClaims.submissionId,
+    prospectId: retryClaims.prospectId,
     emailVerification: retryClaims.emailVerification,
     retryToken: submission.retry.token,
   };
@@ -126,12 +99,13 @@ export async function processContactSubmission(
       return json({ error: "turnstile_unavailable" }, 503);
     }
 
-    const turnstileAccepted = await verifyTurnstile(
+    const turnstileAccepted = await verifyTurnstile({
       request,
-      submission,
+      token: submission.turnstileToken,
       clientIp,
-      env.TURNSTILE_SECRET_KEY,
-    );
+      secret: env.TURNSTILE_SECRET_KEY,
+      expectedAction: "contact_submit",
+    });
     if (turnstileAccepted === undefined) {
       return json({ error: "turnstile_unavailable" }, 503);
     }
@@ -162,9 +136,19 @@ export async function processContactSubmission(
       ...submission.payload,
       emailVerification: verification,
     });
+    const prospectSecret =
+      env.PROSPECT_ID_SECRET ??
+      ((env.PULPSENSE_ENVIRONMENT ?? "local") !== "production"
+        ? env.SUBMISSION_SIGNING_SECRET
+        : undefined);
+    if (!prospectSecret) {
+      return json({ error: "prospect_identity_unavailable" }, 503);
+    }
+    const prospectId = await deriveProspectId(contact.email, prospectSecret);
     const retryToken = await createRetryToken(
       {
         submissionId,
+        prospectId,
         requestDigest,
         emailVerification: verification,
         contact,
@@ -174,6 +158,7 @@ export async function processContactSubmission(
     );
     identity = {
       submissionId,
+      prospectId,
       emailVerification: verification,
       retryToken,
     };
@@ -185,6 +170,7 @@ export async function processContactSubmission(
     eventType: "contact_submitted",
     funnelId: submission.funnelId,
     submissionId: identity.submissionId,
+    prospectId: identity.prospectId,
     eventId,
     occurredAt: new Date().toISOString(),
     payload: {
@@ -202,6 +188,7 @@ export async function processContactSubmission(
     return json({
       accepted: true,
       submissionId: identity.submissionId,
+      prospectId: identity.prospectId,
       eventId,
       runId,
       retry: {

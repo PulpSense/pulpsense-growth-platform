@@ -35,13 +35,13 @@ Meta destinations are selected explicitly by funnel identity. The AI SEO campaig
 
 Test event codes may remain saved in the Development environment without affecting delivery. Set `META_TEST_EVENTS_ENABLED=true` only during a Meta Test Events session, then set it back to `false`; the codes do not need to be deleted. Production should keep this unset or set to `false`.
 
-Set `POSTHOG_PROJECT_KEY` and the region-appropriate `POSTHOG_HOST` to emit the redacted `funnel_contact_submitted`, `funnel_application_submitted`, and authoritative `funnel_booking_completed` lifecycle. The adapter uses the anonymous browser analytics ID when available, excludes contact and application-answer payloads, and logs a redacted delivery failure without failing the lifecycle run.
+Set `POSTHOG_PROJECT_KEY` and the region-appropriate `POSTHOG_HOST` to emit Prospect-linked contact, application, and authoritative booking lifecycle events. The adapter uses the canonical Prospect ID, attaches browser-originated events to their PostHog session, updates searchable Lead Contact Details and Journey Attribution properties, and logs a redacted delivery failure without failing the lifecycle run.
 
 Set `TWENTY_QUALIFIED_STAGE_VALUE` to the API value for the Twenty stage labelled **Qualified – Awaiting Booking**. Set `TWENTY_CLOSED_STAGE_VALUES` to the comma-separated API values that represent won, lost, or otherwise closed Opportunities in that workspace.
 
 Set `TWENTY_CALL_BOOKED_STAGE_VALUE` to the API value for the Twenty stage labelled **Call Booked**. A verified `booking_completed` event records an idempotent booking activity derived from the Cal UID, advances the matching open Opportunity, and sends Meta `Schedule` with the same deterministic event ID.
 
-Funnel-event runs are serialized to protect the one-open-Opportunity invariant. The immutable Person Note remains the complete application record.
+The Twenty Person object must expose `prospectId`. The Twenty Opportunity object must expose `originatingLeadJourneyId`, `brandUrl`, `paidSocialSpend`, `winnerStatus`, `platforms`, and `deliveryTimeline`. The processor sets the originating Lead Journey only when it creates an Opportunity, projects the sales fields on create and repeat-update operations, and keeps the immutable Person Note as the complete application record. Funnel-event runs are serialized to protect the one-open-Opportunity invariant.
 
 Twenty owns Company creation and Person-to-Company linking. Trigger.dev never creates a Company; it only matches an existing Company by the normalized business-email domain before linking a qualified Opportunity. The audit and operational constraint are documented in [`docs/twenty-company-ownership.md`](../../docs/twenty-company-ownership.md).
 

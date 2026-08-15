@@ -19,7 +19,10 @@ import {
   sendMeetingReminderTask,
 } from "./meeting-reminders.js";
 import { runPrecallSequenceTask } from "./precall-sequence.js";
-import { createPostHogLifecycleCapture } from "./posthog-lifecycle.js";
+import {
+  createPostHogLifecycleCapture,
+  createPostHogPersonLinkCapture,
+} from "./posthog-lifecycle.js";
 import { resolveMetaEnvironment } from "./meta-destination.js";
 
 type AdapterDestination = "twenty" | "meta" | "slack" | "brevo" | "trigger";
@@ -131,6 +134,10 @@ type ProcessorDependencies = {
     event: BookingCompletedEvent | BookingRescheduledEvent,
   ): Promise<unknown>;
   capturePostHogLifecycle?(event: FunnelEvent): Promise<void>;
+  capturePostHogPersonLink?(
+    event: FunnelEvent,
+    twentyPersonId: string,
+  ): Promise<void>;
   executeAdapter?: AdapterExecutor;
   alertTwentyFailure?(context: TwentyFailureContext): Promise<void>;
   log: {
@@ -210,21 +217,50 @@ const executeTwenty = async <Result>(
   }
 };
 
-const capturePostHogSafely = async (
+const deliverPostHogSafely = async (
   event: FunnelEvent,
   dependencies: ProcessorDependencies,
+  delivery: (() => Promise<void>) | undefined,
+  failureMessage: string,
 ) => {
-  if (!dependencies.capturePostHogLifecycle) return;
+  if (!delivery) return;
 
   try {
-    await dependencies.capturePostHogLifecycle(event);
+    await delivery();
   } catch {
-    dependencies.log.info("PostHog lifecycle delivery failed", {
+    dependencies.log.info(failureMessage, {
       submissionId: event.submissionId,
       eventId: event.eventId,
       eventType: event.eventType,
     });
   }
+};
+
+const capturePostHogSafely = (
+  event: FunnelEvent,
+  dependencies: ProcessorDependencies,
+) => {
+  const capture = dependencies.capturePostHogLifecycle;
+  return deliverPostHogSafely(
+    event,
+    dependencies,
+    capture ? () => capture(event) : undefined,
+    "PostHog lifecycle delivery failed",
+  );
+};
+
+const capturePostHogPersonLinkSafely = async (
+  event: FunnelEvent,
+  personId: string,
+  dependencies: ProcessorDependencies,
+) => {
+  const capture = dependencies.capturePostHogPersonLink;
+  return deliverPostHogSafely(
+    event,
+    dependencies,
+    capture ? () => capture(event, personId) : undefined,
+    "PostHog person link delivery failed",
+  );
 };
 
 const precallPayloadFromBooking = (
@@ -328,6 +364,7 @@ export async function processFunnelEvent(
       measurement: capturePostHogSafely(event, dependencies),
     });
     const { personId, booking, eventsReceived } = destinations.core;
+    await capturePostHogPersonLinkSafely(event, personId, dependencies);
 
     dependencies.log.info("Processed verified funnel booking", {
       submissionId: event.submissionId,
@@ -388,6 +425,7 @@ export async function processFunnelEvent(
       measurement: capturePostHogSafely(event, dependencies),
     });
     const { personId, application, eventsReceived } = destinations.core;
+    await capturePostHogPersonLinkSafely(event, personId, dependencies);
 
     dependencies.log.info("Processed funnel application", {
       submissionId: event.submissionId,
@@ -439,6 +477,7 @@ export async function processFunnelEvent(
     measurement: capturePostHogSafely(event, dependencies),
   });
   const { personId, eventsReceived } = destinations.core;
+  await capturePostHogPersonLinkSafely(event, personId, dependencies);
 
   dependencies.log.info("Processed funnel contact", {
     submissionId: event.submissionId,
@@ -573,6 +612,7 @@ const personInput = (event: FunnelEvent) => ({
   phones: {
     primaryPhoneNumber: event.payload.phone,
   },
+  ...(event.prospectId ? { prospectId: event.prospectId } : {}),
 });
 
 const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
@@ -879,6 +919,9 @@ const recordTwentyApplication = async (
       ...(attemptOpportunityId ? { id: attemptOpportunityId } : {}),
       name: `AI SEO – ${event.companyDomain}`,
       ...(openOpportunity ? {} : { stage }),
+      ...(openOpportunity
+        ? {}
+        : { originatingLeadJourneyId: event.submissionId }),
       pointOfContactId: personId,
       ...(companyId ? { companyId } : {}),
     },
@@ -1155,6 +1198,15 @@ export function createProcessorDependencies(
         { fetch: runtime.fetch },
       )
     : undefined;
+  const capturePostHogPersonLink = environment.POSTHOG_PROJECT_KEY
+    ? createPostHogPersonLinkCapture(
+        {
+          apiKey: environment.POSTHOG_PROJECT_KEY,
+          host: environment.POSTHOG_HOST ?? "https://us.i.posthog.com",
+        },
+        { fetch: runtime.fetch },
+      )
+    : undefined;
   const executeWithRetry: AdapterExecutor =
     runtime.executeAdapter ??
     ((context, operation) =>
@@ -1366,6 +1418,7 @@ export function createProcessorDependencies(
     executeAdapter: executeWithRetry,
     alertTwentyFailure,
     ...(capturePostHogLifecycle ? { capturePostHogLifecycle } : {}),
+    ...(capturePostHogPersonLink ? { capturePostHogPersonLink } : {}),
     log: runtime.log,
   };
 }
