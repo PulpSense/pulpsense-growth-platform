@@ -1,0 +1,63 @@
+---
+import { LeadMagnetOptIn } from "@/components/funnel/LeadMagnetOptIn";
+import {
+  getLeadMagnetStaticPaths,
+  type LeadMagnetConfig,
+} from "@pulpsense/lead-magnets";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import "@/styles/lead-magnet.css";
+
+export function getStaticPaths() {
+  return getLeadMagnetStaticPaths();
+}
+
+type Props = { config: LeadMagnetConfig };
+const { config } = Astro.props;
+---
+
+<BaseLayout
+  title={config.seo.title}
+  description={config.seo.description}
+  loadTurnstile
+>
+  <main id="lm-funnel" class="lm-page">
+    <div class="lm-topbar">PulpSense Agent Resources</div>
+    <section class="lm-shell">
+      <div class="lm-copy">
+        <a
+          class="lm-brand"
+          href="https://pulpsense.com"
+          aria-label="PulpSense home"
+        >
+          <img
+            src="/assets/brand/pulpsense-logo-black.png"
+            alt="PulpSense"
+            width="473"
+            height="130"
+          />
+        </a>
+        <div class="lm-badge"><span>✦</span>{config.page.eyebrow}</div>
+        <h1>{config.page.headline} <span>{config.page.accent}</span></h1>
+        <p class="lm-lede">{config.page.description}</p>
+        <ul class="lm-benefits">
+          {config.page.benefits.map((benefit) => <li>{benefit}</li>)}
+        </ul>
+        <p class="lm-compatibility">{config.page.compatibility}</p>
+      </div>
+
+      <div class="lm-card">
+        <p class="lm-card-eyebrow">{config.page.cardEyebrow}</p>
+        <h2>{config.page.cardTitle}</h2>
+        <p>{config.page.cardDescription}</p>
+        <LeadMagnetOptIn
+          client:load
+          magnetId={config.id}
+          buttonLabel={config.page.buttonLabel}
+          successTitle={config.page.successTitle}
+          successDescription={config.page.successDescription}
+          turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}
+        />
+      </div>
+    </section>
+  </main>
+</BaseLayout>
