@@ -216,7 +216,7 @@ jobs:
           CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
         run: |
           configured_secrets="$(pnpm --filter @pulpsense/funnels exec wrangler pages secret list --project-name "$CLOUDFLARE_PAGES_PROJECT")"
-          for secret_name in CAL_BOOKING_LINK CAL_WEBHOOK_SECRET MILLION_VERIFIER_API_KEY PROSPECT_ID_SECRET PULPSENSE_ENVIRONMENT PULPSENSE_TRIGGER_SECRET_KEY SUBMISSION_SIGNING_SECRET TURNSTILE_SECRET_KEY; do
+          for secret_name in CAL_BOOKING_LINK CAL_WEBHOOK_SECRET MILLION_VERIFIER_API_KEY PROSPECT_ID_SECRET PULPSENSE_ENVIRONMENT PULPSENSE_TRIGGER_SECRET_KEY SUBMISSION_SIGNING_SECRET TURNSTILE_SECRET_KEY TWENTY_PRODUCTION_WORKSPACE_ID TWENTY_WEBHOOK_SECRET; do
             if ! grep -q -- "- $secret_name:" <<<"$configured_secrets"; then
               echo "Production Pages secret $secret_name is not configured"
               exit 1

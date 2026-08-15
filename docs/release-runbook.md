@@ -34,7 +34,7 @@ The project must be `pulpsense-funnels`, its production branch must be `master`,
 
 Deploy `pulpsense-funnel-rate-limiter` with `pnpm --filter @pulpsense/rate-limiter deploy:production`. Confirm it has no public route. The Pages project must use `apps/funnels/wrangler.production.toml`, whose `FUNNEL_RATE_LIMIT_SERVICE` binding targets that production service, never the preview Worker.
 
-Configure the Pages project with `PULPSENSE_ENVIRONMENT=production` and the secrets `TURNSTILE_SECRET_KEY`, `SUBMISSION_SIGNING_SECRET`, `MILLION_VERIFIER_API_KEY`, `PULPSENSE_TRIGGER_SECRET_KEY`, and `CAL_WEBHOOK_SECRET`. Confirm Turnstile authorizes both the production `pages.dev` hostname and `go.pulpsense.com`. Confirm the Cal webhook targets `/api/webhooks/cal` on the production hostname and uses the matching secret.
+Configure the Pages project with `PULPSENSE_ENVIRONMENT=production` and the secrets `TURNSTILE_SECRET_KEY`, `SUBMISSION_SIGNING_SECRET`, `MILLION_VERIFIER_API_KEY`, `PULPSENSE_TRIGGER_SECRET_KEY`, `CAL_WEBHOOK_SECRET`, `TWENTY_WEBHOOK_SECRET`, and `TWENTY_PRODUCTION_WORKSPACE_ID`. Confirm Turnstile authorizes both the production `pages.dev` hostname and `go.pulpsense.com`. Confirm the Cal webhook targets `/api/webhooks/cal` and the Twenty webhook targets `/api/webhooks/twenty` on the production hostname with their matching secrets.
 
 ### Trigger.dev production runtime
 

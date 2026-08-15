@@ -5,6 +5,7 @@
   "description": "Trigger.dev automations for PulpSense.",
   "type": "module",
   "scripts": {
+    "backfill:twenty-sales": "node scripts/backfill-twenty-sales-references.mjs",
     "dev": "trigger dev",
     "deploy": "trigger deploy",
     "check-types": "tsc --noEmit",
