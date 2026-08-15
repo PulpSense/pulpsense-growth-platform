@@ -382,7 +382,7 @@ export const runMetaAdsDailyBrief = async (
   const windows: BriefWindowResult[] = [];
   for (const window of buildReportingWindows(now)) {
     const dateWindow = { since: window.since, until: window.until };
-    // Compare only fully elapsed calendar days on both sides. At 09:00 ET,
+    // Compare only fully elapsed calendar days on both sides. At 09:00 Buenos Aires,
     // yesterday minus two days is safely beyond the 48-hour attribution grace.
     const attributionReadyUntilDate = shiftYmd(
       window.until,
