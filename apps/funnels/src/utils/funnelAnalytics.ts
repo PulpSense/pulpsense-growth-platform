@@ -1,4 +1,4 @@
-import posthog from "posthog-js";
+import type posthog from "posthog-js";
 
 import type { DeploymentEnvironment } from "@/lib/funnel/runtime-config";
 
@@ -196,9 +196,10 @@ const normalizeHost = (host: string) => {
 
 export function createFunnelAnalyticsClient(
   config: AnalyticsConfig,
-  runtime: AnalyticsRuntime = {},
+  runtime: AnalyticsRuntime,
 ) {
-  const client = runtime.posthog ?? posthog;
+  const client = runtime.posthog;
+  if (!client) throw new Error("PostHog adapter is required");
   const enabled = config.environment === "production" && Boolean(config.apiKey);
 
   if (enabled) {
@@ -287,11 +288,46 @@ type QueuedEvent = {
 
 let sharedClient: FunnelAnalyticsClient | undefined;
 const queuedEvents: QueuedEvent[] = [];
+let pendingIdentification:
+  | {
+      prospectId: string;
+      properties: Record<string, unknown>;
+      propertiesSetOnce: Record<string, unknown>;
+    }
+  | undefined;
 
-export function configureFunnelAnalytics(config: AnalyticsConfig) {
-  sharedClient = createFunnelAnalyticsClient(config);
-  for (const queued of queuedEvents.splice(0)) {
-    sharedClient.capture(queued.event, queued.properties as never);
+type PostHogLoader = () => Promise<PostHogAdapter>;
+
+const loadPostHog: PostHogLoader = async () =>
+  (await import("posthog-js")).default;
+
+export async function configureFunnelAnalytics(
+  config: AnalyticsConfig,
+  loader: PostHogLoader = loadPostHog,
+) {
+  if (config.environment !== "production" || !config.apiKey) {
+    queuedEvents.length = 0;
+    return;
+  }
+
+  try {
+    sharedClient = createFunnelAnalyticsClient(config, {
+      posthog: await loader(),
+    });
+    for (const queued of queuedEvents.splice(0)) {
+      sharedClient.capture(queued.event, queued.properties as never);
+    }
+    if (pendingIdentification) {
+      const pending = pendingIdentification;
+      pendingIdentification = undefined;
+      sharedClient.identify(
+        pending.prospectId,
+        pending.properties,
+        pending.propertiesSetOnce,
+      );
+    }
+  } catch {
+    console.warn("PulpSense analytics initialization failed");
   }
 }
 
@@ -302,7 +338,13 @@ export const identifyFunnelProspect = (
   prospectId: string,
   properties: Record<string, unknown>,
   propertiesSetOnce: Record<string, unknown>,
-) => sharedClient?.identify(prospectId, properties, propertiesSetOnce);
+) => {
+  if (sharedClient) {
+    sharedClient.identify(prospectId, properties, propertiesSetOnce);
+    return;
+  }
+  pendingIdentification = { prospectId, properties, propertiesSetOnce };
+};
 
 export function trackFunnelEvent<Event extends FunnelAnalyticsEvent>(
   event: Event,

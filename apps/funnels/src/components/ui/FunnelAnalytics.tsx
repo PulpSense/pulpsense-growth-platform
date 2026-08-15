@@ -32,7 +32,7 @@ export function FunnelAnalytics({
       storage: window.localStorage,
     });
     if (!apiKey) return;
-    configureFunnelAnalytics({ apiKey, host, environment, funnelId });
+    void configureFunnelAnalytics({ apiKey, host, environment, funnelId });
     trackFunnelEvent("funnel_viewed", { page });
   }, [apiKey, environment, funnelId, host, page]);
 

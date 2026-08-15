@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { createFunnelAnalyticsClient } from "./funnelAnalytics";
+import {
+  configureFunnelAnalytics,
+  createFunnelAnalyticsClient,
+  trackFunnelEvent,
+} from "./funnelAnalytics";
 
 const createPostHog = () => ({
   init: vi.fn(),
@@ -12,6 +16,39 @@ const createPostHog = () => ({
 });
 
 describe("createFunnelAnalyticsClient", () => {
+  it("loads PostHog asynchronously and flushes events captured while loading", async () => {
+    const posthog = createPostHog();
+    let release!: (posthog: ReturnType<typeof createPostHog>) => void;
+    const loader = vi.fn(
+      () =>
+        new Promise<ReturnType<typeof createPostHog>>((resolve) => {
+          release = resolve;
+        }),
+    );
+
+    const configuring = configureFunnelAnalytics(
+      {
+        apiKey: "phc_production",
+        host: "https://eu.i.posthog.com",
+        environment: "production",
+        funnelId: "ai-seo",
+      },
+      loader,
+    );
+    trackFunnelEvent("cta_clicked", { placement: "hero" });
+
+    expect(loader).toHaveBeenCalledOnce();
+    expect(posthog.capture).not.toHaveBeenCalled();
+
+    release(posthog);
+    await configuring;
+
+    expect(posthog.capture).toHaveBeenCalledWith("cta_clicked", {
+      funnel_id: "ai-seo",
+      placement: "hero",
+    });
+  });
+
   it("records production funnels with replay privacy and clean custom events", () => {
     const posthog = createPostHog();
     const client = createFunnelAnalyticsClient(
