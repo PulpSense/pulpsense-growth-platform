@@ -1247,6 +1247,54 @@ describe("POST /api/webhooks/cal", () => {
     expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
+  it("allows booking for a qualified applicant with a catch-all business email", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          success: true,
+          action: "contact_submit",
+          hostname: "preview.pulpsense.com",
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ result: "catch_all", free: false }),
+      )
+      .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
+      .mockResolvedValueOnce(Response.json({ id: "run_application" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const env = {
+      ...allowingRateLimit,
+      TURNSTILE_SECRET_KEY: "turnstile-secret",
+      MILLION_VERIFIER_API_KEY: "million-verifier-key",
+      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+      PULPSENSE_ENVIRONMENT: "preview" as const,
+      CAL_WEBHOOK_SECRET: "cal-webhook-secret",
+    };
+    const contactResponse = await handleFunnelEvent(
+      contactRequest("https://preview.pulpsense.com"),
+      env,
+    );
+    const contact = (await contactResponse.json()) as {
+      retry: { submissionId: string; token: string };
+    };
+    const applicationResponse = await handleFunnelEvent(
+      qualifiedApplicationRequest(contact.retry),
+      env,
+    );
+
+    await expect(applicationResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        accepted: true,
+        qualificationStatus: "qualified",
+        nextStep: "booking",
+        bookingIdentity: expect.any(Object),
+      }),
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+  });
+
   it("rejects a booking correlated with contact identity instead of qualified booking identity", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()

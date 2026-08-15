@@ -95,6 +95,7 @@ export async function processApplicationSubmission(
     qualificationStatus === "qualified" &&
     ((identity.emailVerification.status === "verified" &&
       identity.emailVerification.result === "business") ||
+      identity.emailVerification.result === "catch_all" ||
       identity.emailVerification.result === "provider_error");
   const bookingIdentity = bookingEligible
     ? {
