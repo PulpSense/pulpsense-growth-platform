@@ -133,7 +133,9 @@ export function useFunnelSubmission(funnelId: FunnelId) {
           ...(measurement.analyticsId
             ? { analyticsId: measurement.analyticsId }
             : {}),
-          ...(measurement.sessionId ? { sessionId: measurement.sessionId } : {}),
+          ...(measurement.sessionId
+            ? { sessionId: measurement.sessionId }
+            : {}),
           sourceUrl: input.sourceUrl,
           ...(input.referrer ? { referrer: input.referrer } : {}),
           ...(input.fbp ? { fbp: input.fbp } : {}),
@@ -157,7 +159,9 @@ export function useFunnelSubmission(funnelId: FunnelId) {
         result.prospectId &&
         result.submissionId
       ) {
-        const email = String(input.data.email ?? "").trim().toLowerCase();
+        const email = String(input.data.email ?? "")
+          .trim()
+          .toLowerCase();
         const companyDomain = email.split("@").at(-1);
         const name = [input.data.firstName, input.data.lastName]
           .filter(Boolean)

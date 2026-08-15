@@ -155,7 +155,8 @@ const sanitizedProperties = <Event extends FunnelAnalyticsEvent>(
   }
 
   if (event === "funnel_deck_slide_viewed") {
-    const input = properties as FunnelAnalyticsEventProperties["funnel_deck_slide_viewed"];
+    const input =
+      properties as FunnelAnalyticsEventProperties["funnel_deck_slide_viewed"];
     const deckId = safeIdentifier(input.deck_id);
     const slideId = safeIdentifier(input.slide_id);
     if (deckId && slideId && Number.isInteger(input.slide_index)) {
@@ -168,9 +169,13 @@ const sanitizedProperties = <Event extends FunnelAnalyticsEvent>(
   }
 
   if (event === "funnel_qualification_submitted") {
-    const input = properties as FunnelAnalyticsEventProperties["funnel_qualification_submitted"];
+    const input =
+      properties as FunnelAnalyticsEventProperties["funnel_qualification_submitted"];
     const formId = safeIdentifier(input.qualification_form_id);
-    if (formId && /^\d{4}-\d{2}-\d{2}$/u.test(input.qualification_form_version)) {
+    if (
+      formId &&
+      /^\d{4}-\d{2}-\d{2}$/u.test(input.qualification_form_version)
+    ) {
       Object.assign(safe, {
         qualification_form_id: formId,
         qualification_form_version: input.qualification_form_version,

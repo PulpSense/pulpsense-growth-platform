@@ -96,7 +96,8 @@ const initialContact: ContactData = {
 };
 
 const qualificationQuestions = {
-  business_owner: "Are you the owner or primary decision-maker for the business?",
+  business_owner:
+    "Are you the owner or primary decision-maker for the business?",
   marketing_budget:
     "What monthly marketing budget have you set aside to generate more leads?",
   investment_intent:

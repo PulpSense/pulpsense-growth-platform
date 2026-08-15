@@ -84,14 +84,11 @@ describe("createFunnelAnalyticsClient", () => {
       email: "maya@brand.com",
     } as never);
 
-    expect(posthog.capture).toHaveBeenCalledWith(
-      "funnel_validation_failed",
-      {
-        funnel_id: "ai-seo",
-        step: "contact",
-        fields: ["email", "phone"],
-      },
-    );
+    expect(posthog.capture).toHaveBeenCalledWith("funnel_validation_failed", {
+      funnel_id: "ai-seo",
+      step: "contact",
+      fields: ["email", "phone"],
+    });
 
     const config = posthog.init.mock.calls[0]![1];
     expect(

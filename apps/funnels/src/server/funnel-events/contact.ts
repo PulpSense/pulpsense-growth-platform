@@ -173,10 +173,7 @@ export async function processContactSubmission(
     if (!prospectSecret) {
       return json({ error: "prospect_identity_unavailable" }, 503);
     }
-    const prospectId = await deriveProspectId(
-      contact.email,
-      prospectSecret,
-    );
+    const prospectId = await deriveProspectId(contact.email, prospectSecret);
     const retryToken = await createRetryToken(
       {
         submissionId,
