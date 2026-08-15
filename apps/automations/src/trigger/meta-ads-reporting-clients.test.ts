@@ -384,6 +384,7 @@ describe("postSlackAdsBrief", () => {
       "brief",
       "2026-08-15",
       ok,
+      [{ type: "header", text: { type: "plain_text", text: "Brief" } }],
     );
     expect(JSON.parse(String(ok.mock.calls[1]?.[1]?.body))).toMatchObject({
       channel: "CADS",
@@ -395,6 +396,7 @@ describe("postSlackAdsBrief", () => {
         event_type: "pulpsense_meta_ads_daily_brief",
         event_payload: { report_date: "2026-08-15" },
       },
+      blocks: [{ type: "header", text: { type: "plain_text", text: "Brief" } }],
     });
   });
 

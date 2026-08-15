@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import {
   buildReportingWindows,
   formatDailyBrief,
+  formatDailyBriefBlocks,
   runMetaAdsDailyBrief,
   type BriefWindowResult,
+  type DailyBrief,
 } from "./meta-ads-daily-report.js";
 
 const total = {
@@ -85,30 +87,47 @@ describe("buildReportingWindows", () => {
 });
 
 describe("formatDailyBrief", () => {
-  it("is concise, exception-first, explicit about low-spend uncertainty and attribution limits", () => {
-    const text = formatDailyBrief({
-      generatedAt: "2026-08-15T13:00:00.000Z",
-      monthlyBudget: 3000,
-      targetCpb: 100,
-      windows: [
-        result,
-        {
-          ...result,
-          key: "trailing7d",
-          label: "Trailing 7 days",
-          total: { ...total, spend: 320 },
-          verifiedBookings: 0,
-          alerts: [{ code: "zero_verified_bookings", severity: "critical" }],
-        },
-      ],
-    });
-    expect(text).toContain(":rotating_light: *Critical* — Trailing 7 days");
-    expect(text).toContain("Verified bookings (Twenty): 1");
-    expect(text).toContain("Meta Schedule: 1");
+  const brief = {
+    generatedAt: "2026-08-15T13:00:00.000Z",
+    monthlyBudget: 3000,
+    targetCpb: 100,
+    windows: [
+      result,
+      {
+        ...result,
+        key: "trailing7d",
+        label: "Trailing 7 days",
+        total: { ...total, spend: 320 },
+        verifiedBookings: 0,
+        alerts: [{ code: "zero_verified_bookings", severity: "critical" }],
+      },
+    ],
+  } satisfies DailyBrief;
+
+  it("keeps the fallback concise, exception-first, and explicit about attribution limits", () => {
+    const text = formatDailyBrief(brief);
+    expect(text).toContain(":rotating_light: *Critical* · Trailing 7 days");
+    expect(text).toContain("*7-day decision window*");
+    expect(text).toContain("Verified 0");
+    expect(text).toContain("Meta 1");
     expect(text).toContain("inconclusive — under $100 spend");
-    expect(text).toContain("CAPI/Meta attribution");
-    expect(text).toContain("MTD pacing");
+    expect(text).toContain("CRM bookings are account-level");
     expect(text).not.toContain("Twenty campaign");
+  });
+
+  it("renders a compact Slack Block Kit executive brief", () => {
+    const blocks = formatDailyBriefBlocks(brief);
+    expect(blocks).toHaveLength(10);
+    expect(blocks[0]).toMatchObject({
+      type: "header",
+      text: { type: "plain_text", text: "Meta Ads · Daily brief" },
+    });
+    expect(JSON.stringify(blocks)).toContain("7-day decision window");
+    expect(JSON.stringify(blocks)).toContain("Campaign signal");
+    expect(JSON.stringify(blocks)).toContain("Yesterday");
+    expect(JSON.stringify(blocks)).toContain("Month to date");
+    expect(JSON.stringify(blocks)).toContain("CRM bookings are account-level");
+    expect(JSON.stringify(blocks)).not.toContain("Clicks 20 · impressions");
   });
 });
 
@@ -129,7 +148,11 @@ describe("runMetaAdsDailyBrief", () => {
     expect(fetchMeta).toHaveBeenCalledTimes(7);
     expect(countVerifiedBookings).toHaveBeenCalledTimes(4);
     expect(postSlack).toHaveBeenCalledTimes(1);
-    expect(postSlack).toHaveBeenCalledWith(expect.any(String), "2026-08-14");
+    expect(postSlack).toHaveBeenCalledWith(
+      expect.any(String),
+      "2026-08-14",
+      expect.any(Array),
+    );
     expect(postSlack.mock.calls[0]?.[0]).toContain("Prospecting");
   });
 
@@ -211,9 +234,7 @@ describe("runMetaAdsDailyBrief", () => {
       total: { spend: 0 },
       verifiedBookings: 0,
     });
-    expect(postSlack.mock.calls[0]?.[0]).toContain(
-      "MTD pacing: no completed days yet",
-    );
+    expect(postSlack.mock.calls[0]?.[0]).toContain("No completed days");
   });
 
   it("sorts campaign rows by spend and limits each window to five", async () => {

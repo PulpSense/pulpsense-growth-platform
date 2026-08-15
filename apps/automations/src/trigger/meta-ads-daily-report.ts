@@ -115,70 +115,203 @@ export type DailyBrief = {
 };
 
 const money = (value: number | null) =>
-  value === null ? "—" : `$${value.toFixed(2)}`;
+  value === null
+    ? "—"
+    : new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+        maximumFractionDigits: 2,
+      }).format(value);
 const integer = (value: number) => Math.round(value).toLocaleString("en-US");
 const confidenceText = (campaign: CampaignBriefMetrics) =>
   campaign.confidence === "insufficient"
     ? "inconclusive — under $100 spend"
     : campaign.confidence;
+const shortDate = (ymd: string) =>
+  new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${ymd}T00:00:00.000Z`));
+const dateRange = (window: BriefWindowResult) =>
+  window.hasCompletedDays
+    ? `${shortDate(window.dateWindow.since)}–${shortDate(window.dateWindow.until)}`
+    : "No completed days";
+const actualCpb = (window: BriefWindowResult) =>
+  window.verifiedBookings ? window.total.spend / window.verifiedBookings : null;
+const escapeMrkdwn = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 
-const alertText = (alert: BriefAlert) =>
+const alertText = (window: BriefWindowResult, alert: BriefAlert) =>
   ({
-    zero_verified_bookings: "spend with zero verified bookings",
-    high_actual_cpb: "verified CPB is above target guardrail",
-    tracking_discrepancy:
-      "Twenty verified bookings exceed Meta Schedule after the 48h grace period",
+    zero_verified_bookings: `${money(window.total.spend)} spent with no verified bookings`,
+    high_actual_cpb: `verified CPB ${money(actualCpb(window))} is above the target guardrail`,
+    tracking_discrepancy: `${window.attributionReadyVerifiedBookings} verified bookings vs ${window.attributionReadyMetaBookings} Meta Schedule after 48h`,
   })[alert.code];
 
-export const formatDailyBrief = (brief: DailyBrief) => {
+const mtdPacing = (brief: DailyBrief, mtd: BriefWindowResult | undefined) => {
+  if (!mtd) return { label: "Unavailable", percent: null };
+  if (!mtd.hasCompletedDays)
+    return { label: "No completed days", percent: null };
+  const [year, month, day] = mtd.dateWindow.until.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(year!, month!, 0)).getUTCDate();
+  const expectedSpend = (brief.monthlyBudget * day!) / daysInMonth;
+  const percent = expectedSpend
+    ? Math.round((mtd.total.spend / expectedSpend) * 100)
+    : 0;
+  return { label: `${percent}% of expected pace`, percent };
+};
+
+const campaignLines = (window: BriefWindowResult | undefined) =>
+  window?.campaigns.length
+    ? window.campaigns
+        .map(
+          (campaign) =>
+            `• *${escapeMrkdwn(campaign.campaignName ?? campaign.campaignId ?? "Campaign")}* — ${money(campaign.spend)} spend · ${campaign.metaBookings} Meta bookings · ${confidenceText(campaign)}`,
+        )
+        .join("\n")
+    : "No campaign delivery";
+
+export type SlackBriefBlock = Record<string, unknown>;
+
+export const formatDailyBriefBlocks = (
+  brief: DailyBrief,
+): SlackBriefBlock[] => {
+  const yesterday = brief.windows.find((window) => window.key === "yesterday");
+  const trailing = brief.windows.find((window) => window.key === "trailing7d");
+  const mtd = brief.windows.find((window) => window.key === "mtd");
+  const pacing = mtdPacing(brief, mtd);
   const alerts = brief.windows.flatMap((window) =>
     window.alerts.map(
       (alert) =>
-        `${alert.severity === "critical" ? ":rotating_light: *Critical*" : ":warning: *Warning*"} — ${window.label}: ${alertText(alert)}`,
+        `${alert.severity === "critical" ? ":rotating_light: *Critical*" : ":warning: *Attention*"} · ${alertText(window, alert)}`,
     ),
   );
+  const alertCopy = alerts.length
+    ? alerts.join("\n")
+    : ":large_green_circle: *No threshold exceptions*";
+
+  return [
+    {
+      type: "header",
+      text: { type: "plain_text", text: "Meta Ads · Daily brief", emoji: true },
+    },
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: `Through *${yesterday ? shortDate(yesterday.dateWindow.until) : brief.generatedAt.slice(0, 10)}*  ·  ${money(brief.monthlyBudget)}/mo budget  ·  ${money(brief.targetCpb)} target booking`,
+        },
+      ],
+    },
+    { type: "section", text: { type: "mrkdwn", text: alertCopy } },
+    { type: "divider" },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*7-day decision window*  _${trailing ? dateRange(trailing) : "Unavailable"}_`,
+      },
+      fields: trailing
+        ? [
+            { type: "mrkdwn", text: `*Spend*\n${money(trailing.total.spend)}` },
+            {
+              type: "mrkdwn",
+              text: `*Verified bookings*\n${trailing.verifiedBookings}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Actual CPB*\n${money(actualCpb(trailing))}`,
+            },
+            {
+              type: "mrkdwn",
+              text: `*Leads / CPL*\n${trailing.total.leads} / ${money(trailing.total.cpl)}`,
+            },
+          ]
+        : [],
+    },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*Campaign signal*  _Meta-attributed_\n${campaignLines(trailing)}`,
+      },
+    },
+    { type: "divider" },
+    {
+      type: "section",
+      fields: [
+        {
+          type: "mrkdwn",
+          text: yesterday
+            ? `*Yesterday*  _${dateRange(yesterday)}_\n${money(yesterday.total.spend)} spend · ${yesterday.total.leads} leads · ${yesterday.verifiedBookings} bookings · ${money(actualCpb(yesterday))} CPB`
+            : "*Yesterday*\nUnavailable",
+        },
+        {
+          type: "mrkdwn",
+          text: mtd
+            ? `*Month to date*  _${dateRange(mtd)}_\n${money(mtd.total.spend)} spend · ${mtd.verifiedBookings} bookings · ${money(actualCpb(mtd))} CPB · ${pacing.label}`
+            : "*Month to date*\nUnavailable",
+        },
+      ],
+    },
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: trailing
+            ? `*7-day delivery*  ${integer(trailing.total.impressions)} impressions · ${integer(trailing.total.clicks)} clicks · ${trailing.total.ctr.toFixed(2)}% CTR · ${money(trailing.total.cpc)} CPC · ${money(trailing.total.cpm)} CPM · ${trailing.total.frequency?.toFixed(2) ?? "—"}× frequency`
+            : "7-day delivery unavailable",
+        },
+      ],
+    },
+    {
+      type: "context",
+      elements: [
+        {
+          type: "mrkdwn",
+          text: "_CRM bookings are account-level. Campaign signal uses Meta attribution; directional results are not causal proof._",
+        },
+      ],
+    },
+  ];
+};
+
+export const formatDailyBrief = (brief: DailyBrief) => {
+  const yesterday = brief.windows.find((window) => window.key === "yesterday");
+  const trailing = brief.windows.find((window) => window.key === "trailing7d");
   const mtd = brief.windows.find((window) => window.key === "mtd");
-  const mtdPacing = (() => {
-    if (!mtd) return "MTD pacing: unavailable";
-    if (!mtd.hasCompletedDays) return "MTD pacing: no completed days yet";
-    const [year, month, day] = mtd.dateWindow.until.split("-").map(Number);
-    const daysInMonth = new Date(Date.UTC(year!, month!, 0)).getUTCDate();
-    const expectedSpend = (brief.monthlyBudget * day!) / daysInMonth;
-    const pacingPercent = expectedSpend
-      ? Math.round((mtd.total.spend / expectedSpend) * 100)
-      : 0;
-    return `MTD pacing: ${money(mtd.total.spend)} vs ${money(expectedSpend)} expected through ${mtd.dateWindow.until} (${pacingPercent}%)`;
-  })();
-  const lines = [
-    `*Meta Ads daily brief* · ${brief.generatedAt.slice(0, 10)}`,
-    `Budget: ${money(brief.monthlyBudget)}/month · target verified CPB: ${money(brief.targetCpb)}`,
-    mtdPacing,
+  const pacing = mtdPacing(brief, mtd);
+  const alerts = brief.windows.flatMap((window) =>
+    window.alerts.map(
+      (alert) =>
+        `${alert.severity === "critical" ? ":rotating_light: *Critical*" : ":warning: *Attention*"} · ${window.label}: ${alertText(window, alert)}`,
+    ),
+  );
+  return [
+    `*Meta Ads · Daily brief* · through ${yesterday ? shortDate(yesterday.dateWindow.until) : brief.generatedAt.slice(0, 10)}`,
     ...(alerts.length
       ? alerts
-      : [":white_check_mark: No threshold exceptions"]),
-    "_Verified bookings are a total-level Twenty audit and are not assigned to campaigns. Campaign rows use Meta attribution only. CAPI/Meta attribution can lag or differ from verified CRM bookings; do not treat directional data as causal proof._",
-  ];
-  for (const window of brief.windows) {
-    const actualCpb = window.verifiedBookings
-      ? window.total.spend / window.verifiedBookings
-      : null;
-    lines.push(
-      "",
-      `*${window.label}* (${window.hasCompletedDays ? `${window.dateWindow.since}–${window.dateWindow.until}` : "no completed days"})`,
-      `Spend ${money(window.total.spend)} · Verified bookings (Twenty): ${window.verifiedBookings} · actual CPB ${money(actualCpb)}`,
-      `Meta Schedule: ${window.total.metaBookings} · leads ${window.total.leads} · CPL ${money(window.total.cpl)}`,
-      `Clicks ${integer(window.total.clicks)} · impressions ${integer(window.total.impressions)} · reach ${integer(window.total.reach)} · CTR ${window.total.ctr.toFixed(2)}% · CPC ${money(window.total.cpc)} · CPM ${money(window.total.cpm)} · frequency ${window.total.frequency?.toFixed(2) ?? "—"}`,
-    );
-    if (window.campaigns.length) {
-      lines.push(
-        ...window.campaigns.map(
-          (campaign) =>
-            `• ${campaign.campaignName ?? campaign.campaignId ?? "Campaign"}: ${money(campaign.spend)} · Meta Schedule ${campaign.metaBookings} · Meta CPB ${money(campaign.metaCpb)} · ${confidenceText(campaign)}`,
-        ),
-      );
-    }
-  }
-  return lines.join("\n");
+      : [":large_green_circle: No threshold exceptions"]),
+    trailing
+      ? `\n*7-day decision window* · ${dateRange(trailing)}\nSpend ${money(trailing.total.spend)} · Verified ${trailing.verifiedBookings} · Actual CPB ${money(actualCpb(trailing))} · Leads ${trailing.total.leads} · Meta ${trailing.total.metaBookings}\n${campaignLines(trailing)}`
+      : "\n*7-day decision window* · unavailable",
+    yesterday
+      ? `\n*Yesterday* · ${money(yesterday.total.spend)} spend · ${yesterday.total.leads} leads · ${yesterday.verifiedBookings} bookings · ${money(actualCpb(yesterday))} CPB`
+      : "",
+    mtd
+      ? `*Month to date* · ${money(mtd.total.spend)} spend · ${mtd.verifiedBookings} bookings · ${money(actualCpb(mtd))} CPB · ${pacing.label}`
+      : "",
+    "_CRM bookings are account-level. Campaign signal uses Meta attribution; directional results are not causal proof._",
+  ]
+    .filter(Boolean)
+    .join("\n");
 };
 
 const emptyMetrics: MetaMetrics = {
@@ -205,7 +338,11 @@ export type DailyBriefDependencies = {
     since: string;
     untilExclusive: string;
   }): Promise<number>;
-  postSlack(text: string, reportDate: string): Promise<unknown>;
+  postSlack(
+    text: string,
+    reportDate: string,
+    blocks: SlackBriefBlock[],
+  ): Promise<unknown>;
 };
 
 export const runMetaAdsDailyBrief = async (
@@ -293,10 +430,11 @@ export const runMetaAdsDailyBrief = async (
     windows,
   };
   const text = formatDailyBrief(brief);
+  const blocks = formatDailyBriefBlocks(brief);
   const reportDate =
     windows.find((window) => window.key === "yesterday")?.dateWindow.until ??
     brief.generatedAt.slice(0, 10);
-  await dependencies.postSlack(text, reportDate);
+  await dependencies.postSlack(text, reportDate, blocks);
   return brief;
 };
 

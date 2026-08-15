@@ -176,6 +176,7 @@ export const postSlackAdsBrief = async (
   text: string,
   reportDate: string,
   fetcher: Fetcher,
+  blocks?: Array<Record<string, unknown>>,
 ) => {
   type SlackResponse = {
     ok?: boolean;
@@ -252,11 +253,13 @@ export const postSlackAdsBrief = async (
         channel: config.channelId,
         ts: existingTimestamp,
         text: boundedText,
+        ...(blocks?.length ? { blocks } : {}),
         metadata,
       })
     : await slackApi("chat.postMessage", {
         channel: config.channelId,
         text: boundedText,
+        ...(blocks?.length ? { blocks } : {}),
         unfurl_links: false,
         unfurl_media: false,
         client_msg_id: clientMessageId,

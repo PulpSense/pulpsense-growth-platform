@@ -83,8 +83,8 @@ export const metaAdsDailyBriefTask = schedules.task({
         ),
       countVerifiedBookings: (window) =>
         countTwentyBookingNotes(config.twenty, window, fetch),
-      postSlack: (text, reportDate) =>
-        postSlackAdsBrief(config.slack, text, reportDate, fetch),
+      postSlack: (text, reportDate, blocks) =>
+        postSlackAdsBrief(config.slack, text, reportDate, fetch, blocks),
     });
     logger.info("Posted Meta Ads daily brief", {
       generatedAt: brief.generatedAt,
