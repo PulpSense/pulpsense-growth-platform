@@ -99,13 +99,13 @@ describe("createPostHogLifecycleCapture", () => {
           name: "Maya Chen",
           phone: "+1 555 123 4567",
           company_domain: "brand.com",
-          funnel_id: "creative-multiplier-sprint",
+          funnel_id: "ai-seo",
           lead_journey_id: applicationEvent.submissionId,
           last_utm_source: "newsletter",
         },
         $set_once: expect.objectContaining({
           first_utm_source: "meta",
-          first_utm_campaign: "creative-sprint",
+          first_utm_campaign: "ai-seo",
         }),
       },
     });
