@@ -2,12 +2,41 @@ import { useCallback, useRef } from "react";
 import type { FunnelId } from "@pulpsense/contracts";
 
 import type { FunnelAttribution } from "@/utils/funnelAttribution";
+import {
+  getFunnelAnalyticsIdentity,
+  identifyFunnelProspect,
+} from "@/utils/funnelAnalytics";
+
+const touchPropertyNames = {
+  utmSource: "utm_source",
+  utmMedium: "utm_medium",
+  utmCampaign: "utm_campaign",
+  utmContent: "utm_content",
+  utmTerm: "utm_term",
+  gclid: "gclid",
+  fbclid: "fbclid",
+  msclkid: "msclkid",
+  ttclid: "ttclid",
+  liFatId: "li_fat_id",
+  landingPage: "landing_page",
+  referrer: "referrer",
+} as const;
+
+const touchPersonProperties = (
+  prefix: "first" | "last",
+  touch: FunnelAttribution["firstTouch"],
+) =>
+  Object.fromEntries(
+    Object.entries(touch).map(([key, value]) => [
+      `${prefix}_${touchPropertyNames[key as keyof typeof touchPropertyNames]}`,
+      value,
+    ]),
+  );
 
 export type ContactSubmissionInput = {
   data: Readonly<Record<string, string | string[]>>;
   phoneCountryCode: string;
   attribution: FunnelAttribution;
-  analyticsId: string;
   turnstileToken: string;
   sourceUrl: string;
   referrer?: string;
@@ -22,7 +51,12 @@ export type ContactSubmissionError =
   | "submission_failed";
 
 export type ContactSubmissionResult =
-  | { accepted: true; eventId: string }
+  | {
+      accepted: true;
+      eventId: string;
+      prospectId: string;
+      leadJourneyId: string;
+    }
   | {
       accepted: false;
       error: ContactSubmissionError;
@@ -31,7 +65,6 @@ export type ContactSubmissionResult =
 
 export type ApplicationSubmissionInput = {
   data: Readonly<Record<string, string | string[]>>;
-  analyticsId: string;
   sourceUrl: string;
   referrer?: string;
   fbp?: string;
@@ -79,6 +112,7 @@ export function useFunnelSubmission(funnelId: FunnelId) {
 
       attemptIdRef.current ||= crypto.randomUUID();
       const phone = input.data.phone as string | undefined;
+      const measurement = getFunnelAnalyticsIdentity();
       const response = await fetch("/api/funnel-events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -96,7 +130,10 @@ export function useFunnelSubmission(funnelId: FunnelId) {
             phone: phone ? `${input.phoneCountryCode} ${phone}` : "",
           },
           attribution: input.attribution,
-          analyticsId: input.analyticsId,
+          ...(measurement.analyticsId
+            ? { analyticsId: measurement.analyticsId }
+            : {}),
+          ...(measurement.sessionId ? { sessionId: measurement.sessionId } : {}),
           sourceUrl: input.sourceUrl,
           ...(input.referrer ? { referrer: input.referrer } : {}),
           ...(input.fbp ? { fbp: input.fbp } : {}),
@@ -107,12 +144,47 @@ export function useFunnelSubmission(funnelId: FunnelId) {
         accepted?: boolean;
         error?: string;
         eventId?: string;
+        prospectId?: string;
+        submissionId?: string;
         retry?: { submissionId: string; token: string };
       };
 
       if (result.retry) retryRef.current = result.retry;
-      if (response.ok && result.accepted === true && result.eventId) {
-        return { accepted: true, eventId: result.eventId };
+      if (
+        response.ok &&
+        result.accepted === true &&
+        result.eventId &&
+        result.prospectId &&
+        result.submissionId
+      ) {
+        const email = String(input.data.email ?? "").trim().toLowerCase();
+        const companyDomain = email.split("@").at(-1);
+        const name = [input.data.firstName, input.data.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+        identifyFunnelProspect(
+          result.prospectId,
+          {
+            email,
+            name,
+            phone: phone ? `${input.phoneCountryCode} ${phone}` : "",
+            ...(companyDomain ? { company_domain: companyDomain } : {}),
+            funnel_id: funnelId,
+            lead_journey_id: result.submissionId,
+            ...touchPersonProperties("last", input.attribution.lastTouch),
+          },
+          {
+            created_at: new Date().toISOString(),
+            ...touchPersonProperties("first", input.attribution.firstTouch),
+          },
+        );
+        return {
+          accepted: true,
+          eventId: result.eventId,
+          prospectId: result.prospectId,
+          leadJourneyId: result.submissionId,
+        };
       }
 
       return {
@@ -141,7 +213,7 @@ export function useFunnelSubmission(funnelId: FunnelId) {
           funnelId,
           identity: retryRef.current,
           payload: input.data,
-          analyticsId: input.analyticsId,
+          ...getFunnelAnalyticsIdentity(),
           sourceUrl: input.sourceUrl,
           ...(input.referrer ? { referrer: input.referrer } : {}),
           ...(input.fbp ? { fbp: input.fbp } : {}),

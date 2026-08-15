@@ -18,6 +18,10 @@ export const funnelIdSchema = z.enum([
 
 export type FunnelId = z.infer<typeof funnelIdSchema>;
 
+export const prospectIdSchema = z
+  .string()
+  .regex(/^prospect_v1_[0-9a-f]{64}$/u);
+
 const attributionTouchSchema = z
   .object({
     utmSource: z.string().trim().max(200).optional(),
@@ -71,6 +75,7 @@ const requestContextSchema = z
     fbp: z.string().max(255).optional(),
     fbc: z.string().max(255).optional(),
     analyticsId: z.uuid().optional(),
+    sessionId: z.uuid().optional(),
   })
   .strict();
 
@@ -80,6 +85,7 @@ export const contactSubmittedEventSchema = z
     eventType: z.literal(CONTACT_SUBMITTED_EVENT),
     funnelId: funnelIdSchema,
     submissionId: z.string().uuid(),
+    prospectId: prospectIdSchema.optional(),
     eventId: z.string().min(1).max(200),
     occurredAt: z.string().datetime({ offset: true }),
     payload: verifiedContactPayloadSchema,
@@ -112,6 +118,7 @@ const applicationSubmittedEventBase = z
     schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
     eventType: z.literal(APPLICATION_SUBMITTED_EVENT),
     submissionId: z.string().uuid(),
+    prospectId: prospectIdSchema.optional(),
     eventId: z.string().min(1).max(200),
     occurredAt: z.string().datetime({ offset: true }),
     qualificationStatus: z.enum(["qualified", "unqualified"]),
@@ -149,6 +156,7 @@ const bookingLifecycleEventBase = z.object({
   schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
   funnelId: funnelIdSchema,
   submissionId: z.string().uuid(),
+  prospectId: prospectIdSchema.optional(),
   eventId: z.string().min(1).max(500),
   occurredAt: z.string().datetime({ offset: true }),
   qualificationStatus: z.literal("qualified"),

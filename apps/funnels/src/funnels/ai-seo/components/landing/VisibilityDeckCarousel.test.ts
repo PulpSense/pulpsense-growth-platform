@@ -26,6 +26,8 @@ describe("AI SEO visibility deck", () => {
     expect(carouselSource).toContain('from "@/components/ui/carousel"');
     expect(carouselSource).toContain("CarouselPrevious");
     expect(carouselSource).toContain("CarouselNext");
+    expect(carouselSource).toContain("funnel_deck_slide_viewed");
+    expect(carouselSource).toContain("viewedSlides.current.has");
     expect(primitiveSource).toContain('event.key === "ArrowLeft"');
     expect(primitiveSource).toContain('event.key === "ArrowRight"');
     expect(primitiveSource).toContain("tabIndex={0}");

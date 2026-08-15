@@ -2,63 +2,141 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createFunnelAnalyticsClient } from "./funnelAnalytics";
 
+const createPostHog = () => ({
+  init: vi.fn(),
+  capture: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
+  get_distinct_id: vi.fn(() => "anonymous-id"),
+  get_session_id: vi.fn(() => "session-id"),
+});
+
 describe("createFunnelAnalyticsClient", () => {
-  it("sends only the allowlisted CRO properties", async () => {
-    const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(new Response());
+  it("records production funnels with replay privacy and clean custom events", () => {
+    const posthog = createPostHog();
     const client = createFunnelAnalyticsClient(
       {
-        apiKey: "phc_preview",
+        apiKey: "phc_production",
         host: "https://eu.i.posthog.com/",
-        analyticsId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
+        environment: "production",
         funnelId: "ai-seo",
       },
-      { fetch: fetchMock, now: () => new Date("2026-08-09T12:00:00.000Z") },
+      { posthog },
     );
 
-    await client.capture("funnel_validation_failed", {
+    expect(posthog.init).toHaveBeenCalledWith(
+      "phc_production",
+      expect.objectContaining({
+        api_host: "https://eu.i.posthog.com",
+        capture_pageview: false,
+        capture_exceptions: {
+          capture_unhandled_errors: true,
+          capture_unhandled_rejections: true,
+          capture_console_errors: true,
+        },
+        capture_performance: { network_timing: true, web_vitals: false },
+        disable_session_recording: false,
+        person_profiles: "identified_only",
+        session_recording: expect.objectContaining({ maskAllInputs: true }),
+      }),
+    );
+
+    client.capture("funnel_validation_failed", {
       step: "contact",
       fields: ["email", "phone"],
       email: "maya@brand.com",
-      rawApplicationAnswers: { marketingBudget: "$1,500+/month" },
     } as never);
 
-    const [url, init] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe("https://eu.i.posthog.com/i/v0/e/");
-    expect(JSON.parse(String(init?.body))).toEqual({
-      api_key: "phc_preview",
-      event: "funnel_validation_failed",
-      timestamp: "2026-08-09T12:00:00.000Z",
-      properties: {
-        distinct_id: "311de7bf-a46f-49f9-a107-5cc030e960c3",
+    expect(posthog.capture).toHaveBeenCalledWith(
+      "funnel_validation_failed",
+      {
         funnel_id: "ai-seo",
         step: "contact",
         fields: ["email", "phone"],
-        $process_person_profile: false,
       },
-    });
+    );
+
+    const config = posthog.init.mock.calls[0]![1];
+    expect(
+      config.session_recording.maskCapturedNetworkRequestFn({
+        name: "https://example.com/api/funnel-events?token=secret",
+        method: "POST",
+        requestBody: "private",
+        responseBody: "private",
+        headers: { authorization: "secret" },
+        statusCode: 202,
+        duration: 42,
+      }),
+    ).toEqual(
+      expect.objectContaining({
+        name: "https://example.com/api/funnel-events",
+        method: "POST",
+        requestBody: null,
+        responseBody: null,
+        statusCode: 202,
+        duration: 42,
+      }),
+    );
   });
 
-  it("reports delivery failures without rejecting the user-facing call", async () => {
-    const reportFailure = vi.fn();
+  it("does not initialize or capture outside production", () => {
+    const posthog = createPostHog();
     const client = createFunnelAnalyticsClient(
       {
         apiKey: "phc_preview",
         host: "https://eu.i.posthog.com",
-        analyticsId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
+        environment: "preview",
         funnelId: "ai-seo",
       },
-      {
-        fetch: vi.fn().mockRejectedValue(new Error("network failure")),
-        reportFailure,
-      },
+      { posthog },
     );
 
-    await expect(
-      client.capture("cta_clicked", { placement: "hero" }),
-    ).resolves.toBe(false);
-    expect(reportFailure).toHaveBeenCalledWith({
-      code: "posthog_delivery_failed",
-      event: "cta_clicked",
+    client.capture("cta_clicked", { placement: "hero" });
+
+    expect(posthog.init).not.toHaveBeenCalled();
+    expect(posthog.capture).not.toHaveBeenCalled();
+  });
+
+  it("keeps Qualification Snapshot answers flexible and identifies accepted Prospects", () => {
+    const posthog = createPostHog();
+    const client = createFunnelAnalyticsClient(
+      {
+        apiKey: "phc_production",
+        host: "https://us.i.posthog.com",
+        environment: "production",
+        funnelId: "ai-seo",
+      },
+      { posthog },
+    );
+    const prospectId = `prospect_v1_${"a".repeat(64)}`;
+
+    client.capture("funnel_qualification_submitted", {
+      qualification_status: "qualified",
+      qualification_form_id: "ai-seo",
+      qualification_form_version: "2026-08-15",
+      qualification_questions: { future_question: "A future question?" },
+      qualification_answers: {
+        future_question: ["new", { arbitrary: true }],
+      },
     });
+    client.identify(
+      prospectId,
+      { email: "maya@brand.com", lead_journey_id: "journey" },
+      { first_utm_source: "meta" },
+    );
+
+    expect(posthog.capture).toHaveBeenCalledWith(
+      "funnel_qualification_submitted",
+      expect.objectContaining({
+        qualification_answers: {
+          future_question: ["new", { arbitrary: true }],
+        },
+      }),
+    );
+    expect(posthog.identify).toHaveBeenCalledWith(
+      prospectId,
+      expect.objectContaining({ email: "maya@brand.com" }),
+      { first_utm_source: "meta" },
+    );
   });
 });

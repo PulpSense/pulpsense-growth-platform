@@ -4,6 +4,7 @@ type RequestContextInput = {
   fbp?: string;
   fbc?: string;
   analyticsId?: string;
+  sessionId?: string;
 };
 
 export const createRequestContext = (
@@ -18,4 +19,5 @@ export const createRequestContext = (
   ...(input.fbp ? { fbp: input.fbp } : {}),
   ...(input.fbc ? { fbc: input.fbc } : {}),
   ...(input.analyticsId ? { analyticsId: input.analyticsId } : {}),
+  ...(input.sessionId ? { sessionId: input.sessionId } : {}),
 });

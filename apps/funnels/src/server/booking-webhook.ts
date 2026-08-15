@@ -174,6 +174,7 @@ export async function handleCalWebhook(request: Request, env: FunnelEnv) {
     schemaVersion: 1,
     funnelId: claims.funnelId,
     submissionId: claims.submissionId,
+    prospectId: claims.prospectId,
     occurredAt: parsed.data.createdAt,
     payload: {
       ...claims.contact,

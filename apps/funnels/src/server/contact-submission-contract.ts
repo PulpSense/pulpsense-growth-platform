@@ -29,6 +29,7 @@ export const contactSubmissionRequestSchema = z
     fbp: z.string().max(255).optional(),
     fbc: z.string().max(255).optional(),
     analyticsId: z.uuid().optional(),
+    sessionId: z.uuid().optional(),
   })
   .strict();
 

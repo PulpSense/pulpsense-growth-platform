@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { MouseEvent } from "react";
 import {
   Carousel,
@@ -8,6 +8,7 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
+import { trackFunnelEvent } from "@/utils/funnelAnalytics";
 
 const deckSlides = Array.from({ length: 20 }, (_, index) => {
   const number = index + 1;
@@ -19,7 +20,26 @@ const deckSlides = Array.from({ length: 20 }, (_, index) => {
 
 export function ThankYouDeckCarousel() {
   const [api, setApi] = useState<CarouselApi>();
+  const viewedSlides = useRef(new Set<number>());
 
+  useEffect(() => {
+    if (!api) return;
+    const updateIndex = () => {
+      const slideIndex = api.selectedScrollSnap();
+      if (viewedSlides.current.has(slideIndex)) return;
+      viewedSlides.current.add(slideIndex);
+      trackFunnelEvent("funnel_deck_slide_viewed", {
+        deck_id: "ai-seo-thank-you",
+        slide_id: `slide-${String(slideIndex + 1).padStart(2, "0")}`,
+        slide_index: slideIndex,
+      });
+    };
+    updateIndex();
+    api.on("select", updateIndex);
+    return () => {
+      api.off("select", updateIndex);
+    };
+  }, [api]);
   const handleSlideTap = (event: MouseEvent<HTMLDivElement>) => {
     const { left, width } = event.currentTarget.getBoundingClientRect();
     const tapPosition = (event.clientX - left) / width;

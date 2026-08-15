@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import type { DeploymentEnvironment } from "@/lib/funnel/runtime-config";
 import {
   configureFunnelAnalytics,
   trackFunnelEvent,
@@ -12,6 +13,7 @@ type FunnelAnalyticsProps = {
   apiKey?: string;
   host?: string;
   funnelId: string;
+  environment: DeploymentEnvironment;
   page: "landing" | "qualified" | "unqualified";
 };
 
@@ -19,21 +21,20 @@ export function FunnelAnalytics({
   apiKey,
   host = "https://us.i.posthog.com",
   funnelId,
+  environment,
   page,
 }: FunnelAnalyticsProps) {
   useEffect(() => {
-    const { analyticsId } = captureFunnelAttribution({
+    captureFunnelAttribution({
       funnelId,
       href: window.location.href,
       referrer: document.referrer,
       storage: window.localStorage,
-      createAnalyticsId: () => crypto.randomUUID(),
     });
-    trackFunnelEvent("funnel_viewed", { page });
-
     if (!apiKey) return;
-    configureFunnelAnalytics({ apiKey, host, analyticsId, funnelId });
-  }, [apiKey, funnelId, host, page]);
+    configureFunnelAnalytics({ apiKey, host, environment, funnelId });
+    trackFunnelEvent("funnel_viewed", { page });
+  }, [apiKey, environment, funnelId, host, page]);
 
   return null;
 }

@@ -257,12 +257,14 @@ describe("POST /api/funnel-events", () => {
         },
         sourceUrl: "https://preview.pulpsense.com/ai-seo/",
         fbp: "fb.1.123.456",
+        sessionId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
       }),
       {
         ...allowingRateLimit,
         TURNSTILE_SECRET_KEY: "turnstile-secret",
         MILLION_VERIFIER_API_KEY: "million-verifier-key",
         SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+        PROSPECT_ID_SECRET: "preview-prospect-secret",
         PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
         PULPSENSE_ENVIRONMENT: "preview",
       },
@@ -272,6 +274,7 @@ describe("POST /api/funnel-events", () => {
     const result = (await response.json()) as {
       accepted: boolean;
       submissionId: string;
+      prospectId: string;
       eventId: string;
       runId: string;
       retry: { submissionId: string; token: string };
@@ -284,6 +287,7 @@ describe("POST /api/funnel-events", () => {
     expect(result.submissionId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
     );
+    expect(result.prospectId).toMatch(/^prospect_v1_[0-9a-f]{64}$/u);
     expect(result.eventId).toBe(`contact_submitted:${result.submissionId}`);
     expect(result.retry.token).not.toContain("maya@brand.com");
 
@@ -294,18 +298,24 @@ describe("POST /api/funnel-events", () => {
     const triggerBody = JSON.parse(String(triggerInit?.body)) as {
       payload: {
         submissionId: string;
+        prospectId: string;
         eventId: string;
         payload: { email: string; emailVerification: unknown };
+        requestContext: { sessionId?: string };
       };
       options: { idempotencyKey: string };
     };
     expect(triggerBody.payload).toMatchObject({
       submissionId: result.submissionId,
+      prospectId: result.prospectId,
       eventId: result.eventId,
       payload: {
         email: "maya@brand.com",
         emailVerification: { status: "verified", result: "business" },
       },
+    });
+    expect(triggerBody.payload.requestContext).toMatchObject({
+      sessionId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
     });
     expect(triggerBody.options.idempotencyKey).toBe(result.eventId);
   });

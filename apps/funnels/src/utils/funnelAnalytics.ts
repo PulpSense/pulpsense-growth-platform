@@ -1,3 +1,7 @@
+import posthog from "posthog-js";
+
+import type { DeploymentEnvironment } from "@/lib/funnel/runtime-config";
+
 type FunnelStep = "contact" | "qualification" | "booking";
 type CtaPlacement =
   | "hero"
@@ -18,6 +22,18 @@ export type FunnelAnalyticsEventProperties = {
   cta_clicked: { placement: CtaPlacement };
   media_interaction: { action: MediaAction; media_id: string };
   booking_interaction: { action: BookingAction };
+  funnel_deck_slide_viewed: {
+    deck_id: string;
+    slide_id: string;
+    slide_index: number;
+  };
+  funnel_qualification_submitted: {
+    qualification_status: "qualified" | "unqualified";
+    qualification_form_id: string;
+    qualification_form_version: string;
+    qualification_questions: Record<string, string>;
+    qualification_answers: Record<string, unknown>;
+  };
 };
 
 export type FunnelAnalyticsEvent = keyof FunnelAnalyticsEventProperties;
@@ -25,7 +41,7 @@ export type FunnelAnalyticsEvent = keyof FunnelAnalyticsEventProperties;
 type AnalyticsConfig = {
   apiKey: string;
   host: string;
-  analyticsId: string;
+  environment: DeploymentEnvironment;
   funnelId: string;
 };
 
@@ -34,17 +50,28 @@ type FailureDetail = {
   event: FunnelAnalyticsEvent;
 };
 
-type AnalyticsRuntime = {
-  fetch?: typeof fetch;
-  now?: () => Date;
-  reportFailure?: (detail: FailureDetail) => void;
-};
+type PostHogAdapter = Pick<
+  typeof posthog,
+  | "init"
+  | "capture"
+  | "identify"
+  | "reset"
+  | "get_distinct_id"
+  | "get_session_id"
+>;
+
+type AnalyticsRuntime = { posthog?: PostHogAdapter };
 
 const allowedFields = new Set([
   "firstName",
   "lastName",
   "email",
   "phone",
+  "brandUrl",
+  "paidSocialSpend",
+  "winnerStatus",
+  "platforms",
+  "deliveryTimeline",
   "businessOwner",
   "marketingBudget",
   "investmentIntent",
@@ -78,9 +105,13 @@ const allowedValues = {
   booking_interaction: {
     action: new Set(["widget_viewed", "booking_successful"]),
   },
+  funnel_deck_slide_viewed: {},
+  funnel_qualification_submitted: {
+    qualification_status: new Set(["qualified", "unqualified"]),
+  },
 } satisfies Record<FunnelAnalyticsEvent, Record<string, ReadonlySet<string>>>;
 
-const defaultReportFailure = (detail: FailureDetail) => {
+const reportFailure = (detail: FailureDetail) => {
   console.warn("PulpSense analytics delivery failed", detail);
   if (typeof window !== "undefined") {
     window.dispatchEvent(
@@ -89,22 +120,16 @@ const defaultReportFailure = (detail: FailureDetail) => {
   }
 };
 
-const postHogCaptureUrl = (host: string) => {
-  const url = new URL(host);
-  if (url.protocol !== "https:" && url.protocol !== "http:") {
-    throw new Error("PostHog host must use HTTP(S)");
-  }
-  url.pathname = `${url.pathname.replace(/\/+$/u, "")}/i/v0/e/`;
-  url.search = "";
-  url.hash = "";
-  return url.toString();
-};
+const safeIdentifier = (value: unknown) =>
+  typeof value === "string" && /^[a-z0-9-]{1,100}$/u.test(value)
+    ? value
+    : undefined;
 
 const sanitizedProperties = <Event extends FunnelAnalyticsEvent>(
   event: Event,
   properties: FunnelAnalyticsEventProperties[Event],
 ) => {
-  const safe: Record<string, string | string[]> = {};
+  const safe: Record<string, unknown> = {};
   const eventRules = allowedValues[event];
 
   for (const [key, allowed] of Object.entries(eventRules)) {
@@ -123,53 +148,131 @@ const sanitizedProperties = <Event extends FunnelAnalyticsEvent>(
   }
 
   if (event === "media_interaction") {
-    const mediaId = (properties as Record<string, unknown>).media_id;
-    if (typeof mediaId === "string" && /^[a-z0-9-]{1,100}$/u.test(mediaId)) {
-      safe.media_id = mediaId;
+    const mediaId = safeIdentifier(
+      (properties as Record<string, unknown>).media_id,
+    );
+    if (mediaId) safe.media_id = mediaId;
+  }
+
+  if (event === "funnel_deck_slide_viewed") {
+    const input = properties as FunnelAnalyticsEventProperties["funnel_deck_slide_viewed"];
+    const deckId = safeIdentifier(input.deck_id);
+    const slideId = safeIdentifier(input.slide_id);
+    if (deckId && slideId && Number.isInteger(input.slide_index)) {
+      Object.assign(safe, {
+        deck_id: deckId,
+        slide_id: slideId,
+        slide_index: input.slide_index,
+      });
+    }
+  }
+
+  if (event === "funnel_qualification_submitted") {
+    const input = properties as FunnelAnalyticsEventProperties["funnel_qualification_submitted"];
+    const formId = safeIdentifier(input.qualification_form_id);
+    if (formId && /^\d{4}-\d{2}-\d{2}$/u.test(input.qualification_form_version)) {
+      Object.assign(safe, {
+        qualification_form_id: formId,
+        qualification_form_version: input.qualification_form_version,
+        qualification_questions: input.qualification_questions,
+        qualification_answers: input.qualification_answers,
+      });
     }
   }
 
   return safe;
 };
 
+const normalizeHost = (host: string) => {
+  const url = new URL(host);
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error("PostHog host must use HTTP(S)");
+  }
+  url.pathname = url.pathname.replace(/\/+$/u, "");
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/u, "");
+};
+
 export function createFunnelAnalyticsClient(
   config: AnalyticsConfig,
   runtime: AnalyticsRuntime = {},
 ) {
-  const captureUrl = postHogCaptureUrl(config.host);
-  const send = runtime.fetch ?? fetch;
-  const now = runtime.now ?? (() => new Date());
-  const reportFailure = runtime.reportFailure ?? defaultReportFailure;
+  const client = runtime.posthog ?? posthog;
+  const enabled = config.environment === "production" && Boolean(config.apiKey);
+
+  if (enabled) {
+    client.init(config.apiKey, {
+      api_host: normalizeHost(config.host),
+      autocapture: true,
+      capture_exceptions: {
+        capture_unhandled_errors: true,
+        capture_unhandled_rejections: true,
+        capture_console_errors: true,
+      },
+      capture_performance: { network_timing: true, web_vitals: false },
+      capture_pageview: false,
+      disable_session_recording: false,
+      person_profiles: "identified_only",
+      session_recording: {
+        maskAllInputs: true,
+        maskCapturedNetworkRequestFn: (request) => {
+          try {
+            const url = new URL(request.name);
+            url.search = "";
+            url.hash = "";
+            request.name = url.toString();
+          } catch {
+            request.name = request.name.split("?")[0] ?? request.name;
+          }
+          request.requestBody = null;
+          request.responseBody = null;
+          delete request.requestHeaders;
+          delete request.responseHeaders;
+          return request;
+        },
+      },
+    });
+  }
 
   return {
-    async capture<Event extends FunnelAnalyticsEvent>(
+    capture<Event extends FunnelAnalyticsEvent>(
       event: Event,
       properties: FunnelAnalyticsEventProperties[Event],
     ) {
+      if (!enabled) return false;
       try {
-        const response = await send(captureUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            api_key: config.apiKey,
-            event,
-            timestamp: now().toISOString(),
-            properties: {
-              distinct_id: config.analyticsId,
-              funnel_id: config.funnelId,
-              ...sanitizedProperties(event, properties),
-              $process_person_profile: false,
-            },
-          }),
-          keepalive: true,
+        client.capture(event, {
+          funnel_id: config.funnelId,
+          ...sanitizedProperties(event, properties),
         });
-        if (!response.ok)
-          throw new Error(`PostHog rejected ${response.status}`);
         return true;
       } catch {
         reportFailure({ code: "posthog_delivery_failed", event });
         return false;
       }
+    },
+    getIdentity() {
+      if (!enabled) return {};
+      return {
+        analyticsId: client.get_distinct_id(),
+        sessionId: client.get_session_id(),
+      };
+    },
+    identify(
+      prospectId: string,
+      properties: Record<string, unknown>,
+      propertiesSetOnce: Record<string, unknown>,
+    ) {
+      if (!enabled) return;
+      const currentId = client.get_distinct_id();
+      if (currentId.startsWith("prospect_v1_") && currentId !== prospectId) {
+        client.reset();
+      }
+      client.identify(prospectId, properties, propertiesSetOnce);
+    },
+    reset() {
+      if (enabled) client.reset();
     },
   };
 }
@@ -188,16 +291,25 @@ const queuedEvents: QueuedEvent[] = [];
 export function configureFunnelAnalytics(config: AnalyticsConfig) {
   sharedClient = createFunnelAnalyticsClient(config);
   for (const queued of queuedEvents.splice(0)) {
-    void sharedClient.capture(queued.event, queued.properties as never);
+    sharedClient.capture(queued.event, queued.properties as never);
   }
 }
+
+export const getFunnelAnalyticsIdentity = () =>
+  sharedClient?.getIdentity() ?? {};
+
+export const identifyFunnelProspect = (
+  prospectId: string,
+  properties: Record<string, unknown>,
+  propertiesSetOnce: Record<string, unknown>,
+) => sharedClient?.identify(prospectId, properties, propertiesSetOnce);
 
 export function trackFunnelEvent<Event extends FunnelAnalyticsEvent>(
   event: Event,
   properties: FunnelAnalyticsEventProperties[Event],
 ) {
   if (sharedClient) {
-    void sharedClient.capture(event, properties);
+    sharedClient.capture(event, properties);
     return;
   }
 

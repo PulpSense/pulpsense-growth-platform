@@ -21,7 +21,6 @@ vi.mock("@/lib/funnel/use-funnel-submission", () => ({
 vi.mock("@/utils/funnelAttribution", () => ({
   captureFunnelAttribution: () => ({
     attribution: { firstTouch: {}, lastTouch: {} },
-    analyticsId: "analytics-id",
   }),
 }));
 vi.mock("@/utils/funnelAnalytics", () => ({

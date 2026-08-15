@@ -1,6 +1,7 @@
 import {
   contactSubmittedEventSchema,
   funnelIdSchema,
+  prospectIdSchema,
   type ContactSubmittedEvent,
   type FunnelId,
 } from "@pulpsense/contracts";
@@ -33,6 +34,21 @@ const importHmacKey = (secret: string, usages: KeyUsage[]) =>
     usages,
   );
 
+export const deriveProspectId = async (email: string, secret: string) => {
+  const key = await importHmacKey(secret, ["sign"]);
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(
+      `pulpsense-prospect:v1:${email.trim().toLowerCase()}`,
+    ),
+  );
+  const digest = Array.from(new Uint8Array(signature), (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
+  return `prospect_v1_${digest}`;
+};
+
 export const digestContactSubmission = async (
   request: ContactSubmissionRequest,
 ) => {
@@ -58,6 +74,7 @@ export const digestContactSubmission = async (
 
 export type RetryClaims = {
   submissionId: string;
+  prospectId: string;
   requestDigest: string;
   emailVerification: EmailVerification;
   contact: ContactSubmittedEvent["payload"];
@@ -66,6 +83,7 @@ export type RetryClaims = {
 
 type BookingClaims = {
   submissionId: string;
+  prospectId: string;
   funnelId: FunnelId;
   qualificationStatus: "qualified";
   contact: ContactSubmittedEvent["payload"] & {
@@ -166,6 +184,7 @@ export const readRetryToken = async (
     ) as RetryClaims;
     if (
       typeof claims.submissionId !== "string" ||
+      !prospectIdSchema.safeParse(claims.prospectId).success ||
       typeof claims.requestDigest !== "string" ||
       (claims.emailVerification?.status !== "verified" &&
         claims.emailVerification?.status !== "unverified") ||
@@ -217,6 +236,7 @@ export const readBookingToken = async (
       !contactSubmittedEventSchema.shape.submissionId.safeParse(
         claims.submissionId,
       ).success ||
+      !prospectIdSchema.safeParse(claims.prospectId).success ||
       !funnelIdSchema.safeParse(claims.funnelId).success ||
       claims.qualificationStatus !== "qualified" ||
       !contact.success ||
