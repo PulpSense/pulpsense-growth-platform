@@ -12,6 +12,7 @@ import {
 import type { FunnelEnv } from "../funnel-env";
 import { getClientIp, json } from "../http";
 import { consumeRateLimit } from "../rate-limit";
+import { verifyTurnstile } from "../turnstile-verification";
 import { enqueueFunnelEvent } from "./delivery";
 import { createRequestContext } from "./request-context";
 import {
@@ -27,37 +28,6 @@ type SubmissionIdentity = {
   prospectId: string;
   emailVerification: EmailVerification;
   retryToken: string;
-};
-
-const verifyTurnstile = async (
-  request: Request,
-  submission: ContactSubmissionRequest,
-  clientIp: string,
-  secret: string,
-) => {
-  const turnstileBody = new FormData();
-  turnstileBody.set("secret", secret);
-  turnstileBody.set("response", submission.turnstileToken);
-  turnstileBody.set("remoteip", clientIp);
-
-  try {
-    const response = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      { method: "POST", body: turnstileBody },
-    );
-    const result = (await response.json()) as {
-      success?: boolean;
-      action?: string;
-      hostname?: string;
-    };
-    return Boolean(
-      result.success &&
-      result.action === "contact_submit" &&
-      result.hostname === new URL(request.url).hostname,
-    );
-  } catch {
-    return undefined;
-  }
 };
 
 const restoreRetryIdentity = async (
@@ -129,12 +99,13 @@ export async function processContactSubmission(
       return json({ error: "turnstile_unavailable" }, 503);
     }
 
-    const turnstileAccepted = await verifyTurnstile(
+    const turnstileAccepted = await verifyTurnstile({
       request,
-      submission,
+      token: submission.turnstileToken,
       clientIp,
-      env.TURNSTILE_SECRET_KEY,
-    );
+      secret: env.TURNSTILE_SECRET_KEY,
+      expectedAction: "contact_submit",
+    });
     if (turnstileAccepted === undefined) {
       return json({ error: "turnstile_unavailable" }, 503);
     }

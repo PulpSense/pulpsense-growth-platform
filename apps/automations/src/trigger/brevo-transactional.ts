@@ -9,6 +9,7 @@ export type BrevoTransactionalMessage = {
   htmlContent: string;
   moduleId: string;
   idempotencyKey: string;
+  tags?: string[];
 };
 
 export type BrevoTransactionalResult = {
@@ -19,7 +20,10 @@ export class BrevoTransactionalError extends Error {
   readonly retryable: boolean;
   readonly status?: number;
 
-  constructor(message: string, options: { retryable: boolean; status?: number }) {
+  constructor(
+    message: string,
+    options: { retryable: boolean; status?: number },
+  ) {
     super(message);
     this.name = "BrevoTransactionalError";
     this.retryable = options.retryable;
@@ -81,7 +85,12 @@ export const sendBrevoTransactionalEmail = async (
         subject: message.subject,
         textContent: message.textContent,
         htmlContent: message.htmlContent,
-        tags: ["pulpsense", "precall", "precall-v1", message.moduleId],
+        tags: message.tags ?? [
+          "pulpsense",
+          "precall",
+          "precall-v1",
+          message.moduleId,
+        ],
       }),
     });
   } catch {
