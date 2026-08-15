@@ -6,6 +6,7 @@ export type FunnelEnv = {
   FUNNEL_RATE_LIMIT_SERVICE?: FunnelRateLimitService;
   TURNSTILE_SECRET_KEY?: string;
   SUBMISSION_SIGNING_SECRET?: string;
+  PROSPECT_ID_SECRET?: string;
   PULPSENSE_ENVIRONMENT?: "local" | "preview" | "production";
   MILLION_VERIFIER_API_KEY?: string;
   PULPSENSE_TRIGGER_API_ORIGIN?: string;

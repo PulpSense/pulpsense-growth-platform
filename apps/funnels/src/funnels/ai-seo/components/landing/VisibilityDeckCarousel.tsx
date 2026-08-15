@@ -9,6 +9,7 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
+import { useDeckSlideAnalytics } from "@/utils/deckSlideAnalytics";
 
 const slideDescriptions = [
   "45 new calls in 90 days by ranking at the top of Google and AI, or PulpSense works free until the business gets them.",
@@ -43,6 +44,7 @@ const slides = slideDescriptions.map((description, index) => {
 
 export function VisibilityDeckCarousel() {
   const [api, setApi] = useState<CarouselApi>();
+  useDeckSlideAnalytics(api, "ai-seo-visibility");
 
   const handleSlideTap = (event: MouseEvent<HTMLDivElement>) => {
     const { left, width } = event.currentTarget.getBoundingClientRect();

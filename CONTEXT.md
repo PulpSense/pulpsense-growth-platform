@@ -4,9 +4,21 @@ This context defines the business language used to describe a prospect's progres
 
 ## Language
 
+**Prospect**:
+A person known to PulpSense under a stable internal identity, independent of their email address and any individual funnel submission. A Prospect may have multiple Lead Journeys and may accumulate multiple verified contact addresses over time.
+_Avoid_: Lead, PostHog Person, email identity
+
 **Lead Journey**:
 One accepted funnel submission and its subsequent progression. A person may have multiple Lead Journeys, and each Lead Journey has its own Slack thread.
 _Avoid_: Lead, Slack lead
+
+**Journey Attribution**:
+The first-touch and last-touch acquisition context belonging to one Lead Journey. Later visits or submissions may update a Prospect's current attribution but never rewrite an earlier Lead Journey's attribution.
+_Avoid_: Person attribution, current UTMs
+
+**Qualification Snapshot**:
+The versioned questions and accepted answers evaluated for one Lead Journey, preserved in their original flexible value shapes so the qualification form can evolve without rewriting historical journeys.
+_Avoid_: Current form schema, fixed analytics enums
 
 **Lead Contact Details**:
 The actionable identity and acquisition context shown to the sales team: full name, business email, phone number, company domain, funnel name, and available source, medium, and campaign attribution. Technical request, tracking, analytics, and authentication data are not Lead Contact Details.
@@ -51,3 +63,7 @@ _Avoid_: Nurture completion, booked email
 **Sales Appointment**:
 The booked call created by a Sales Handoff. Rescheduling changes its scheduled time but does not create a new Lead Journey, reverse the handoff, or return the recipient to acquisition nurturing.
 _Avoid_: New lead after reschedule, replacement journey
+
+**Sales Opportunity**:
+The commercial pursuit of one Prospect in Twenty, attributed to one originating Lead Journey even when later Lead Journeys become associated with it. Revenue belongs to the originating Lead Journey and is not duplicated across associated journeys.
+_Avoid_: Lead Journey, application, submission

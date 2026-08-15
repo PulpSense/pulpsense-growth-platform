@@ -17,6 +17,7 @@ import { enqueueFunnelEvent } from "./delivery";
 import { createRequestContext } from "./request-context";
 import {
   createRetryToken,
+  deriveProspectId,
   deriveSubmissionId,
   digestContactSubmission,
   readRetryToken,
@@ -24,6 +25,7 @@ import {
 
 type SubmissionIdentity = {
   submissionId: string;
+  prospectId: string;
   emailVerification: EmailVerification;
   retryToken: string;
 };
@@ -46,6 +48,7 @@ const restoreRetryIdentity = async (
 
   return {
     submissionId: retryClaims.submissionId,
+    prospectId: retryClaims.prospectId,
     emailVerification: retryClaims.emailVerification,
     retryToken: submission.retry.token,
   };
@@ -133,9 +136,19 @@ export async function processContactSubmission(
       ...submission.payload,
       emailVerification: verification,
     });
+    const prospectSecret =
+      env.PROSPECT_ID_SECRET ??
+      ((env.PULPSENSE_ENVIRONMENT ?? "local") !== "production"
+        ? env.SUBMISSION_SIGNING_SECRET
+        : undefined);
+    if (!prospectSecret) {
+      return json({ error: "prospect_identity_unavailable" }, 503);
+    }
+    const prospectId = await deriveProspectId(contact.email, prospectSecret);
     const retryToken = await createRetryToken(
       {
         submissionId,
+        prospectId,
         requestDigest,
         emailVerification: verification,
         contact,
@@ -145,6 +158,7 @@ export async function processContactSubmission(
     );
     identity = {
       submissionId,
+      prospectId,
       emailVerification: verification,
       retryToken,
     };
@@ -156,6 +170,7 @@ export async function processContactSubmission(
     eventType: "contact_submitted",
     funnelId: submission.funnelId,
     submissionId: identity.submissionId,
+    prospectId: identity.prospectId,
     eventId,
     occurredAt: new Date().toISOString(),
     payload: {
@@ -173,6 +188,7 @@ export async function processContactSubmission(
     return json({
       accepted: true,
       submissionId: identity.submissionId,
+      prospectId: identity.prospectId,
       eventId,
       runId,
       retry: {

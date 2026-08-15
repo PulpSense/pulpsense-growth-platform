@@ -48,6 +48,26 @@ const touchProperties = (
   ...(referrerHost(touch.referrer)
     ? { [`${prefix}_referrer_host`]: referrerHost(touch.referrer) }
     : {}),
+  ...(touch.landingPage
+    ? { [`${prefix}_landing_page`]: touch.landingPage }
+    : {}),
+});
+
+const companyDomain = (event: FunnelEvent) =>
+  event.eventType === "application_submitted"
+    ? event.companyDomain
+    : event.payload.email.split("@").at(-1)?.toLowerCase();
+
+const personProperties = (event: FunnelEvent) => ({
+  email: event.payload.email,
+  name: [event.payload.firstName, event.payload.lastName]
+    .filter(Boolean)
+    .join(" "),
+  phone: event.payload.phone,
+  ...(companyDomain(event) ? { company_domain: companyDomain(event) } : {}),
+  funnel_id: event.funnelId,
+  lead_journey_id: event.submissionId,
+  ...touchProperties("last", event.attribution.lastTouch),
 });
 
 const eventName = (event: FunnelEvent) =>
@@ -67,6 +87,9 @@ export function createPostHogLifecycleCapture(
   const send = runtime.fetch ?? fetch;
 
   return async (event: FunnelEvent) => {
+    if (!event.prospectId) {
+      throw new Error("PostHog lifecycle event omitted Prospect identity");
+    }
     const response = await send(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -75,7 +98,7 @@ export function createPostHogLifecycleCapture(
         event: eventName(event),
         timestamp: event.occurredAt,
         properties: {
-          distinct_id: event.requestContext.analyticsId ?? event.submissionId,
+          distinct_id: event.prospectId,
           funnel_id: event.funnelId,
           submission_id: event.submissionId,
           event_id: event.eventId,
@@ -91,13 +114,54 @@ export function createPostHogLifecycleCapture(
             : {}),
           ...touchProperties("first", event.attribution.firstTouch),
           ...touchProperties("last", event.attribution.lastTouch),
-          $process_person_profile: false,
+          ...(event.requestContext.sessionId
+            ? { $session_id: event.requestContext.sessionId }
+            : {}),
+          $set: personProperties(event),
+          $set_once: {
+            created_at: event.occurredAt,
+            ...touchProperties("first", event.attribution.firstTouch),
+          },
         },
       }),
     });
 
     if (!response.ok) {
       throw new Error(`PostHog lifecycle delivery failed (${response.status})`);
+    }
+  };
+}
+
+export function createPostHogPersonLinkCapture(
+  config: PostHogLifecycleConfig,
+  runtime: PostHogLifecycleRuntime = {},
+) {
+  const endpoint = captureUrl(config.host);
+  const send = runtime.fetch ?? fetch;
+
+  return async (event: FunnelEvent, twentyPersonId: string) => {
+    if (!event.prospectId) {
+      throw new Error("PostHog person link omitted Prospect identity");
+    }
+    const insertId = `twenty_person_linked:${event.prospectId}:${twentyPersonId}`;
+    const response = await send(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: config.apiKey,
+        event: "funnel_crm_person_linked",
+        timestamp: event.occurredAt,
+        properties: {
+          distinct_id: event.prospectId,
+          funnel_id: event.funnelId,
+          lead_journey_id: event.submissionId,
+          $insert_id: insertId,
+          $set: { twenty_person_id: twentyPersonId },
+        },
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`PostHog person link delivery failed (${response.status})`);
     }
   };
 }

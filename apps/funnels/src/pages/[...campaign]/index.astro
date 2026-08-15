@@ -67,6 +67,7 @@ const cal = resolveCalConfig({
     client:interaction="idle"
     apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
     host={import.meta.env.PUBLIC_POSTHOG_HOST}
+    environment={deploymentEnvironment}
     funnelId={campaign.funnelId}
     page="landing"
   />

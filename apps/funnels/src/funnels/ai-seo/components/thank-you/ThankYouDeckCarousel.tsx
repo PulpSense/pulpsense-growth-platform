@@ -8,6 +8,7 @@ import {
   CarouselPrevious,
   type CarouselApi,
 } from "@/components/ui/carousel";
+import { useDeckSlideAnalytics } from "@/utils/deckSlideAnalytics";
 
 const deckSlides = Array.from({ length: 20 }, (_, index) => {
   const number = index + 1;
@@ -19,7 +20,7 @@ const deckSlides = Array.from({ length: 20 }, (_, index) => {
 
 export function ThankYouDeckCarousel() {
   const [api, setApi] = useState<CarouselApi>();
-
+  useDeckSlideAnalytics(api, "ai-seo-thank-you");
   const handleSlideTap = (event: MouseEvent<HTMLDivElement>) => {
     const { left, width } = event.currentTarget.getBoundingClientRect();
     const tapPosition = (event.clientX - left) / width;

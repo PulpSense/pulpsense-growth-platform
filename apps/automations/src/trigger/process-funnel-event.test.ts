@@ -34,6 +34,8 @@ const event: ContactSubmittedEvent = {
   eventType: "contact_submitted",
   funnelId: "ai-seo",
   submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+  prospectId:
+    "prospect_v1_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
   eventId: "contact_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   occurredAt: "2026-08-08T12:00:00.000Z",
   payload: {
@@ -61,6 +63,7 @@ const applicationEvent: ApplicationSubmittedEvent = {
   eventType: "application_submitted",
   funnelId: "ai-seo",
   submissionId: "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+  prospectId: event.prospectId,
   eventId: "application_submitted:b0a10d9a-68bb-4d73-95c3-3e03560f8550",
   occurredAt: "2026-08-08T12:05:00.000Z",
   payload: {
@@ -95,6 +98,7 @@ const bookingEvent: BookingCompletedEvent = {
   eventType: "booking_completed",
   funnelId: "ai-seo",
   submissionId: applicationEvent.submissionId,
+  prospectId: applicationEvent.prospectId,
   eventId: "booking_completed:cal_booking_123",
   occurredAt: "2026-08-09T12:00:00.000Z",
   payload: {
@@ -826,6 +830,7 @@ describe("process-funnel-event", () => {
       id: "400953f0-8304-58d1-a36e-afe0e2282e9d",
       name: "AI SEO – brand.com",
       stage: "QUALIFIED_AWAITING_BOOKING",
+      originatingLeadJourneyId: qualifiedApplicationEvent.submissionId,
       pointOfContactId: "person_existing",
       companyId: "company_brand",
     });
@@ -1056,6 +1061,7 @@ describe("process-funnel-event", () => {
     expect(JSON.parse(String(updateInit?.body))).toMatchObject({
       name: { firstName: "Maya", lastName: "Chen" },
       emails: { primaryEmail: "maya@brand.com" },
+      prospectId: event.prospectId,
     });
 
     const [metaUrl, metaInit] = fetchMock.mock.calls[2]!;
