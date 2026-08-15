@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveMetaAdsReportingEnvironment } from "./meta-ads-daily-brief-task.js";
+import {
+  META_ADS_DAILY_BRIEF_CRON,
+  resolveMetaAdsReportingEnvironment,
+} from "./meta-ads-daily-brief-task.js";
+
+describe("Meta Ads daily brief schedule", () => {
+  it("runs at 9:00 AM Buenos Aires time year-round", () => {
+    expect(META_ADS_DAILY_BRIEF_CRON).toEqual({
+      pattern: "0 9 * * *",
+      timezone: "America/Argentina/Buenos_Aires",
+    });
+  });
+});
 
 describe("resolveMetaAdsReportingEnvironment", () => {
   it("requires the isolated read-only reporting and destination configuration", () => {

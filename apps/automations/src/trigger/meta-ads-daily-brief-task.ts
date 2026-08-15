@@ -62,9 +62,14 @@ export const resolveMetaAdsReportingEnvironment = (
   },
 });
 
+export const META_ADS_DAILY_BRIEF_CRON = {
+  pattern: "0 9 * * *",
+  timezone: "America/Argentina/Buenos_Aires",
+} as const;
+
 export const metaAdsDailyBriefTask = schedules.task({
   id: "meta-ads-daily-brief",
-  cron: { pattern: "0 9 * * *", timezone: "America/New_York" },
+  cron: META_ADS_DAILY_BRIEF_CRON,
   queue: { concurrencyLimit: 1 },
   retry: {
     maxAttempts: 3,
