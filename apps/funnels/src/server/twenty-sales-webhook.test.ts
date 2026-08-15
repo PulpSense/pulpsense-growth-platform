@@ -131,6 +131,19 @@ describe("POST /api/webhooks/twenty", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("enqueues a signed currency-only change for terminal classification", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json({ id: "run-currency" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await handleTwentySalesWebhook(
+      await requestFor(payload({ updatedFields: ["amount.currencyCode"] })),
+      env,
+    );
+    expect(response.status).toBe(202);
+    expect(fetchMock).toHaveBeenCalledOnce();
+  });
+
   it("rejects terminal updates without required CRM references", async () => {
     const valid = payload();
     const invalid = {

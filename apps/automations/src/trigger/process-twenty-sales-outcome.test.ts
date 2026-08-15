@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  createTwentySalesOutcomeDependencies,
   processTwentySalesOutcome,
   type TwentySalesOutcomeDependencies,
 } from "./process-twenty-sales-outcome.js";
@@ -90,6 +91,20 @@ describe("Twenty terminal sales outcome processing", () => {
     );
   });
 
+  it("treats a currency-only update to a won sale as a revenue adjustment", async () => {
+    const deps = dependencies();
+    const result = await processTwentySalesOutcome(
+      {
+        ...baseEvent,
+        eventId: "twenty:webhook-1:opportunity-1:currency-adjusted",
+        updatedFields: ["amount.currencyCode"],
+        currency: "EUR",
+      },
+      deps,
+    );
+    expect(result).toEqual({ emitted: "sale_revenue_adjusted" });
+  });
+
   it("emits a terminal correction with previous and corrected outcomes", async () => {
     const deps = dependencies();
     const event = {
@@ -118,5 +133,50 @@ describe("Twenty terminal sales outcome processing", () => {
       deps,
     );
     expect(deps.resolveProspectId).toHaveBeenCalledWith("person-1");
+  });
+
+  it("delivers through Twenty and PostHog HTTP boundaries with retry-stable identity", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { person: { prospectId: baseEvent.prospectId } },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(Response.json({ id: baseEvent.opportunityId }));
+    const deps = createTwentySalesOutcomeDependencies(
+      {
+        TWENTY_API_ORIGIN: "https://twenty.test",
+        TWENTY_API_KEY: "twenty-key",
+        TWENTY_WON_STAGE_ID: "stage-won",
+        TWENTY_LOST_STAGE_ID: "stage-lost",
+        POSTHOG_PROJECT_KEY: "posthog-key",
+        POSTHOG_HOST: "https://posthog.test",
+      },
+      fetchMock,
+    );
+
+    await processTwentySalesOutcome(
+      { ...baseEvent, prospectId: undefined },
+      deps,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe(
+      "https://twenty.test/rest/people/person-1",
+    );
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)),
+    ).toMatchObject({
+      event: "sale_completed",
+      properties: {
+        distinct_id: baseEvent.prospectId,
+        $insert_id: "sale_completed:opportunity-1",
+      },
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
+      pulpsenseSalesOutcome: "won",
+    });
   });
 });

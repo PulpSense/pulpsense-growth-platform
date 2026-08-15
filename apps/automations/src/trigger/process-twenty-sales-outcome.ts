@@ -40,6 +40,12 @@ const outcomeForStage = (
       ? "lost"
       : undefined;
 
+const isRevenueField = (field: string) =>
+  field === "amount" ||
+  field === "currency" ||
+  field === "amount.amountMicros" ||
+  field === "amount.currencyCode";
+
 export async function processTwentySalesOutcome(
   event: TwentySalesWebhookEvent,
   dependencies: TwentySalesOutcomeDependencies,
@@ -65,7 +71,7 @@ export async function processTwentySalesOutcome(
   } else if (
     outcome === "won" &&
     !event.updatedFields.includes("stage") &&
-    event.updatedFields.includes("amount")
+    event.updatedFields.some(isRevenueField)
   ) {
     emitted = "sale_revenue_adjusted";
     insertId = `${emitted}:${event.eventId}`;

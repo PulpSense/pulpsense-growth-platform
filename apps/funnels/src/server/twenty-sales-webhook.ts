@@ -8,7 +8,13 @@ import type { FunnelEnv } from "./funnel-env";
 import { json } from "./http";
 
 const MAX_WEBHOOK_AGE_MS = 5 * 60_000;
-const relevantFields = new Set(["stage", "amount"]);
+const relevantFields = new Set([
+  "stage",
+  "amount",
+  "currency",
+  "amount.amountMicros",
+  "amount.currencyCode",
+]);
 
 const currencyAmountSchema = z.object({
   amountMicros: z.number().finite().nonnegative(),
