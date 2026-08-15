@@ -1,13 +1,15 @@
 import {
   classifyConfidence,
   evaluateAlerts,
+  TARGET_CPB,
   type BriefAlert,
   type Confidence,
   type MetaMetrics,
 } from "./meta-ads-daily-brief.js";
 
 const TIME_ZONE = "America/New_York";
-const DAY_MS = 86_400_000;
+const ATTRIBUTION_GRACE_DAYS = 2;
+const MONTHLY_BUDGET = 3000;
 
 export type ReportingWindow = {
   key: "yesterday" | "trailing7d" | "mtd";
@@ -176,24 +178,56 @@ const campaignLines = (window: BriefWindowResult | undefined) =>
         .join("\n")
     : "No campaign delivery";
 
+type DailyBriefPresentation = {
+  reportThrough: string;
+  yesterday?: BriefWindowResult;
+  trailing?: BriefWindowResult;
+  mtd?: BriefWindowResult;
+  pacing: ReturnType<typeof mtdPacing>;
+  alerts: Array<{
+    severity: BriefAlert["severity"];
+    windowLabel: string;
+    text: string;
+  }>;
+};
+
+const presentDailyBrief = (brief: DailyBrief): DailyBriefPresentation => {
+  const yesterday = brief.windows.find((window) => window.key === "yesterday");
+  const trailing = brief.windows.find((window) => window.key === "trailing7d");
+  const mtd = brief.windows.find((window) => window.key === "mtd");
+  return {
+    reportThrough: yesterday
+      ? shortDate(yesterday.dateWindow.until)
+      : brief.generatedAt.slice(0, 10),
+    ...(yesterday ? { yesterday } : {}),
+    ...(trailing ? { trailing } : {}),
+    ...(mtd ? { mtd } : {}),
+    pacing: mtdPacing(brief, mtd),
+    alerts: brief.windows.flatMap((window) =>
+      window.alerts.map((alert) => ({
+        severity: alert.severity,
+        windowLabel: window.label,
+        text: alertText(window, alert),
+      })),
+    ),
+  };
+};
+
 export type SlackBriefBlock = Record<string, unknown>;
 
 export const formatDailyBriefBlocks = (
   brief: DailyBrief,
 ): SlackBriefBlock[] => {
-  const yesterday = brief.windows.find((window) => window.key === "yesterday");
-  const trailing = brief.windows.find((window) => window.key === "trailing7d");
-  const mtd = brief.windows.find((window) => window.key === "mtd");
-  const pacing = mtdPacing(brief, mtd);
-  const alerts = brief.windows.flatMap((window) =>
-    window.alerts.map(
-      (alert) =>
-        `${alert.severity === "critical" ? ":rotating_light: *Critical*" : ":warning: *Attention*"} · ${alertText(window, alert)}`,
-    ),
-  );
-  const alertCopy = alerts.length
-    ? alerts.join("\n")
+  const presentation = presentDailyBrief(brief);
+  const alertCopy = presentation.alerts.length
+    ? presentation.alerts
+        .map(
+          (alert) =>
+            `${alert.severity === "critical" ? ":rotating_light: *Critical*" : ":warning: *Attention*"} · ${alert.text}`,
+        )
+        .join("\n")
     : ":large_green_circle: *No threshold exceptions*";
+  const { yesterday, trailing, mtd, pacing } = presentation;
 
   return [
     {
@@ -205,7 +239,7 @@ export const formatDailyBriefBlocks = (
       elements: [
         {
           type: "mrkdwn",
-          text: `Through *${yesterday ? shortDate(yesterday.dateWindow.until) : brief.generatedAt.slice(0, 10)}*  ·  ${money(brief.monthlyBudget)}/mo budget  ·  ${money(brief.targetCpb)} target booking`,
+          text: `Through *${presentation.reportThrough}*  ·  ${money(brief.monthlyBudget)}/mo budget  ·  ${money(brief.targetCpb)} target booking`,
         },
       ],
     },
@@ -284,18 +318,14 @@ export const formatDailyBriefBlocks = (
 };
 
 export const formatDailyBrief = (brief: DailyBrief) => {
-  const yesterday = brief.windows.find((window) => window.key === "yesterday");
-  const trailing = brief.windows.find((window) => window.key === "trailing7d");
-  const mtd = brief.windows.find((window) => window.key === "mtd");
-  const pacing = mtdPacing(brief, mtd);
-  const alerts = brief.windows.flatMap((window) =>
-    window.alerts.map(
-      (alert) =>
-        `${alert.severity === "critical" ? ":rotating_light: *Critical*" : ":warning: *Attention*"} · ${window.label}: ${alertText(window, alert)}`,
-    ),
+  const presentation = presentDailyBrief(brief);
+  const { yesterday, trailing, mtd, pacing } = presentation;
+  const alerts = presentation.alerts.map(
+    (alert) =>
+      `${alert.severity === "critical" ? ":rotating_light: *Critical*" : ":warning: *Attention*"} · ${alert.windowLabel}: ${alert.text}`,
   );
   return [
-    `*Meta Ads · Daily brief* · through ${yesterday ? shortDate(yesterday.dateWindow.until) : brief.generatedAt.slice(0, 10)}`,
+    `*Meta Ads · Daily brief* · through ${presentation.reportThrough}`,
     ...(alerts.length
       ? alerts
       : [":large_green_circle: No threshold exceptions"]),
@@ -354,7 +384,10 @@ export const runMetaAdsDailyBrief = async (
     const dateWindow = { since: window.since, until: window.until };
     // Compare only fully elapsed calendar days on both sides. At 09:00 ET,
     // yesterday minus two days is safely beyond the 48-hour attribution grace.
-    const attributionReadyUntilDate = shiftYmd(window.until, -2);
+    const attributionReadyUntilDate = shiftYmd(
+      window.until,
+      -ATTRIBUTION_GRACE_DAYS,
+    );
     const attributionReadyUntilExclusive = zonedMidnight(
       shiftYmd(attributionReadyUntilDate, 1),
     );
@@ -425,8 +458,8 @@ export const runMetaAdsDailyBrief = async (
   }
   const brief: DailyBrief = {
     generatedAt: now.toISOString(),
-    monthlyBudget: 3000,
-    targetCpb: 100,
+    monthlyBudget: MONTHLY_BUDGET,
+    targetCpb: TARGET_CPB,
     windows,
   };
   const text = formatDailyBrief(brief);
@@ -437,9 +470,3 @@ export const runMetaAdsDailyBrief = async (
   await dependencies.postSlack(text, reportDate, blocks);
   return brief;
 };
-
-export const ATTRIBUTION_GRACE_MS = 48 * 60 * 60 * 1000;
-export const MINIMUM_DECISION_SPEND = 300;
-export const MONTHLY_BUDGET = 3000;
-export const TARGET_CPB = 100;
-export const ONE_DAY_MS = DAY_MS;

@@ -32,12 +32,18 @@ export type MetaMetrics = {
 
 export type Confidence = "insufficient" | "directional" | "decision-ready";
 
+const LOW_SPEND_CONFIDENCE_THRESHOLD = 100;
+const MINIMUM_DECISION_SPEND = 300;
+const ZERO_BOOKING_WARNING_SPEND = 200;
+export const TARGET_CPB = 100;
+
 export const classifyConfidence = (
   spend: number,
   attributedBookings: number,
 ): Confidence => {
-  if (spend < 100) return "insufficient";
-  if (spend < 300 || attributedBookings < 3) return "directional";
+  if (spend < LOW_SPEND_CONFIDENCE_THRESHOLD) return "insufficient";
+  if (spend < MINIMUM_DECISION_SPEND || attributedBookings < 3)
+    return "directional";
   return "decision-ready";
 };
 
@@ -53,18 +59,21 @@ export const evaluateAlerts = (input: {
   attributionReadyVerifiedBookings: number;
 }): BriefAlert[] => {
   const alerts: BriefAlert[] = [];
-  if (input.verifiedBookings === 0 && input.spend >= 200) {
+  if (
+    input.verifiedBookings === 0 &&
+    input.spend >= ZERO_BOOKING_WARNING_SPEND
+  ) {
     alerts.push({
       code: "zero_verified_bookings",
-      severity: input.spend >= 300 ? "critical" : "warning",
+      severity: input.spend >= MINIMUM_DECISION_SPEND ? "critical" : "warning",
     });
   }
-  if (input.verifiedBookings > 0 && input.spend >= 300) {
+  if (input.verifiedBookings > 0 && input.spend >= MINIMUM_DECISION_SPEND) {
     const actualCpb = input.spend / input.verifiedBookings;
-    if (actualCpb > 130) {
+    if (actualCpb > TARGET_CPB * 1.3) {
       alerts.push({
         code: "high_actual_cpb",
-        severity: actualCpb > 150 ? "critical" : "warning",
+        severity: actualCpb > TARGET_CPB * 1.5 ? "critical" : "warning",
       });
     }
   }
