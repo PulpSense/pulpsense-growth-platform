@@ -21,7 +21,7 @@ Set `SLACK_BOT_TOKEN` and `SLACK_LEADS_CHANNEL_ID` together to enable the PII-be
 
 ## Meta Ads daily brief
 
-`meta-ads-daily-brief` runs at 9:00 AM `America/Argentina/Buenos_Aires` and posts one exception-first message to `SLACK_ADS_REPORT_CHANNEL_ID`. Configure `META_ADS_REPORTING_ACCESS_TOKEN` with a read-only Meta reporting token, `META_ADS_AD_ACCOUNT_ID` with the `act_…` ad account ID, and keep `META_GRAPH_API_VERSION=v26.0` (or update it deliberately when Meta requires a version migration). The task reuses `TWENTY_API_ORIGIN`, `TWENTY_API_KEY`, and `SLACK_BOT_TOKEN`.
+`meta-ads-daily-brief` runs at 9:00 AM `America/Buenos_Aires` and posts one exception-first message to `SLACK_ADS_REPORT_CHANNEL_ID`. Configure `META_ADS_REPORTING_ACCESS_TOKEN` with a read-only Meta reporting token, `META_ADS_AD_ACCOUNT_ID` with the `act_…` ad account ID, and keep `META_GRAPH_API_VERSION=v26.0` (or update it deliberately when Meta requires a version migration). The task reuses `TWENTY_API_ORIGIN`, `TWENTY_API_KEY`, and `SLACK_BOT_TOKEN`.
 
 The report reads Meta Ads Insights for yesterday, trailing seven days, and month to date. It performs no campaign writes and has no PostHog dependency. Twenty Notes whose titles begin with `Booking ` provide a total-level verified-booking audit; those counts are never assigned to campaigns. Campaign rows remain Meta-attributed, and the Slack copy calls out CAPI/Meta attribution lag, the 48-hour grace period, and low-spend uncertainty. Retries find the brief by report-date metadata and update it rather than posting duplicates. Operating assumptions are a $3,000 monthly budget, $100 target verified CPB, and $300 minimum decision spend.
 

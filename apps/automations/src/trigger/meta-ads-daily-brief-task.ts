@@ -64,7 +64,7 @@ export const resolveMetaAdsReportingEnvironment = (
 
 export const META_ADS_DAILY_BRIEF_CRON = {
   pattern: "0 9 * * *",
-  timezone: "America/Argentina/Buenos_Aires",
+  timezone: "America/Buenos_Aires",
 } as const;
 
 export const metaAdsDailyBriefTask = schedules.task({

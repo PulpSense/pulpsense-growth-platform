@@ -9,7 +9,7 @@ describe("Meta Ads daily brief schedule", () => {
   it("runs at 9:00 AM Buenos Aires time year-round", () => {
     expect(META_ADS_DAILY_BRIEF_CRON).toEqual({
       pattern: "0 9 * * *",
-      timezone: "America/Argentina/Buenos_Aires",
+      timezone: "America/Buenos_Aires",
     });
   });
 });
