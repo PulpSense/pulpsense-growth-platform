@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getLeadMagnetStaticPaths, resolveLeadMagnet } from "./registry";
+import { getLeadMagnetStaticPaths, resolveLeadMagnet } from "./index.js";
 
 describe("lead magnet registry", () => {
   it("discovers config files and derives their static routes", () => {
@@ -23,5 +23,6 @@ describe("lead magnet registry", () => {
       "https://github.com/PulpSense/meta-offer-intelligence-skill",
     );
     expect(email?.text).toContain("Hermes Agent");
+    expect(email?.text).not.toContain("Hi Maya");
   });
 });

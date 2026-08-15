@@ -16,6 +16,26 @@ type BusinessEmailVerification =
 
 const INTERNAL_EMAIL_BYPASS = "santi@pulpsense.com";
 
+type MillionVerifierResult = {
+  result?: string;
+  free?: boolean;
+};
+
+const fetchMillionVerifier = async (
+  email: string,
+  apiKey: string,
+): Promise<MillionVerifierResult | undefined> => {
+  try {
+    const response = await fetch(
+      `https://api.millionverifier.com/api/v3/?api=${apiKey}&email=${encodeURIComponent(email)}&timeout=10`,
+    );
+    if (!response.ok) return undefined;
+    return (await response.json()) as MillionVerifierResult;
+  } catch {
+    return undefined;
+  }
+};
+
 const isNonexistentEmailDomain = async (email: string): Promise<boolean> => {
   const domain = email.trim().toLowerCase().split("@").at(-1);
   if (!domain) return false;
@@ -50,34 +70,21 @@ export const verifyBusinessEmail = async (
   }
   if (!apiKey) return providerErrorVerification(email);
 
-  try {
-    const response = await fetch(
-      `https://api.millionverifier.com/api/v3/?api=${apiKey}&email=${encodeURIComponent(email)}&timeout=10`,
-    );
-    if (!response.ok) throw new Error("Verifier request failed");
-
-    const verification = (await response.json()) as {
-      result?: string;
-      free?: boolean;
-    };
-    if (
-      verification.free === true ||
-      verification.result === "invalid" ||
-      verification.result === "disposable"
-    ) {
-      return { status: "invalid", result: "invalid" };
-    }
-    if (verification.result === "ok") {
-      return { status: "verified", result: "business" };
-    }
-    if (verification.result === "catch_all") {
-      return { status: "unverified", result: "catch_all" };
-    }
-
-    return providerErrorVerification(email);
-  } catch {
-    return providerErrorVerification(email);
+  const verification = await fetchMillionVerifier(email, apiKey);
+  if (
+    verification?.free === true ||
+    verification?.result === "invalid" ||
+    verification?.result === "disposable"
+  ) {
+    return { status: "invalid", result: "invalid" };
   }
+  if (verification?.result === "ok") {
+    return { status: "verified", result: "business" };
+  }
+  if (verification?.result === "catch_all") {
+    return { status: "unverified", result: "catch_all" };
+  }
+  return providerErrorVerification(email);
 };
 
 export const verifyLeadMagnetEmail = async (
@@ -88,24 +95,16 @@ export const verifyLeadMagnetEmail = async (
     return (await isNonexistentEmailDomain(email)) ? "invalid" : "uncertain";
   }
 
-  try {
-    const response = await fetch(
-      `https://api.millionverifier.com/api/v3/?api=${apiKey}&email=${encodeURIComponent(email)}&timeout=10`,
-    );
-    if (!response.ok) throw new Error("Verifier request failed");
-    const verification = (await response.json()) as { result?: string };
-    if (
-      verification.result === "invalid" ||
-      verification.result === "disposable"
-    ) {
-      return "invalid";
-    }
-    if (verification.result === "ok") return "valid";
-    if (verification.result === "catch_all") return "uncertain";
-    return (await isNonexistentEmailDomain(email)) ? "invalid" : "uncertain";
-  } catch {
-    return (await isNonexistentEmailDomain(email)) ? "invalid" : "uncertain";
+  const verification = await fetchMillionVerifier(email, apiKey);
+  if (
+    verification?.result === "invalid" ||
+    verification?.result === "disposable"
+  ) {
+    return "invalid";
   }
+  if (verification?.result === "ok") return "valid";
+  if (verification?.result === "catch_all") return "uncertain";
+  return (await isNonexistentEmailDomain(email)) ? "invalid" : "uncertain";
 };
 
 export async function handleVerifyEmail(request: Request, env: FunnelEnv) {

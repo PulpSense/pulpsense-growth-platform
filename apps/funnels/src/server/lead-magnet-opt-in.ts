@@ -2,13 +2,14 @@ import {
   leadMagnetIdSchema,
   leadMagnetOptInEventSchema,
 } from "@pulpsense/contracts";
+import { resolveLeadMagnet } from "@pulpsense/lead-magnets";
 import { z } from "zod";
 
 import { verifyLeadMagnetEmail } from "./email-verification";
-import { resolveLeadMagnet } from "../lead-magnets/registry";
 import type { FunnelEnv } from "./funnel-env";
 import { getClientIp, json, parseJson, rejectCrossOrigin } from "./http";
 import { consumeRateLimit } from "./rate-limit";
+import { verifyTurnstile } from "./turnstile-verification";
 
 const requestSchema = z
   .object({
@@ -27,37 +28,6 @@ const digest = async (value: string) => {
   return Array.from(new Uint8Array(bytes), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");
-};
-
-const verifyTurnstile = async (
-  request: Request,
-  token: string,
-  clientIp: string,
-  secret: string,
-) => {
-  const body = new FormData();
-  body.set("secret", secret);
-  body.set("response", token);
-  body.set("remoteip", clientIp);
-
-  try {
-    const response = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      { method: "POST", body },
-    );
-    const result = (await response.json()) as {
-      success?: boolean;
-      action?: string;
-      hostname?: string;
-    };
-    return Boolean(
-      result.success &&
-      result.action === "lead_magnet_submit" &&
-      result.hostname === new URL(request.url).hostname,
-    );
-  } catch {
-    return undefined;
-  }
 };
 
 export async function handleLeadMagnetOptIn(request: Request, env: FunnelEnv) {
@@ -80,12 +50,13 @@ export async function handleLeadMagnetOptIn(request: Request, env: FunnelEnv) {
     return json({ error: "turnstile_unavailable" }, 503);
   }
 
-  const accepted = await verifyTurnstile(
+  const accepted = await verifyTurnstile({
     request,
-    parsed.data.turnstileToken,
+    token: parsed.data.turnstileToken,
     clientIp,
-    env.TURNSTILE_SECRET_KEY,
-  );
+    secret: env.TURNSTILE_SECRET_KEY,
+    expectedAction: "lead_magnet_submit",
+  });
   if (accepted === undefined) {
     return json({ error: "turnstile_unavailable" }, 503);
   }
@@ -113,7 +84,6 @@ export async function handleLeadMagnetOptIn(request: Request, env: FunnelEnv) {
     occurredAt: new Date().toISOString(),
     firstName: parsed.data.firstName,
     email: parsed.data.email,
-    emailContent: magnet.renderEmail(parsed.data.firstName),
     environment: env.PULPSENSE_ENVIRONMENT ?? "local",
   });
   const idempotencyKey = await digest(`${event.magnetId}:${event.email}`);

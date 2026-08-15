@@ -1,15 +1,7 @@
-import { defineLeadMagnet } from "../define-lead-magnet";
+import { defineLeadMagnet } from "../define-lead-magnet.js";
 
 const githubUrl = "https://github.com/PulpSense/meta-offer-intelligence-skill";
 const bookingUrl = "https://cal.com/santileoni/quick-chat";
-
-const escapeHtml = (value: string) =>
-  value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 
 export default defineLeadMagnet({
   id: "meta-offer-intelligence-skill",
@@ -39,13 +31,10 @@ export default defineLeadMagnet({
     successTitle: "Check your inbox",
     successDescription: "We’ve sent you the Meta Offer Intelligence skill.",
   },
-  renderEmail(firstName) {
-    const safeName = escapeHtml(firstName);
+  renderEmail(_firstName: string) {
     return {
       subject: "Your Meta Offer Intelligence agent skill",
-      text: `Hi ${firstName},
-
-Here it is:
+      text: `Here it is:
 
 Get the Meta Offer Intelligence skill: ${githubUrl}
 
@@ -74,8 +63,7 @@ If you want us to design and build those agents for you, book a quick chat: ${bo
 
 —Santi
 PulpSense`,
-      html: `<p>Hi ${safeName},</p>
-<p>Here it is:</p>
+      html: `<p>Here it is:</p>
 <p><a href="${githubUrl}"><strong>Get the Meta Offer Intelligence skill</strong></a></p>
 <p>This skill gives an AI agent a repeatable process for:</p>
 <ul><li>researching large collections of Meta ads;</li><li>identifying the offers worth studying;</li><li>preserving the ads, landing pages, and supporting evidence;</li><li>building a qualified competitor offer archive;</li><li>knowing when to stop researching and turn the findings into an offer.</li></ul>

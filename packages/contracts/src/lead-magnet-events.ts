@@ -18,13 +18,6 @@ export const leadMagnetOptInEventSchema = z
     occurredAt: z.string().datetime({ offset: true }),
     firstName: z.string().trim().min(1).max(100),
     email: z.string().trim().toLowerCase().email().max(320),
-    emailContent: z
-      .object({
-        subject: z.string().trim().min(1).max(998),
-        text: z.string().min(1).max(100_000),
-        html: z.string().min(1).max(100_000),
-      })
-      .strict(),
     environment: z.enum(["local", "preview", "production"]),
   })
   .strict();

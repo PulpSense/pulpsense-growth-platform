@@ -1,5 +1,6 @@
 import { leadMagnetOptInEventSchema } from "@pulpsense/contracts";
-import { logger, schemaTask } from "@trigger.dev/sdk";
+import { resolveLeadMagnet } from "@pulpsense/lead-magnets";
+import { AbortTaskRunError, logger, schemaTask } from "@trigger.dev/sdk";
 
 import { sendBrevoTransactionalEmail } from "./brevo-transactional.js";
 
@@ -19,6 +20,10 @@ export const processLeadMagnetOptInTask = schemaTask({
     randomize: true,
   },
   run: async (event) => {
+    const magnet = resolveLeadMagnet(event.magnetId);
+    if (!magnet) {
+      throw new AbortTaskRunError(`Unknown lead magnet: ${event.magnetId}`);
+    }
     const apiKey = required(process.env.BREVO_API_KEY, "BREVO_API_KEY");
     const listId = Number(
       required(
@@ -50,6 +55,7 @@ export const processLeadMagnetOptInTask = schemaTask({
       );
     }
 
+    const email = magnet.renderEmail(event.firstName);
     const result = await sendBrevoTransactionalEmail(
       {
         recipientEmail: event.email,
@@ -57,9 +63,9 @@ export const processLeadMagnetOptInTask = schemaTask({
         senderEmail: "santi@pulpsense.com",
         senderName: "Santi at PulpSense",
         replyToEmail: "santi@pulpsense.com",
-        subject: event.emailContent.subject,
-        textContent: event.emailContent.text,
-        htmlContent: event.emailContent.html,
+        subject: email.subject,
+        textContent: email.text,
+        htmlContent: email.html,
         moduleId: event.magnetId,
         idempotencyKey: event.deliveryId,
         tags: ["pulpsense", "lead-magnet", event.magnetId],

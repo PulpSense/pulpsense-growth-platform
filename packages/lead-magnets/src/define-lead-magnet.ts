@@ -1,6 +1,8 @@
-import type { LeadMagnetOptInEvent } from "@pulpsense/contracts";
-
-export type LeadMagnetEmail = LeadMagnetOptInEvent["emailContent"];
+export type LeadMagnetEmail = {
+  subject: string;
+  text: string;
+  html: string;
+};
 
 export type LeadMagnetConfig = {
   id: string;
