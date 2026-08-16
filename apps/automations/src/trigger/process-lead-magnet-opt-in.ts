@@ -60,9 +60,9 @@ export const processLeadMagnetOptInTask = schemaTask({
       {
         recipientEmail: event.email,
         recipientName: event.firstName,
-        senderEmail: "santi@pulpsense.com",
+        senderEmail: "santi@go.pulpsense.com",
         senderName: "Santi at PulpSense",
-        replyToEmail: "santi@pulpsense.com",
+        replyToEmail: "santi@go.pulpsense.com",
         subject: email.subject,
         textContent: email.text,
         htmlContent: email.html,
@@ -72,10 +72,10 @@ export const processLeadMagnetOptInTask = schemaTask({
       },
       {
         BREVO_API_KEY: apiKey,
-        BREVO_PRECALL_SENDER_EMAIL: process.env.BREVO_LEAD_MAGNET_SENDER_EMAIL,
-        BREVO_PRECALL_SENDER_NAME: process.env.BREVO_LEAD_MAGNET_SENDER_NAME,
+        BREVO_PRECALL_SENDER_EMAIL: process.env.BREVO_PRECALL_SENDER_EMAIL,
+        BREVO_PRECALL_SENDER_NAME: process.env.BREVO_PRECALL_SENDER_NAME,
         BREVO_PRECALL_REPLY_TO_EMAIL:
-          process.env.BREVO_LEAD_MAGNET_REPLY_TO_EMAIL,
+          process.env.BREVO_PRECALL_REPLY_TO_EMAIL,
       },
     );
 
