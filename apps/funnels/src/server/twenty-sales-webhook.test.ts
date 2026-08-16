@@ -39,7 +39,7 @@ const payload = (overrides: Record<string, unknown> = {}) => ({
     pointOfContactId: "person-1",
     prospectId: `prospect_v1_${"a".repeat(64)}`,
     originatingLeadJourneyId: "8be0f734-f3c9-4c8c-b4f8-7897f6285f12",
-    stage: "stage-won",
+    stage: "NEW_DEALS_WON",
     amount: { amountMicros: 12_500_000_000, currencyCode: "USD" },
   },
   updatedFields: ["stage"],
@@ -71,7 +71,7 @@ describe("POST /api/webhooks/twenty", () => {
   it("verifies the exact raw body and returns only after durable enqueue", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(Response.json({ id: "run-1" }));
+      .mockImplementation(async () => Response.json({ id: "run-1" }));
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await handleTwentySalesWebhook(
@@ -87,6 +87,33 @@ describe("POST /api/webhooks/twenty", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       "https://trigger.test/api/v1/tasks/process-twenty-sales-outcome/trigger",
+    );
+  });
+
+  it("reuses the Trigger idempotency key for a duplicate signed delivery", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockImplementation(async () => Response.json({ id: "run-1" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const duplicatePayload = payload();
+
+    const first = await handleTwentySalesWebhook(
+      await requestFor(duplicatePayload),
+      env,
+    );
+    const duplicate = await handleTwentySalesWebhook(
+      await requestFor(duplicatePayload),
+      env,
+    );
+
+    expect(first.status).toBe(202);
+    expect(duplicate.status).toBe(202);
+    const firstBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    const duplicateBody = JSON.parse(
+      String(fetchMock.mock.calls[1]?.[1]?.body),
+    );
+    expect(duplicateBody.options.idempotencyKey).toBe(
+      firstBody.options.idempotencyKey,
     );
   });
 

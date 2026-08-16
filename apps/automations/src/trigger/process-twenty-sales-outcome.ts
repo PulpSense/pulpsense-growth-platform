@@ -1,4 +1,5 @@
 import {
+  isTwentyRevenueUpdatedField,
   prospectIdSchema,
   twentySalesWebhookEventSchema,
   type TwentySalesWebhookEvent,
@@ -22,12 +23,13 @@ type SalesCapture = {
 export type TwentySalesOutcomeDependencies = {
   wonStageId: string;
   lostStageId: string;
+  resolveStageOptionId(stageValue: string): Promise<string>;
   resolveProspectId(personId: string): Promise<string>;
   capture(event: SalesCapture): Promise<void>;
   recordOutcome(opportunityId: string, outcome: "won" | "lost"): Promise<void>;
 };
 
-const outcomeForStage = (
+const outcomeForStageId = (
   stageId: string,
   dependencies: Pick<
     TwentySalesOutcomeDependencies,
@@ -40,17 +42,12 @@ const outcomeForStage = (
       ? "lost"
       : undefined;
 
-const isRevenueField = (field: string) =>
-  field === "amount" ||
-  field === "currency" ||
-  field === "amount.amountMicros" ||
-  field === "amount.currencyCode";
-
 export async function processTwentySalesOutcome(
   event: TwentySalesWebhookEvent,
   dependencies: TwentySalesOutcomeDependencies,
 ) {
-  const outcome = outcomeForStage(event.stageId, dependencies);
+  const stageId = await dependencies.resolveStageOptionId(event.stageValue);
+  const outcome = outcomeForStageId(stageId, dependencies);
   if (!outcome) {
     return { emitted: null, ignored: "intermediate_stage" } as const;
   }
@@ -71,7 +68,7 @@ export async function processTwentySalesOutcome(
   } else if (
     outcome === "won" &&
     !event.updatedFields.includes("stage") &&
-    event.updatedFields.some(isRevenueField)
+    event.updatedFields.some(isTwentyRevenueUpdatedField)
   ) {
     emitted = "sale_revenue_adjusted";
     insertId = `${emitted}:${event.eventId}`;
@@ -142,6 +139,78 @@ export const createTwentySalesOutcomeDependencies = (
       environment.TWENTY_LOST_STAGE_ID,
       "TWENTY_LOST_STAGE_ID",
     ),
+    resolveStageOptionId: async (stageValue) => {
+      const response = await fetcher(`${twentyOrigin}/metadata`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${twentyApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: `query OpportunityStageOptions {
+            objects(paging: { first: 1000 }) {
+              edges {
+                node {
+                  id
+                  nameSingular
+                }
+              }
+            }
+            fields(paging: { first: 1000 }) {
+              edges {
+                node {
+                  name
+                  objectMetadataId
+                  options
+                }
+              }
+            }
+          }`,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(
+          `Twenty stage metadata lookup failed (${response.status})`,
+        );
+      }
+      const result = (await response.json()) as {
+        errors?: unknown[];
+        data?: {
+          objects?: {
+            edges?: Array<{
+              node?: { id?: unknown; nameSingular?: unknown };
+            }>;
+          };
+          fields?: {
+            edges?: Array<{
+              node?: {
+                name?: unknown;
+                objectMetadataId?: unknown;
+                options?: Array<{ id?: unknown; value?: unknown }>;
+              };
+            }>;
+          };
+        };
+      };
+      if (result.errors?.length) {
+        throw new Error("Twenty stage metadata query failed");
+      }
+      const opportunityObjectId = result.data?.objects?.edges?.find(
+        (edge) => edge.node?.nameSingular === "opportunity",
+      )?.node?.id;
+      const option = result.data?.fields?.edges
+        ?.filter(
+          (edge) =>
+            edge.node?.name === "stage" &&
+            edge.node.objectMetadataId === opportunityObjectId,
+        )
+        .flatMap((edge) => edge.node?.options ?? [])
+        .find((candidate) => candidate.value === stageValue);
+      if (typeof option?.id !== "string" || !option.id) {
+        throw new Error(`Twenty stage value ${stageValue} has no option ID`);
+      }
+      return option.id;
+    },
     resolveProspectId: async (personId) => {
       const response = await fetcher(
         `${twentyOrigin}/rest/people/${encodeURIComponent(personId)}`,
@@ -191,7 +260,9 @@ export const createTwentySalesOutcomeDependencies = (
             Authorization: `Bearer ${twentyApiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ pulpsenseSalesOutcome: outcome.toUpperCase() }),
+          body: JSON.stringify({
+            pulpsenseSalesOutcome: outcome.toUpperCase(),
+          }),
         },
       );
       if (!response.ok) {
