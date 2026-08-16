@@ -37,6 +37,10 @@ Test event codes may remain saved in the Development environment without affecti
 
 Set `POSTHOG_PROJECT_KEY` and the region-appropriate `POSTHOG_HOST` to emit Prospect-linked contact, application, and authoritative booking lifecycle events. The adapter uses the canonical Prospect ID, attaches browser-originated events to their PostHog session, updates searchable Lead Contact Details and Journey Attribution properties, and logs a redacted delivery failure without failing the lifecycle run.
 
+Twenty terminal sales updates arrive through `/api/webhooks/twenty` and run in the serialized `process-twenty-sales-outcome` task. Configure the Pages Function with `TWENTY_WEBHOOK_SECRET` and `TWENTY_PRODUCTION_WORKSPACE_ID`; configure Trigger.dev with the stable `TWENTY_WON_STAGE_ID` and `TWENTY_LOST_STAGE_ID`. The Opportunity schema must also expose `pulpsenseSalesOutcome` for retry-safe correction classification. See [ADR 0005](../../docs/adr/0005-model-terminal-sales-outcomes-as-immutable-events.md).
+
+The historical reference migration requires an ignored JSON array containing exactly four `{ personId, prospectId, opportunityId, originatingLeadJourneyId }` mappings. Run `pnpm --filter @pulpsense/automations backfill:twenty-sales <path>` for the non-mutating approval report, add `--apply` only after approval, then run `--read-back` for verification.
+
 Set `TWENTY_QUALIFIED_STAGE_VALUE` to the API value for the Twenty stage labelled **Qualified – Awaiting Booking**. Set `TWENTY_CLOSED_STAGE_VALUES` to the comma-separated API values that represent won, lost, or otherwise closed Opportunities in that workspace.
 
 Set `TWENTY_CALL_BOOKED_STAGE_VALUE` to the API value for the Twenty stage labelled **Call Booked**. A verified `booking_completed` event records an idempotent booking activity derived from the Cal UID, advances the matching open Opportunity, and sends Meta `Schedule` with the same deterministic event ID.
@@ -58,6 +62,7 @@ Once the dev worker registers the health check, run it from the Trigger.dev dash
 - `pnpm --filter @pulpsense/automations dev` — run tasks locally and register them with Trigger.dev
 - `pnpm --filter @pulpsense/automations deploy` — deploy the current task set
 - `pnpm --filter @pulpsense/automations check-types` — validate the TypeScript project
+- `pnpm --filter @pulpsense/automations backfill:twenty-sales <path>` — report the four historical CRM mappings without mutation
 
 ## Adding an automation
 
