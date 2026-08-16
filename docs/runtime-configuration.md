@@ -38,17 +38,26 @@ The rate-limiter Worker owns the Workers-only `FUNNEL_RATE_LIMITER` binding and 
 
 ## Browser softphone
 
-| Variable or setting               | Secret | Current behavior                                                                                                | Preview / production                                   |
-| --------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `SOFTPHONE_HANDOFF_SECRET`        | Yes    | Verifies short-lived Person-bound handoffs signed by the Twenty app. It must match Twenty's value exactly.      | Cloudflare Pages secret                                |
-| `TELNYX_API_KEY`                  | Yes    | Dedicated Telnyx API v2 key used server-side only to mint short-lived WebRTC JWTs.                              | Cloudflare Pages secret                                |
-| `TELNYX_TELEPHONY_CREDENTIAL_ID`  | Yes    | Selects the per-device credential attached to the `PulpSense Browser Softphone` Credential Connection.          | Cloudflare Pages secret; credential expires 2027-08-11 |
-| `TELNYX_CALLER_NUMBER`            | No     | Caller ID sent for browser-originated PSTN calls. The number remains assigned to the existing Call Control app. | `+13072490829`                                         |
-| `SOFTPHONE_ENVIRONMENT`           | No     | Labels session responses for diagnostics without exposing credentials.                                          | `production`                                           |
-| Twenty `SOFTPHONE_BASE_URL`       | No     | Origin inserted into the fragment-only launch URL returned to the authenticated Person widget.                  | `https://softphone.pulpsense.com`                      |
-| Twenty `SOFTPHONE_HANDOFF_SECRET` | Yes    | Signs the same handoff Cloudflare verifies. It is independent from both Telnyx API keys.                        | Twenty application secret                              |
+| Variable or setting                  | Secret | Current behavior                                                                                                | Preview / production                                   |
+| ------------------------------------ | ------ | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `SOFTPHONE_HANDOFF_SECRET`           | Yes    | Verifies short-lived Person-bound handoffs signed by the Twenty app. It must match Twenty's value exactly.      | Cloudflare Pages secret                                |
+| `TELNYX_API_KEY`                     | Yes    | Dedicated Telnyx API v2 key used server-side only to mint short-lived WebRTC JWTs.                              | Cloudflare Pages secret                                |
+| `TELNYX_TELEPHONY_CREDENTIAL_ID`     | Yes    | Selects the per-device credential attached to the `PulpSense Browser Softphone` Credential Connection.          | Cloudflare Pages secret; credential expires 2027-08-11 |
+| `TELNYX_CALLER_NUMBER`               | No     | Caller ID sent for browser-originated PSTN calls. The number remains assigned to the existing Call Control app. | `+13072490829`                                         |
+| `TELNYX_CALL_CONTROL_APPLICATION_ID` | Yes    | Identifies the Voice API application used to dial the mobile leg for inbound calls.                             | Cloudflare Pages secret                                |
+| `TELNYX_INBOUND_DESTINATION_NUMBER`  | Yes    | Mobile number rung for every inbound call, in E.164 format.                                                     | Cloudflare Pages secret                                |
+| `TELNYX_PUBLIC_KEY`                  | Yes    | Verifies signed Telnyx Voice API webhooks before any call command is accepted.                                  | Cloudflare Pages secret                                |
+| `TELNYX_VOICEMAIL_GREETING`          | No     | Spoken professional greeting before Telnyx records an unanswered call.                                          | PulpSense default greeting                             |
+| `SOFTPHONE_ENVIRONMENT`              | No     | Labels session responses for diagnostics without exposing credentials.                                          | `production`                                           |
+| Twenty `SOFTPHONE_BASE_URL`          | No     | Origin inserted into the fragment-only launch URL returned to the authenticated Person widget.                  | `https://softphone.pulpsense.com`                      |
+| Twenty `SOFTPHONE_HANDOFF_SECRET`    | Yes    | Signs the same handoff Cloudflare verifies. It is independent from both Telnyx API keys.                        | Twenty application secret                              |
 
 The API key, shared signing secret, SIP password, and Telnyx JWT never enter committed files or Twenty front-component code. The browser receives only a short-lived Telnyx JWT after Cloudflare verifies the signed Person handoff.
+
+The Voice API application's inbound webhook is `/api/telnyx/inbound`. It rings
+`TELNYX_INBOUND_DESTINATION_NUMBER` for 20 seconds. Keep the mobile carrier's
+voicemail pickup later than that window so Telnyx can play the configured
+business greeting and retain the voicemail recording.
 
 `.github/workflows/softphone-pages.yml` verifies softphone changes and publishes a branch deployment for each non-draft pull request. A merge to `master` cancels any stale softphone run, waits for the repository's Production approval, and uploads the exact verified commit to the `pulpsense-softphone-preview` Pages project on its `master` branch. The custom `softphone.pulpsense.com` hostname follows that production branch.
 

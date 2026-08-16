@@ -7,8 +7,12 @@ export type SoftphoneEnv = {
     fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
   };
   TELNYX_API_KEY?: string;
+  TELNYX_CALL_CONTROL_APPLICATION_ID?: string;
   TELNYX_CALLER_NUMBER?: string;
+  TELNYX_INBOUND_DESTINATION_NUMBER?: string;
+  TELNYX_PUBLIC_KEY?: string;
   TELNYX_TELEPHONY_CREDENTIAL_ID?: string;
+  TELNYX_VOICEMAIL_GREETING?: string;
 };
 
 type SessionRequest = { handoff?: string };
