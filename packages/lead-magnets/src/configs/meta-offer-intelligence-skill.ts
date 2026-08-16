@@ -2,6 +2,13 @@ import { defineLeadMagnet } from "../define-lead-magnet.js";
 
 const githubUrl = "https://github.com/PulpSense/meta-offer-intelligence-skill";
 const bookingUrl = "https://cal.com/santileoni/quick-chat";
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 
 export default defineLeadMagnet({
   id: "meta-offer-intelligence-skill",
@@ -31,50 +38,53 @@ export default defineLeadMagnet({
     successTitle: "Check your inbox",
     successDescription: "We’ve sent you the Meta Offer Intelligence skill.",
   },
-  renderEmail(_firstName: string) {
+  renderEmail(firstName: string) {
+    const safeFirstName = escapeHtml(firstName);
     return {
       subject: "Your Meta Offer Intelligence agent skill",
-      text: `Here it is:
+      text: `Hey ${firstName},
 
-Get the Meta Offer Intelligence skill: ${githubUrl}
-
-This skill gives an AI agent a repeatable process for:
-
-- researching large collections of Meta ads;
-- identifying the offers worth studying;
-- preserving the ads, landing pages, and supporting evidence;
-- building a qualified competitor offer archive;
-- knowing when to stop researching and turn the findings into an offer.
+Here’s your Meta Offer Intelligence skill.
 
 The easiest way to install it
 
-Send the GitHub link to your agent and say:
+Send the skill to your agent with this instruction:
 
-Install this agent skill for me and tell me what you need to run it:
+Install this agent skill for me and tell me what you need to run it.
+
 ${githubUrl}
 
-The skill works out of the box with Hermes Agent and can be adapted to other agents like Claude Code. You’ll need a ScrapeCreators API key when you’re ready to run the research.
+Built for Hermes Agent and adaptable to tools like Claude Code. You’ll need a ScrapeCreators API key when you’re ready to run the research.
 
-Want it built around your business?
+Want it adapted to your business?
 
-The skill gives you the research workflow. The bigger opportunity is connecting agents like this to the sales, marketing, and operational workflows already inside your company.
+The skill provides the research workflow. The bigger opportunity is connecting agents like this to the sales, marketing, and operational workflows already inside your company.
 
-If you want us to design and build those agents for you, book a quick chat: ${bookingUrl}
+Book a quick chat: ${bookingUrl}
 
-—Santi
+Talk soon,
+Santi
 PulpSense`,
-      html: `<p>Here it is:</p>
-<p><a href="${githubUrl}"><strong>Get the Meta Offer Intelligence skill</strong></a></p>
-<p>This skill gives an AI agent a repeatable process for:</p>
-<ul><li>researching large collections of Meta ads;</li><li>identifying the offers worth studying;</li><li>preserving the ads, landing pages, and supporting evidence;</li><li>building a qualified competitor offer archive;</li><li>knowing when to stop researching and turn the findings into an offer.</li></ul>
-<h3>The easiest way to install it</h3>
-<p>Send the GitHub link to your agent and say:</p>
-<blockquote>Install this agent skill for me and tell me what you need to run it:<br><a href="${githubUrl}">${githubUrl}</a></blockquote>
-<p>The skill works out of the box with Hermes Agent and can be adapted to other agents like Claude Code. You’ll need a ScrapeCreators API key when you’re ready to run the research.</p>
-<h3>Want it built around your business?</h3>
-<p>The skill gives you the research workflow. The bigger opportunity is connecting agents like this to the sales, marketing, and operational workflows already inside your company.</p>
-<p>If you want us to design and build those agents for you, <a href="${bookingUrl}">book a quick chat</a>.</p>
-<p>—Santi<br>PulpSense</p>`,
+      html: `<!doctype html>
+<html><body style="margin:0;padding:0;background:#f4f5f7;color:#202124;font-family:Arial,Helvetica,sans-serif;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your Meta Offer Intelligence skill is ready.</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f5f7;"><tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border:1px solid #e4e7ec;border-radius:12px;">
+<tr><td style="padding:40px 40px 36px;font-size:16px;line-height:1.6;">
+<p style="margin:0 0 18px;">Hey ${safeFirstName},</p>
+<p style="margin:0 0 28px;">Here’s your Meta Offer Intelligence skill.</p>
+<h2 style="margin:0 0 12px;font-size:19px;line-height:1.35;">The easiest way to install it</h2>
+<p style="margin:0 0 14px;">Send the skill to your agent with this instruction:</p>
+<div style="margin:0 0 28px;padding:16px 18px;background:#f7f8fa;border:1px solid #dfe3e8;border-left:4px solid #1769e0;border-radius:6px;">Install this agent skill for me and tell me what you need to run it.<div style="margin-top:12px;color:#1769e0;word-break:break-all;">${githubUrl}</div></div>
+<p style="margin:0 0 30px;color:#4f5660;">Built for Hermes Agent and adaptable to tools like Claude Code. You’ll need a ScrapeCreators API key when you’re ready to run the research.</p>
+<div style="border-top:1px solid #e4e7ec;padding-top:28px;">
+<h2 style="margin:0 0 12px;font-size:19px;line-height:1.35;">Want it adapted to your business?</h2>
+<p style="margin:0 0 18px;">The skill provides the research workflow. The bigger opportunity is connecting agents like this to the sales, marketing, and operational workflows already inside your company.</p>
+<p style="margin:0 0 30px;"><a href="${bookingUrl}" style="color:#1769e0;font-weight:700;">Book a quick chat</a></p>
+</div>
+<p style="margin:0;">Talk soon,<br>Santi<br><span style="color:#667085;">PulpSense</span></p>
+</td></tr></table>
+</td></tr></table></body></html>`,
     };
   },
 });
