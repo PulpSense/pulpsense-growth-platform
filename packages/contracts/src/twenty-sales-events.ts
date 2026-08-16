@@ -2,7 +2,21 @@ import { z } from "zod";
 
 import { prospectIdSchema } from "./funnel-events.js";
 
-export const TWENTY_SALES_EVENT_SCHEMA_VERSION = 1 as const;
+export const TWENTY_SALES_EVENT_SCHEMA_VERSION = 2 as const;
+
+export const TWENTY_REVENUE_UPDATED_FIELDS = [
+  "amount",
+  "currency",
+  "amount.amountMicros",
+  "amount.currencyCode",
+] as const;
+
+const twentyRevenueUpdatedFieldSet = new Set<string>(
+  TWENTY_REVENUE_UPDATED_FIELDS,
+);
+
+export const isTwentyRevenueUpdatedField = (field: string) =>
+  twentyRevenueUpdatedFieldSet.has(field);
 
 export const twentySalesWebhookEventSchema = z
   .object({
@@ -14,7 +28,7 @@ export const twentySalesWebhookEventSchema = z
     personId: z.string().min(1).max(200),
     prospectId: prospectIdSchema.optional(),
     originatingLeadJourneyId: z.uuid(),
-    stageId: z.string().min(1).max(200),
+    stageValue: z.string().min(1).max(200),
     previousOutcome: z.enum(["won", "lost"]).optional(),
     amount: z.number().finite().nonnegative(),
     currency: z

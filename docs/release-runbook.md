@@ -42,6 +42,7 @@ Deploy the qualified automation version and confirm the Production environment c
 
 - `PULPSENSE_AUTOMATION_ENVIRONMENT=production`;
 - `TWENTY_API_ORIGIN`, `TWENTY_API_KEY`, `TWENTY_QUALIFIED_STAGE_VALUE`, `TWENTY_CALL_BOOKED_STAGE_VALUE`, and `TWENTY_CLOSED_STAGE_VALUES` for the production Twenty workspace;
+- `TWENTY_WON_STAGE_ID` and `TWENTY_LOST_STAGE_ID` set to the production stage option UUIDs, not their API values or labels;
 - `META_PIXEL_ID_AI_SEO_*` and `META_CAPI_ACCESS_TOKEN_AI_SEO_*` for every campaign destination, plus `META_GRAPH_API_VERSION`;
 - no matching `META_TEST_EVENT_CODE_AI_SEO_*` variables during live delivery;
 - `POSTHOG_PROJECT_KEY` and the region-correct `POSTHOG_HOST`;

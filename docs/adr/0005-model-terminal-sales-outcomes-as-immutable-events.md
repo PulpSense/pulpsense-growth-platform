@@ -2,7 +2,7 @@
 
 ## Decision
 
-Twenty remains the commercial source of truth. Only Opportunity changes involving the stable won stage ID, stable lost stage ID, or the compound revenue field (`amount` and its amount/currency subfields) are eligible for sales lifecycle processing. Editable stage labels and intermediate pipeline changes are never analytics lifecycle events.
+Twenty remains the commercial source of truth. Opportunity webhooks expose a SELECT option API value rather than its immutable option UUID. Trigger.dev resolves that value through Twenty's metadata API and compares the resulting UUID with the configured won and lost stage IDs. Only those terminal stages or changes to the compound revenue field (`amount` and its amount/currency subfields) are eligible for sales lifecycle processing. Editable stage labels and intermediate pipeline changes are never analytics lifecycle events.
 
 The Cloudflare Pages Function verifies Twenty's HMAC-SHA256 signature over `<timestamp>:<exact raw body>`, rejects requests older than five minutes, validates the production workspace and required CRM references, and returns success only after Trigger.dev confirms durable enqueue.
 

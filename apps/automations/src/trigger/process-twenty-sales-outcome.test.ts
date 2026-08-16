@@ -7,7 +7,7 @@ import {
 } from "./process-twenty-sales-outcome.js";
 
 const baseEvent = {
-  schemaVersion: 1 as const,
+  schemaVersion: 2 as const,
   eventId: "twenty:webhook-1:opportunity-1:2026-08-15T10:00:00.000Z",
   occurredAt: "2026-08-15T10:00:00.000Z",
   workspaceId: "production-workspace",
@@ -15,7 +15,7 @@ const baseEvent = {
   personId: "person-1",
   prospectId: `prospect_v1_${"a".repeat(64)}`,
   originatingLeadJourneyId: "8be0f734-f3c9-4c8c-b4f8-7897f6285f12",
-  stageId: "stage-won",
+  stageValue: "stage-won",
   amount: 12500,
   currency: "USD",
   updatedFields: ["stage"],
@@ -26,12 +26,46 @@ const dependencies = () => {
   const capture = vi.fn<TwentySalesOutcomeDependencies["capture"]>();
   return {
     capture,
+    resolveStageOptionId: vi.fn(async (stageValue: string) =>
+      stageValue === "stage-won"
+        ? "won-stage-id"
+        : stageValue === "stage-lost"
+          ? "lost-stage-id"
+          : "intermediate-stage-id",
+    ),
     resolveProspectId: vi.fn(async () => baseEvent.prospectId),
     recordOutcome: vi.fn(async () => undefined),
-    wonStageId: "stage-won",
-    lostStageId: "stage-lost",
+    wonStageId: "won-stage-id",
+    lostStageId: "lost-stage-id",
   } satisfies TwentySalesOutcomeDependencies;
 };
+
+const stageMetadataResponse = () =>
+  Response.json({
+    data: {
+      objects: {
+        edges: [
+          {
+            node: { id: "opportunity-object-id", nameSingular: "opportunity" },
+          },
+        ],
+      },
+      fields: {
+        edges: [
+          {
+            node: {
+              name: "stage",
+              objectMetadataId: "opportunity-object-id",
+              options: [
+                { id: "won-stage-id", value: "stage-won" },
+                { id: "lost-stage-id", value: "stage-lost" },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
 
 describe("Twenty terminal sales outcome processing", () => {
   it("emits one completed sale when an Opportunity enters the won stage", async () => {
@@ -57,7 +91,7 @@ describe("Twenty terminal sales outcome processing", () => {
   it("emits a lost sale when an Opportunity enters the lost stage", async () => {
     const deps = dependencies();
     const result = await processTwentySalesOutcome(
-      { ...baseEvent, stageId: "stage-lost" },
+      { ...baseEvent, stageValue: "stage-lost" },
       deps,
     );
     expect(result).toEqual({ emitted: "sale_lost" });
@@ -66,7 +100,7 @@ describe("Twenty terminal sales outcome processing", () => {
   it("ignores intermediate Opportunity updates", async () => {
     const deps = dependencies();
     const result = await processTwentySalesOutcome(
-      { ...baseEvent, stageId: "stage-negotiation" },
+      { ...baseEvent, stageValue: "stage-negotiation" },
       deps,
     );
     expect(result).toEqual({ emitted: null, ignored: "intermediate_stage" });
@@ -110,7 +144,7 @@ describe("Twenty terminal sales outcome processing", () => {
     const event = {
       ...baseEvent,
       eventId: "twenty:webhook-1:opportunity-1:corrected",
-      stageId: "stage-lost",
+      stageValue: "stage-lost",
       previousOutcome: "won" as const,
     };
     const result = await processTwentySalesOutcome(event, deps);
@@ -138,6 +172,7 @@ describe("Twenty terminal sales outcome processing", () => {
   it("delivers through Twenty and PostHog HTTP boundaries with retry-stable identity", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
+      .mockResolvedValueOnce(stageMetadataResponse())
       .mockResolvedValueOnce(
         Response.json({
           data: { person: { prospectId: baseEvent.prospectId } },
@@ -149,8 +184,8 @@ describe("Twenty terminal sales outcome processing", () => {
       {
         TWENTY_API_ORIGIN: "https://twenty.test",
         TWENTY_API_KEY: "twenty-key",
-        TWENTY_WON_STAGE_ID: "stage-won",
-        TWENTY_LOST_STAGE_ID: "stage-lost",
+        TWENTY_WON_STAGE_ID: "won-stage-id",
+        TWENTY_LOST_STAGE_ID: "lost-stage-id",
         POSTHOG_PROJECT_KEY: "posthog-key",
         POSTHOG_HOST: "https://posthog.test",
       },
@@ -162,12 +197,10 @@ describe("Twenty terminal sales outcome processing", () => {
       deps,
     );
 
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "https://twenty.test/rest/people/person-1",
-    );
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("https://twenty.test/metadata");
     expect(
-      JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)),
+      JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body)),
     ).toMatchObject({
       event: "sale_completed",
       properties: {
@@ -175,8 +208,46 @@ describe("Twenty terminal sales outcome processing", () => {
         $insert_id: "sale_completed:opportunity-1",
       },
     });
-    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
       pulpsenseSalesOutcome: "WON",
     });
+  });
+
+  it("reuses the PostHog insert ID when a failed Twenty state write retries", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(stageMetadataResponse())
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 500 }))
+      .mockResolvedValueOnce(stageMetadataResponse())
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(Response.json({ id: baseEvent.opportunityId }));
+    const deps = createTwentySalesOutcomeDependencies(
+      {
+        TWENTY_API_ORIGIN: "https://twenty.test",
+        TWENTY_API_KEY: "twenty-key",
+        TWENTY_WON_STAGE_ID: "won-stage-id",
+        TWENTY_LOST_STAGE_ID: "lost-stage-id",
+        POSTHOG_PROJECT_KEY: "posthog-key",
+        POSTHOG_HOST: "https://posthog.test",
+      },
+      fetchMock,
+    );
+
+    await expect(processTwentySalesOutcome(baseEvent, deps)).rejects.toThrow(
+      "Twenty sales outcome state write failed (500)",
+    );
+    await expect(processTwentySalesOutcome(baseEvent, deps)).resolves.toEqual({
+      emitted: "sale_completed",
+    });
+
+    const firstCapture = JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body));
+    const retryCapture = JSON.parse(String(fetchMock.mock.calls[4]?.[1]?.body));
+    expect(firstCapture.properties.$insert_id).toBe(
+      "sale_completed:opportunity-1",
+    );
+    expect(retryCapture.properties.$insert_id).toBe(
+      firstCapture.properties.$insert_id,
+    );
   });
 });

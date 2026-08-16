@@ -1,4 +1,5 @@
 import {
+  isTwentyRevenueUpdatedField,
   twentySalesWebhookEventSchema,
   type TwentySalesWebhookEvent,
 } from "@pulpsense/contracts";
@@ -8,13 +9,8 @@ import type { FunnelEnv } from "./funnel-env";
 import { json } from "./http";
 
 const MAX_WEBHOOK_AGE_MS = 5 * 60_000;
-const relevantFields = new Set([
-  "stage",
-  "amount",
-  "currency",
-  "amount.amountMicros",
-  "amount.currencyCode",
-]);
+const isRelevantField = (field: string) =>
+  field === "stage" || isTwentyRevenueUpdatedField(field);
 
 const currencyAmountSchema = z.object({
   amountMicros: z.number().finite().nonnegative(),
@@ -154,7 +150,7 @@ export async function handleTwentySalesWebhook(
   if (
     webhook.eventName !== "opportunity.updated" ||
     webhook.objectMetadata.nameSingular !== "opportunity" ||
-    !webhook.updatedFields?.some((field) => relevantFields.has(field))
+    !webhook.updatedFields?.some(isRelevantField)
   ) {
     return json({ accepted: false, ignored: true, reason: "event" }, 202);
   }
@@ -169,7 +165,7 @@ export async function handleTwentySalesWebhook(
     return json({ error: "twenty_sales_references_missing" }, 422);
   }
   const event = twentySalesWebhookEventSchema.safeParse({
-    schemaVersion: 1,
+    schemaVersion: 2,
     eventId: `twenty:${webhook.webhookId}:${record.id}:${webhook.eventDate}`,
     occurredAt: webhook.eventDate,
     workspaceId: webhook.workspaceId,
@@ -177,7 +173,7 @@ export async function handleTwentySalesWebhook(
     personId: record.pointOfContactId,
     prospectId: record.prospectId,
     originatingLeadJourneyId: record.originatingLeadJourneyId,
-    stageId: record.stage,
+    stageValue: record.stage,
     previousOutcome:
       record.pulpsenseSalesOutcome === "WON"
         ? "won"
