@@ -53,6 +53,10 @@ Keep funnel-specific assets under `apps/funnels/public/[funnel-name]/` and share
 
 Keep secrets in ignored `.env` files or Trigger.dev environment variables.
 
+Use `santi@go.pulpsense.com` as the sender and reply-to address for all
+funnel-originated email. Keep funnel email paths on the shared configured
+sender instead of introducing message-specific sender variables.
+
 ## Code standards
 
 - ESLint with TypeScript configs
