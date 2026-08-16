@@ -61,6 +61,9 @@ src/funnels/ai-seo/
 └── styles/                 # Route-specific funnel stylesheets
 ```
 
+Lead magnets remain internal domain objects in `packages/lead-magnets`. Their
+public pages use `/resources/{slug}`; never expose `/lead-magnets/` in new URLs.
+
 Cloudflare files under `functions/api/` are thin adapters. Server handlers keep
 the `(request, env) => response` interface, while endpoint internals live behind
 that seam. The funnel-event handler delegates contact and application flows to
