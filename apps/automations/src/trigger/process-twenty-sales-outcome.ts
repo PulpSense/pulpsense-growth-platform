@@ -3,8 +3,10 @@ import {
   prospectIdSchema,
   twentySalesWebhookEventSchema,
   type TwentySalesWebhookEvent,
+  type TwentyStageValue,
 } from "@pulpsense/contracts";
 import { logger, schemaTask } from "@trigger.dev/sdk";
+import { z } from "zod";
 
 type SalesEventName =
   | "sale_completed"
@@ -20,17 +22,24 @@ type SalesCapture = {
   properties: Record<string, unknown>;
 };
 
+export const twentyStageOptionIdSchema = z
+  .uuid()
+  .brand<"TwentyStageOptionId">();
+export type TwentyStageOptionId = z.infer<typeof twentyStageOptionIdSchema>;
+
 export type TwentySalesOutcomeDependencies = {
-  wonStageId: string;
-  lostStageId: string;
-  resolveStageOptionId(stageValue: string): Promise<string>;
+  wonStageId: TwentyStageOptionId;
+  lostStageId: TwentyStageOptionId;
+  resolveStageOptionId(
+    stageValue: TwentyStageValue,
+  ): Promise<TwentyStageOptionId>;
   resolveProspectId(personId: string): Promise<string>;
   capture(event: SalesCapture): Promise<void>;
   recordOutcome(opportunityId: string, outcome: "won" | "lost"): Promise<void>;
 };
 
 const outcomeForStageId = (
-  stageId: string,
+  stageId: TwentyStageOptionId,
   dependencies: Pick<
     TwentySalesOutcomeDependencies,
     "wonStageId" | "lostStageId"
@@ -103,6 +112,12 @@ const required = (value: string | undefined, name: string) => {
   return value;
 };
 
+const requiredStageOptionId = (value: string | undefined, name: string) => {
+  const parsed = twentyStageOptionIdSchema.safeParse(required(value, name));
+  if (!parsed.success) throw new Error(`${name} must be a UUID`);
+  return parsed.data;
+};
+
 const postHogCaptureUrl = (host: string) => {
   const url = new URL(host);
   if (url.protocol !== "https:" && url.protocol !== "http:") {
@@ -131,11 +146,11 @@ export const createTwentySalesOutcomeDependencies = (
     required(environment.POSTHOG_HOST, "POSTHOG_HOST"),
   );
   return {
-    wonStageId: required(
+    wonStageId: requiredStageOptionId(
       environment.TWENTY_WON_STAGE_ID,
       "TWENTY_WON_STAGE_ID",
     ),
-    lostStageId: required(
+    lostStageId: requiredStageOptionId(
       environment.TWENTY_LOST_STAGE_ID,
       "TWENTY_LOST_STAGE_ID",
     ),
@@ -206,10 +221,11 @@ export const createTwentySalesOutcomeDependencies = (
         )
         .flatMap((edge) => edge.node?.options ?? [])
         .find((candidate) => candidate.value === stageValue);
-      if (typeof option?.id !== "string" || !option.id) {
+      const optionId = twentyStageOptionIdSchema.safeParse(option?.id);
+      if (!optionId.success) {
         throw new Error(`Twenty stage value ${stageValue} has no option ID`);
       }
-      return option.id;
+      return optionId.data;
     },
     resolveProspectId: async (personId) => {
       const response = await fetcher(
