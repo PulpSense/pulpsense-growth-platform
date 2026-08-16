@@ -22,7 +22,19 @@ describe("lead magnet registry", () => {
     expect(email?.html).toContain(
       "https://github.com/PulpSense/meta-offer-intelligence-skill",
     );
+    expect(email?.html).toContain("Hey Maya,");
+    expect(email?.html).not.toContain(
+      '<a href="https://github.com/PulpSense/meta-offer-intelligence-skill">https://github.com/PulpSense/meta-offer-intelligence-skill</a>',
+    );
+    expect(email?.html).toContain(
+      `what you need to run it.<div style="margin-top:12px;color:#1769e0;word-break:break-all;">https://github.com/PulpSense/meta-offer-intelligence-skill</div>`,
+    );
+    expect(email?.html).not.toContain("→");
+    expect(email?.html).not.toContain("Get the Meta Offer Intelligence skill");
+    expect(email?.html).not.toContain(
+      "Researching large collections of Meta ads",
+    );
     expect(email?.text).toContain("Hermes Agent");
-    expect(email?.text).not.toContain("Hi Maya");
+    expect(email?.text).toContain("Hey Maya,");
   });
 });
