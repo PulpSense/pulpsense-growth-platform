@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   deliverMeetingReminder,
+  meetingReminderPayloadSchema,
   scheduleMeetingReminders,
   type MeetingReminderPayload,
   type ReminderEnvironment,
@@ -43,6 +44,8 @@ const bookingEvent: BookingCompletedEvent = {
 const payload: MeetingReminderPayload = {
   submissionId: bookingEvent.submissionId,
   firstName: bookingEvent.payload.firstName,
+  phone: bookingEvent.payload.phone,
+  channel: "gmail",
   bookingUid: bookingEvent.payload.booking.uid,
   expectedStartTime: bookingEvent.payload.booking.startTime,
   threshold: "2h",
@@ -75,10 +78,12 @@ describe("meeting reminder scheduling", () => {
         new Date("2026-08-12T13:30:00.000Z"),
         createKey,
       ),
-    ).resolves.toEqual({ scheduled: ["15m"] });
-    expect(trigger).toHaveBeenCalledTimes(1);
+    ).resolves.toEqual({ scheduled: ["gmail:15m", "sms:5m"] });
+    expect(trigger).toHaveBeenCalledTimes(2);
     expect(trigger.mock.calls[0]?.[0]).toMatchObject({
       firstName: "Maya",
+      phone: "+1 555 123 4567",
+      channel: "gmail",
       threshold: "15m",
       bookingUid: "cal_uid_123",
       expiresAt: "2026-08-12T14:00:00.000Z",
@@ -88,10 +93,30 @@ describe("meeting reminder scheduling", () => {
       idempotencyKey:
         "key:meeting-reminder:cal_uid_123:2026-08-12T14:00:00.000Z:15m",
     });
+    expect(trigger.mock.calls[1]?.[0]).toMatchObject({
+      channel: "sms",
+      threshold: "5m",
+      expiresAt: "2026-08-12T14:00:00.000Z",
+    });
+    expect(trigger.mock.calls[1]?.[1]).toMatchObject({
+      delay: new Date("2026-08-12T13:55:00.000Z"),
+      idempotencyKey:
+        "key:meeting-reminder:cal_uid_123:2026-08-12T14:00:00.000Z:5m",
+    });
   });
 });
 
 describe("meeting reminder delivery", () => {
+  it("accepts legacy queued Gmail payloads without a channel or phone", () => {
+    const { channel, phone } = meetingReminderPayloadSchema.parse({
+      ...payload,
+      channel: undefined,
+      phone: undefined,
+    });
+    expect(channel).toBe("gmail");
+    expect(phone).toBeUndefined();
+  });
+
   it("fails closed for an expired reminder without calling a provider", async () => {
     const fetcher = vi.fn<typeof fetch>();
     await expect(
@@ -155,7 +180,10 @@ describe("meeting reminder delivery", () => {
         fetch: fetcher,
         now: () => new Date("2026-08-12T13:00:00.000Z"),
       }),
-    ).resolves.toEqual({ sent: true });
+    ).resolves.toEqual({
+      sent: true,
+      channel: "gmail",
+    });
     expect(fetcher).toHaveBeenCalledTimes(3);
     const gmailRequest = fetcher.mock.calls[2];
     expect(gmailRequest?.[0]).toBe(
@@ -174,5 +202,107 @@ describe("meeting reminder delivery", () => {
     expect(Buffer.from(String(encodedBody), "base64").toString("utf8")).toBe(
       "Hey Maya - see you morning at 10:00am.\n\nhttps://meet.example.com/cal_uid_123",
     );
+  });
+
+  it("sends a configured Telnyx SMS to the normalized booking phone", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          status: "success",
+          data: {
+            uid: payload.bookingUid,
+            title: "AI SEO Audit",
+            status: "accepted",
+            start: payload.expectedStartTime,
+            end: "2026-08-12T14:30:00.000Z",
+            meetingUrl: "https://meet.example.com/cal_uid_123",
+            attendees: [
+              { email: "maya@brand.com", timeZone: "America/New_York" },
+            ],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: { id: "sms-id" } }));
+
+    await expect(
+      deliverMeetingReminder(
+        {
+          ...payload,
+          channel: "sms",
+          threshold: "90m",
+          expiresAt: "2026-08-12T13:45:00.000Z",
+        },
+        {
+          ...enabledEnvironment,
+          GMAIL_REMINDERS_ENABLED: "false",
+          TELNYX_SMS_REMINDERS_ENABLED: "true",
+          TELNYX_API_KEY: "telnyx-test",
+          TELNYX_FROM_NUMBER: "+13072490829",
+          TELNYX_SMS_REMINDER_90M_BODY:
+            "PulpSense reminder: Hi {{first_name}}, your call is at {{local_time}}. {{meeting_url}}",
+        },
+        {
+          fetch: fetcher,
+          now: () => new Date("2026-08-12T13:00:00.000Z"),
+        },
+      ),
+    ).resolves.toEqual({
+      sent: true,
+      channel: "sms",
+    });
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls[1]?.[0]).toBe(
+      "https://api.telnyx.com/v2/messages",
+    );
+    expect(fetcher.mock.calls[1]?.[1]).toMatchObject({
+      method: "POST",
+      headers: {
+        Authorization: "Bearer telnyx-test",
+        "Content-Type": "application/json",
+      },
+    });
+    expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toEqual({
+      from: "+13072490829",
+      to: "+15551234567",
+      text: "PulpSense reminder: Hi Maya, your call is at 10:00am. https://meet.example.com/cal_uid_123",
+    });
+  });
+
+  it("fails closed before sending SMS when Cal omits the join link", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      Response.json({
+        status: "success",
+        data: {
+          uid: payload.bookingUid,
+          title: "AI SEO Audit",
+          status: "accepted",
+          start: payload.expectedStartTime,
+          end: "2026-08-12T14:30:00.000Z",
+          attendees: [
+            { email: "maya@brand.com", timeZone: "America/New_York" },
+          ],
+        },
+      }),
+    );
+
+    await expect(
+      deliverMeetingReminder(
+        { ...payload, channel: "sms", threshold: "90m" },
+        {
+          ...enabledEnvironment,
+          GMAIL_REMINDERS_ENABLED: "false",
+          TELNYX_SMS_REMINDERS_ENABLED: "true",
+          TELNYX_API_KEY: "telnyx-test",
+          TELNYX_FROM_NUMBER: "+13072490829",
+          TELNYX_SMS_REMINDER_90M_BODY: "Join: {{meeting_url}}",
+        },
+        {
+          fetch: fetcher,
+          now: () => new Date("2026-08-12T13:00:00.000Z"),
+        },
+      ),
+    ).rejects.toThrow("Cal meeting URL is not configured");
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });
