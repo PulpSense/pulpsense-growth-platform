@@ -176,7 +176,7 @@ describe("Twenty terminal sales outcome processing", () => {
       },
     });
     expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
-      pulpsenseSalesOutcome: "won",
+      pulpsenseSalesOutcome: "WON",
     });
   });
 });

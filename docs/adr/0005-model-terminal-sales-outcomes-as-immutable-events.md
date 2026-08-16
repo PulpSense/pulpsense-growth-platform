@@ -15,7 +15,7 @@ Trigger.dev emits append-only PostHog events on the Prospect timeline:
 
 Every event carries Prospect ID, originating Lead Journey ID, Twenty Person ID, Twenty Opportunity ID, occurrence time, numeric amount, and ISO currency. PostHog `$insert_id` values make webhook redelivery and task retries successful no-ops. Original lifecycle events are never deleted or rewritten.
 
-Twenty Opportunity field `pulpsenseSalesOutcome` stores only the last successfully emitted terminal outcome (`won` or `lost`). Trigger.dev updates it after PostHog accepts an event. If that write fails, a retry resends the same idempotent PostHog event before completing the state write. This minimal projection is used only to classify later corrections; it is not an analytics event ledger.
+Twenty Opportunity field `pulpsenseSalesOutcome` stores only the last successfully emitted terminal outcome (`WON` or `LOST`). Trigger.dev updates it after PostHog accepts an event and normalizes it to lowercase in analytics properties. If that write fails, a retry resends the same idempotent PostHog event before completing the state write. This minimal projection is used only to classify later corrections; it is not an analytics event ledger.
 
 ## Consequences
 

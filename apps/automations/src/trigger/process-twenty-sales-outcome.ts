@@ -191,7 +191,7 @@ export const createTwentySalesOutcomeDependencies = (
             Authorization: `Bearer ${twentyApiKey}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ pulpsenseSalesOutcome: outcome }),
+          body: JSON.stringify({ pulpsenseSalesOutcome: outcome.toUpperCase() }),
         },
       );
       if (!response.ok) {

@@ -41,7 +41,7 @@ const twentyWebhookSchema = z
         prospectId: z.string().optional(),
         originatingLeadJourneyId: z.string().optional(),
         stage: z.string().min(1).max(200).optional(),
-        pulpsenseSalesOutcome: z.enum(["won", "lost"]).optional(),
+        pulpsenseSalesOutcome: z.enum(["WON", "LOST"]).optional(),
         amount: currencyAmountSchema.optional(),
       })
       .passthrough(),
@@ -178,7 +178,12 @@ export async function handleTwentySalesWebhook(
     prospectId: record.prospectId,
     originatingLeadJourneyId: record.originatingLeadJourneyId,
     stageId: record.stage,
-    previousOutcome: record.pulpsenseSalesOutcome,
+    previousOutcome:
+      record.pulpsenseSalesOutcome === "WON"
+        ? "won"
+        : record.pulpsenseSalesOutcome === "LOST"
+          ? "lost"
+          : undefined,
     amount: record.amount.amountMicros / 1_000_000,
     currency: record.amount.currencyCode,
     updatedFields: webhook.updatedFields,
