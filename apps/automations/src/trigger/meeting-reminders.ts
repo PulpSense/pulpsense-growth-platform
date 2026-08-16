@@ -7,20 +7,44 @@ import { z } from "zod";
 
 import { triggerRunUrl } from "./trigger-dashboard.js";
 
-export const reminderThresholdSchema = z.enum(["24h", "2h", "15m"]);
+export const reminderThresholdSchema = z.enum([
+  "24h",
+  "2h",
+  "90m",
+  "15m",
+  "5m",
+]);
 export type ReminderThreshold = z.infer<typeof reminderThresholdSchema>;
+export const reminderChannelSchema = z.enum(["gmail", "sms"]);
+export type ReminderChannel = z.infer<typeof reminderChannelSchema>;
 
 export const meetingReminderPayloadSchema = z
   .object({
     submissionId: z.string().uuid(),
     firstName: z.string().trim().min(1).max(100),
+    phone: z.string().trim().min(7).max(40).optional(),
+    channel: reminderChannelSchema.default("gmail"),
     bookingUid: z.string().trim().min(1).max(200),
     expectedStartTime: z.string().datetime({ offset: true }),
     threshold: reminderThresholdSchema,
     expiresAt: z.string().datetime({ offset: true }),
     environment: z.enum(["local", "preview", "production"]),
   })
-  .strict();
+  .strict()
+  .superRefine((payload, context) => {
+    const valid =
+      (payload.channel === "gmail" &&
+        ["24h", "2h", "15m"].includes(payload.threshold)) ||
+      (payload.channel === "sms" &&
+        ["90m", "5m"].includes(payload.threshold));
+    if (!valid) {
+      context.addIssue({
+        code: "custom",
+        path: ["threshold"],
+        message: `${payload.threshold} is not valid for ${payload.channel}`,
+      });
+    }
+  });
 
 export type MeetingReminderPayload = z.infer<
   typeof meetingReminderPayloadSchema
@@ -29,18 +53,38 @@ export type MeetingReminderPayload = z.infer<
 const thresholdDefinitions = [
   {
     threshold: "24h" as const,
+    channel: "gmail" as const,
     beforeMs: 24 * 60 * 60_000,
     expiresBeforeMs: 2 * 60 * 60_000,
   },
   {
     threshold: "2h" as const,
+    channel: "gmail" as const,
     beforeMs: 2 * 60 * 60_000,
     expiresBeforeMs: 15 * 60_000,
   },
-  { threshold: "15m" as const, beforeMs: 15 * 60_000, expiresBeforeMs: 0 },
+  {
+    threshold: "90m" as const,
+    channel: "sms" as const,
+    beforeMs: 90 * 60_000,
+    expiresBeforeMs: 15 * 60_000,
+  },
+  {
+    threshold: "15m" as const,
+    channel: "gmail" as const,
+    beforeMs: 15 * 60_000,
+    expiresBeforeMs: 0,
+  },
+  {
+    threshold: "5m" as const,
+    channel: "sms" as const,
+    beforeMs: 5 * 60_000,
+    expiresBeforeMs: 0,
+  },
 ];
 
 type SchedulableBookingEvent = BookingCompletedEvent | BookingRescheduledEvent;
+type ScheduledReminder = `${ReminderChannel}:${ReminderThreshold}`;
 
 type ReminderTrigger = (
   payload: MeetingReminderPayload,
@@ -55,13 +99,15 @@ export const scheduleMeetingReminders = async (
     idempotencyKeys.create(key),
 ) => {
   const startMs = new Date(event.payload.booking.startTime).getTime();
-  const scheduled: ReminderThreshold[] = [];
+  const scheduled: ScheduledReminder[] = [];
   for (const definition of thresholdDefinitions) {
     const sendAt = new Date(startMs - definition.beforeMs);
     if (sendAt.getTime() <= now.getTime()) continue;
     const payload: MeetingReminderPayload = {
       submissionId: event.submissionId,
       firstName: event.payload.firstName,
+      phone: event.payload.phone,
+      channel: definition.channel,
       bookingUid: event.payload.booking.uid,
       expectedStartTime: event.payload.booking.startTime,
       threshold: definition.threshold,
@@ -81,7 +127,7 @@ export const scheduleMeetingReminders = async (
       idempotencyKey,
       idempotencyKeyTTL: "1y",
     });
-    scheduled.push(definition.threshold);
+    scheduled.push(`${definition.channel}:${definition.threshold}`);
   }
   return { scheduled };
 };
@@ -110,6 +156,11 @@ type ReminderEnvironment = {
   GMAIL_REMINDER_2H_BODY?: string;
   GMAIL_REMINDER_15M_SUBJECT?: string;
   GMAIL_REMINDER_15M_BODY?: string;
+  TELNYX_SMS_REMINDERS_ENABLED?: string;
+  TELNYX_API_KEY?: string;
+  TELNYX_FROM_NUMBER?: string;
+  TELNYX_SMS_REMINDER_90M_BODY?: string;
+  TELNYX_SMS_REMINDER_5M_BODY?: string;
   SLACK_FAILURE_WEBHOOK_URL?: string;
 };
 
@@ -166,6 +217,11 @@ const templateNames = {
   },
 } as const;
 
+const smsTemplateNames = {
+  "90m": "TELNYX_SMS_REMINDER_90M_BODY",
+  "5m": "TELNYX_SMS_REMINDER_5M_BODY",
+} as const;
+
 const renderTemplate = (template: string, variables: Record<string, string>) =>
   Object.entries(variables).reduce(
     (rendered, [name, value]) => rendered.replaceAll(`{{${name}}}`, value),
@@ -210,6 +266,26 @@ const formatAppointmentForAttendee = (start: string, timeZone: string) => {
   return { localTime: `${hour}:${minute}${dayPeriod}`, daypart };
 };
 
+const buildReminderTemplateVariables = (
+  payload: MeetingReminderPayload,
+  booking: CalBooking,
+  attendeeTimeZone: string,
+) => {
+  const { localTime, daypart } = formatAppointmentForAttendee(
+    booking.start,
+    attendeeTimeZone,
+  );
+  return {
+    first_name: payload.firstName,
+    local_time: localTime,
+    daypart,
+    meeting_title: booking.title,
+    start_time: booking.start,
+    attendee_timezone: attendeeTimeZone,
+    meeting_url: required(booking.meetingUrl, "Cal meeting URL"),
+  };
+};
+
 const gmailAccessToken = async (
   environment: ReminderEnvironment,
   fetcher: typeof fetch,
@@ -247,23 +323,17 @@ const sendGmailReminder = async (
   fetcher: typeof fetch,
 ) => {
   const sender = required(environment.GMAIL_SENDER_EMAIL, "GMAIL_SENDER_EMAIL");
-  const names = templateNames[payload.threshold];
+  if (!(payload.threshold in templateNames)) {
+    throw new Error("Gmail reminder threshold is invalid");
+  }
+  const names = templateNames[payload.threshold as keyof typeof templateNames];
   const subjectTemplate = required(environment[names.subject], names.subject);
   const bodyTemplate = required(environment[names.body], names.body);
-  const meetingUrl = required(booking.meetingUrl, "Cal meeting URL");
-  const { localTime, daypart } = formatAppointmentForAttendee(
-    booking.start,
+  const variables = buildReminderTemplateVariables(
+    payload,
+    booking,
     attendee.timeZone,
   );
-  const variables = {
-    first_name: payload.firstName,
-    local_time: localTime,
-    daypart,
-    meeting_title: booking.title,
-    start_time: booking.start,
-    attendee_timezone: attendee.timeZone,
-    meeting_url: meetingUrl,
-  };
   const subject = renderTemplate(subjectTemplate, variables);
   const body = renderTemplate(bodyTemplate, variables);
   const messageId = `<pulpsense-${payload.bookingUid}-${payload.expectedStartTime}-${payload.threshold}@pulpsense.com>`;
@@ -296,6 +366,52 @@ const sendGmailReminder = async (
   }
 };
 
+const normalizeE164 = (phone: string) => {
+  const normalized = phone.trim().replace(/[\s().-]/gu, "");
+  if (!/^\+[1-9]\d{7,14}$/u.test(normalized)) {
+    throw new Error("Appointment phone number is not valid E.164");
+  }
+  return normalized;
+};
+
+const sendTelnyxSmsReminder = async (
+  payload: MeetingReminderPayload,
+  booking: CalBooking,
+  attendee: { timeZone: string },
+  environment: ReminderEnvironment,
+  fetcher: typeof fetch,
+) => {
+  if (!(payload.threshold in smsTemplateNames)) {
+    throw new Error("SMS reminder threshold is invalid");
+  }
+  const templateName =
+    smsTemplateNames[payload.threshold as keyof typeof smsTemplateNames];
+  const template = required(environment[templateName], templateName);
+  const text = renderTemplate(
+    template,
+    buildReminderTemplateVariables(payload, booking, attendee.timeZone),
+  );
+  const response = await fetcher("https://api.telnyx.com/v2/messages", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${required(environment.TELNYX_API_KEY, "TELNYX_API_KEY")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: normalizeE164(
+        required(environment.TELNYX_FROM_NUMBER, "TELNYX_FROM_NUMBER"),
+      ),
+      to: normalizeE164(
+        required(payload.phone, "Appointment phone number"),
+      ),
+      text,
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Telnyx SMS reminder send failed (${response.status})`);
+  }
+};
+
 const alertReminderFailure = async (
   payload: MeetingReminderPayload,
   webhookUrl: string,
@@ -307,7 +423,7 @@ const alertReminderFailure = async (
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       text: [
-        `:rotating_light: *Gmail reminder failed* — ${payload.environment}`,
+        `:rotating_light: *Meeting reminder failed* — ${payload.environment}`,
         `${payload.threshold} reminder · Journey: \`${payload.submissionId}\` · Booking: \`${payload.bookingUid}\``,
         `<${runUrl}|Open in Trigger>`,
       ].join("\n"),
@@ -321,22 +437,33 @@ const alertReminderFailure = async (
 export const deliverMeetingReminder = async (
   payload: MeetingReminderPayload,
   environment: ReminderEnvironment,
-  runtime: { fetch: typeof fetch; now?: () => Date },
+  runtime: {
+    fetch: typeof fetch;
+    now?: () => Date;
+    attempt?: <Result>(operation: () => Promise<Result>) => Promise<Result>;
+  },
 ) => {
   const now = runtime.now?.() ?? new Date();
   if (now.getTime() >= new Date(payload.expiresAt).getTime()) {
     return { skipped: "expired" as const };
   }
-  if (environment.GMAIL_REMINDERS_ENABLED !== "true") {
+  const channelEnabled =
+    payload.channel === "gmail"
+      ? environment.GMAIL_REMINDERS_ENABLED === "true"
+      : environment.TELNYX_SMS_REMINDERS_ENABLED === "true";
+  if (!channelEnabled) {
     return { skipped: "disabled" as const };
   }
   if (payload.environment !== environment.PULPSENSE_AUTOMATION_ENVIRONMENT) {
     throw new Error("Reminder environment does not match destinations");
   }
-  const booking = await fetchCurrentBooking(
-    payload.bookingUid,
-    required(environment.CAL_API_KEY, "CAL_API_KEY"),
-    runtime.fetch,
+  const attempt = runtime.attempt ?? (async (operation) => operation());
+  const booking = await attempt(() =>
+    fetchCurrentBooking(
+      payload.bookingUid,
+      required(environment.CAL_API_KEY, "CAL_API_KEY"),
+      runtime.fetch,
+    ),
   );
   if (!booking) return { skipped: "booking_not_found" as const };
   if (
@@ -351,14 +478,32 @@ export const deliverMeetingReminder = async (
       Boolean(candidate.email && candidate.timeZone),
   );
   if (!attendee) throw new Error("Cal booking omitted its attendee");
-  await sendGmailReminder(
-    payload,
-    booking,
-    attendee,
-    environment,
-    runtime.fetch,
-  );
-  return { sent: true as const };
+  if (payload.channel === "gmail") {
+    await attempt(() =>
+      sendGmailReminder(
+        payload,
+        booking,
+        attendee,
+        environment,
+        runtime.fetch,
+      ),
+    );
+  }
+  if (payload.channel === "sms") {
+    await attempt(() =>
+      sendTelnyxSmsReminder(
+        payload,
+        booking,
+        attendee,
+        environment,
+        runtime.fetch,
+      ),
+    );
+  }
+  return {
+    sent: true as const,
+    channel: payload.channel,
+  };
 };
 
 export const sendMeetingReminderTask = schemaTask({
@@ -381,19 +526,29 @@ export const sendMeetingReminderTask = schemaTask({
       GMAIL_REMINDER_2H_BODY: process.env.GMAIL_REMINDER_2H_BODY,
       GMAIL_REMINDER_15M_SUBJECT: process.env.GMAIL_REMINDER_15M_SUBJECT,
       GMAIL_REMINDER_15M_BODY: process.env.GMAIL_REMINDER_15M_BODY,
+      TELNYX_SMS_REMINDERS_ENABLED:
+        process.env.TELNYX_SMS_REMINDERS_ENABLED,
+      TELNYX_API_KEY: process.env.TELNYX_API_KEY,
+      TELNYX_FROM_NUMBER: process.env.TELNYX_FROM_NUMBER,
+      TELNYX_SMS_REMINDER_90M_BODY:
+        process.env.TELNYX_SMS_REMINDER_90M_BODY,
+      TELNYX_SMS_REMINDER_5M_BODY:
+        process.env.TELNYX_SMS_REMINDER_5M_BODY,
       SLACK_FAILURE_WEBHOOK_URL: process.env.SLACK_FAILURE_WEBHOOK_URL,
     };
+    const attempt = <Result>(operation: () => Promise<Result>) =>
+      retry.onThrow(operation, {
+        maxAttempts: 5,
+        factor: 2,
+        minTimeoutInMs: 1_000,
+        maxTimeoutInMs: 30_000,
+        randomize: true,
+      });
     try {
-      return await retry.onThrow(
-        () => deliverMeetingReminder(payload, environment, { fetch }),
-        {
-          maxAttempts: 5,
-          factor: 2,
-          minTimeoutInMs: 1_000,
-          maxTimeoutInMs: 30_000,
-          randomize: true,
-        },
-      );
+      return await deliverMeetingReminder(payload, environment, {
+        fetch,
+        attempt,
+      });
     } catch (error) {
       const webhookUrl = environment.SLACK_FAILURE_WEBHOOK_URL;
       if (webhookUrl) {
