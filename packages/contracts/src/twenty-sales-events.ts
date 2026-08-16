@@ -18,6 +18,14 @@ const twentyRevenueUpdatedFieldSet = new Set<string>(
 export const isTwentyRevenueUpdatedField = (field: string) =>
   twentyRevenueUpdatedFieldSet.has(field);
 
+export const twentyStageValueSchema = z
+  .string()
+  .min(1)
+  .max(200)
+  .brand<"TwentyStageValue">();
+
+export type TwentyStageValue = z.infer<typeof twentyStageValueSchema>;
+
 export const twentySalesWebhookEventSchema = z
   .object({
     schemaVersion: z.literal(TWENTY_SALES_EVENT_SCHEMA_VERSION),
@@ -28,7 +36,7 @@ export const twentySalesWebhookEventSchema = z
     personId: z.string().min(1).max(200),
     prospectId: prospectIdSchema.optional(),
     originatingLeadJourneyId: z.uuid(),
-    stageValue: z.string().min(1).max(200),
+    stageValue: twentyStageValueSchema,
     previousOutcome: z.enum(["won", "lost"]).optional(),
     amount: z.number().finite().nonnegative(),
     currency: z
