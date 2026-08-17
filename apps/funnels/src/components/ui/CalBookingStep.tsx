@@ -1,7 +1,7 @@
 "use client";
 
-import Cal, { getCalApi, type EmbedEvent } from "@calcom/embed-react";
-import { useEffect, useRef } from "react";
+import Cal, { getCalApi } from "@calcom/embed-react";
+import { useEffect } from "react";
 
 import { trackFunnelEvent } from "@/utils/funnelAnalytics";
 
@@ -14,24 +14,7 @@ type CalBookingStepProps = {
     email: string;
   }>;
   bookingIdentity: { submissionId: string; token: string };
-  onBookingSuccessful(bookingUid: string): void;
-};
-
-export const bookingUidFromCalEvent = (event: unknown) => {
-  if (!event || typeof event !== "object" || !("detail" in event)) {
-    return undefined;
-  }
-  const detail = event.detail;
-  if (!detail || typeof detail !== "object" || !("data" in detail)) {
-    return undefined;
-  }
-  const data = detail.data;
-  if (!data || typeof data !== "object" || !("uid" in data)) {
-    return undefined;
-  }
-  return typeof data.uid === "string" && data.uid.trim()
-    ? data.uid.trim()
-    : undefined;
+  onBookingSuccessful(): void;
 };
 
 export function CalBookingStep({
@@ -41,7 +24,6 @@ export function CalBookingStep({
   bookingIdentity,
   onBookingSuccessful,
 }: CalBookingStepProps) {
-  const handledBookingUids = useRef(new Set<string>());
   const config: Record<string, string> = {
     layout: "month_view",
     theme: "light",
@@ -69,15 +51,9 @@ export function CalBookingStep({
         hideEventTypeDetails: true,
         layout: "month_view",
       });
-      const callback = (event: EmbedEvent<"bookingSuccessfulV2">) => {
-        const bookingUid = bookingUidFromCalEvent(event);
-        if (!bookingUid || handledBookingUids.current.has(bookingUid)) return;
-        handledBookingUids.current.add(bookingUid);
-        onBookingSuccessful(bookingUid);
-      };
-      cal("on", { action: "bookingSuccessfulV2", callback });
-      unsubscribe = () =>
-        cal("off", { action: "bookingSuccessfulV2", callback });
+      const callback = () => onBookingSuccessful();
+      cal("on", { action: "bookingSuccessful", callback });
+      unsubscribe = () => cal("off", { action: "bookingSuccessful", callback });
     })();
     return () => {
       disposed = true;

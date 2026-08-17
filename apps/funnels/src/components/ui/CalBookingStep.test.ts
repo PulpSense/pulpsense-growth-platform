@@ -11,7 +11,7 @@ vi.mock("@calcom/embed-react", () => ({
   getCalApi: vi.fn(async () => calMock.api),
 }));
 
-import { bookingUidFromCalEvent, CalBookingStep } from "./CalBookingStep";
+import { CalBookingStep } from "./CalBookingStep";
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }
@@ -29,22 +29,8 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-describe("bookingUidFromCalEvent", () => {
-  it("extracts the confirmed booking UID from Cal's success event", () => {
-    expect(
-      bookingUidFromCalEvent({
-        detail: { data: { uid: "  cal_booking_123  " } },
-      }),
-    ).toBe("cal_booking_123");
-  });
-
-  it("rejects malformed success events", () => {
-    expect(bookingUidFromCalEvent({ detail: { data: {} } })).toBeUndefined();
-  });
-});
-
 describe("CalBookingStep", () => {
-  it("subscribes to V2 booking success and removes the same listener", async () => {
+  it("subscribes to booking success and removes the same listener", async () => {
     const onBookingSuccessful = vi.fn();
     const container = document.createElement("div");
     document.body.append(container);
@@ -68,18 +54,17 @@ describe("CalBookingStep", () => {
     });
 
     const onCall = calMock.api.mock.calls.find(([method]) => method === "on");
-    expect(onCall?.[1]).toMatchObject({ action: "bookingSuccessfulV2" });
-    const callback = onCall?.[1].callback as (event: unknown) => void;
+    expect(onCall?.[1]).toMatchObject({ action: "bookingSuccessful" });
+    const callback = onCall?.[1].callback as () => void;
 
-    act(() => callback({ detail: { data: { uid: "cal_booking_123" } } }));
-    act(() => callback({ detail: { data: { uid: "cal_booking_123" } } }));
-    expect(onBookingSuccessful).toHaveBeenCalledWith("cal_booking_123");
+    act(() => callback());
+    expect(onBookingSuccessful).toHaveBeenCalledWith();
     expect(onBookingSuccessful).toHaveBeenCalledTimes(1);
 
     await act(async () => root?.unmount());
     root = undefined;
     expect(calMock.api).toHaveBeenCalledWith("off", {
-      action: "bookingSuccessfulV2",
+      action: "bookingSuccessful",
       callback,
     });
   });
