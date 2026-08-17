@@ -1,5 +1,6 @@
 import {
   funnelEventSchema,
+  isInternalTestLeadEmail,
   type ApplicationSubmittedEvent,
   type BookingCompletedEvent,
   type BookingRescheduledEvent,
@@ -145,6 +146,9 @@ type ProcessorDependencies = {
   };
 };
 
+export const isInternalTestLead = (event: FunnelEvent) =>
+  isInternalTestLeadEmail(event.payload.email);
+
 const runIndependent = async <
   Operations extends Record<string, Promise<unknown>>,
 >(
@@ -287,6 +291,15 @@ export async function processFunnelEvent(
   dependencies: ProcessorDependencies,
 ) {
   dependencies.assertEnvironment?.(event.environment);
+  if (isInternalTestLead(event)) {
+    dependencies.log.info("Skipped internal test lead", {
+      submissionId: event.submissionId,
+      eventId: event.eventId,
+      eventType: event.eventType,
+      environment: event.environment,
+    });
+    return { ok: true as const, skipped: "internal_test_lead" as const };
+  }
   if (event.eventType === "booking_rescheduled") {
     dependencies.log.info("Processing verified booking reschedule", {
       submissionId: event.submissionId,
