@@ -194,43 +194,6 @@ const normalizeHost = (host: string) => {
   return url.toString().replace(/\/$/u, "");
 };
 
-const stripUrlQuery = (value: string) => {
-  if (value.startsWith("/")) return value.split(/[?#]/u)[0] ?? value;
-  if (!/^https?:\/\//iu.test(value)) return value;
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "https:" && url.protocol !== "http:") return value;
-    return `${url.origin}${url.pathname}`;
-  } catch {
-    return value;
-  }
-};
-
-const sanitizePostHogValue = (value: unknown): unknown => {
-  if (typeof value === "string") return stripUrlQuery(value);
-  if (Array.isArray(value)) return value.map(sanitizePostHogValue);
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value).map(([key, nested]) => [
-        key,
-        sanitizePostHogValue(nested),
-      ]),
-    );
-  }
-  return value;
-};
-
-const sanitizePostHogProperties = (properties: Record<string, unknown>) =>
-  sanitizePostHogValue(properties) as Record<string, unknown>;
-
-const networkFailureClass = (status: number | undefined) => {
-  if (status === undefined) return "unknown";
-  if (status === 0) return "network_error";
-  if (status >= 500) return "server_error";
-  if (status >= 400) return "client_error";
-  return "none";
-};
-
 export function createFunnelAnalyticsClient(
   config: AnalyticsConfig,
   runtime: AnalyticsRuntime,
@@ -252,22 +215,10 @@ export function createFunnelAnalyticsClient(
       capture_pageview: false,
       disable_session_recording: false,
       person_profiles: "identified_only",
-      sanitize_properties: sanitizePostHogProperties,
       session_recording: {
-        maskAllInputs: true,
-        maskCapturedNetworkRequestFn: (request) => {
-          return {
-            name: stripUrlQuery(request.name),
-            entryType: request.entryType,
-            startTime: request.startTime,
-            duration: request.duration,
-            ...(request.method ? { method: request.method } : {}),
-            ...(typeof request.status === "number"
-              ? { status: request.status }
-              : {}),
-            failure_class: networkFailureClass(request.status),
-          } as typeof request;
-        },
+        maskAllInputs: false,
+        recordHeaders: true,
+        recordBody: true,
       },
     });
   }

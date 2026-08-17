@@ -1,0 +1,98 @@
+{
+  "projectId": 549551,
+  "validatedAt": "2026-08-17T10:00:00Z",
+  "events": {
+    "funnel_contact_submitted": {
+      "observed": true,
+      "properties": {
+        "submission_id": { "observed": true, "type": "String" },
+        "funnel_id": { "observed": true, "type": "String" },
+        "first_utm_source": { "observed": true, "type": "String" },
+        "last_utm_source": { "observed": true, "type": "String" },
+        "$session_id": { "observed": true, "type": "String" }
+      }
+    },
+    "funnel_application_submitted": {
+      "observed": true,
+      "properties": {
+        "submission_id": { "observed": true, "type": "String" },
+        "funnel_id": { "observed": true, "type": "String" },
+        "first_utm_source": { "observed": true, "type": "String" },
+        "last_utm_source": { "observed": true, "type": "String" },
+        "$session_id": { "observed": false },
+        "qualification_status": { "observed": true, "type": "String" }
+      }
+    },
+    "funnel_booking_completed": {
+      "observed": true,
+      "properties": {
+        "submission_id": { "observed": true, "type": "String" },
+        "funnel_id": { "observed": true, "type": "String" },
+        "first_utm_source": { "observed": false },
+        "last_utm_source": { "observed": false },
+        "$session_id": { "observed": false }
+      }
+    },
+    "funnel_booking_rescheduled": {
+      "observed": true,
+      "properties": {
+        "submission_id": { "observed": true, "type": "String" },
+        "funnel_id": { "observed": true, "type": "String" },
+        "first_utm_source": { "observed": false },
+        "last_utm_source": { "observed": false },
+        "$session_id": { "observed": false }
+      }
+    },
+    "funnel_booking_cancelled": {
+      "observed": true,
+      "properties": {
+        "submission_id": { "observed": true, "type": "String" },
+        "funnel_id": { "observed": true, "type": "String" },
+        "first_utm_source": { "observed": false },
+        "last_utm_source": { "observed": false },
+        "$session_id": { "observed": false }
+      }
+    },
+    "sale_completed": {
+      "observed": false,
+      "properties": {},
+      "validation": { "sampleMatchCount": 0 }
+    },
+    "sale_lost": {
+      "observed": false,
+      "properties": {},
+      "validation": { "sampleMatchCount": 0 }
+    },
+    "sale_revenue_adjusted": {
+      "observed": false,
+      "properties": {},
+      "validation": { "sampleMatchCount": 0 }
+    },
+    "sale_outcome_corrected": {
+      "observed": false,
+      "properties": {},
+      "validation": { "sampleMatchCount": 0 }
+    }
+  },
+  "personProperties": {
+    "email": { "observed": true, "type": "String" },
+    "name": { "observed": true, "type": "String" },
+    "phone": { "observed": true, "type": "String" },
+    "company_domain": { "observed": true, "type": "String" },
+    "twenty_person_id": { "observed": true, "type": "String" },
+    "funnel_id": { "observed": true, "type": "String" },
+    "lead_journey_id": { "observed": true, "type": "String" },
+    "last_utm_source": { "observed": true, "type": "String" },
+    "last_utm_medium": { "observed": true, "type": "String" },
+    "last_utm_campaign": { "observed": true, "type": "String" }
+  },
+  "checks": {
+    "emailLookup": true,
+    "anonymousHistoryMerged": true,
+    "multipleJourneys": false,
+    "sessionReplayLinks": false,
+    "networkPayloadCapture": false,
+    "bookingIdentity": false,
+    "terminalOutcomeIdentity": false
+  }
+}
