@@ -188,4 +188,25 @@ describe("createFunnelAnalyticsClient", () => {
       { first_utm_source: "meta" },
     );
   });
+
+  it("does not send an identified Prospect ID through UUID-only submission fields", () => {
+    const posthog = createPostHog();
+    posthog.get_distinct_id.mockReturnValue(`prospect_v1_${"a".repeat(64)}`);
+    posthog.get_session_id.mockReturnValue(
+      "311de7bf-a46f-49f9-a107-5cc030e960c3",
+    );
+    const client = createFunnelAnalyticsClient(
+      {
+        apiKey: "phc_production",
+        host: "https://us.i.posthog.com",
+        environment: "production",
+        funnelId: "ai-seo",
+      },
+      { posthog },
+    );
+
+    expect(client.getIdentity()).toEqual({
+      sessionId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
+    });
+  });
 });

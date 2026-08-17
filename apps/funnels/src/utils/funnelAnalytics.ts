@@ -120,6 +120,12 @@ const safeIdentifier = (value: unknown) =>
     ? value
     : undefined;
 
+const safeUuid = (value: unknown) =>
+  typeof value === "string" &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value)
+    ? value
+    : undefined;
+
 const sanitizedProperties = <Event extends FunnelAnalyticsEvent>(
   event: Event,
   properties: FunnelAnalyticsEventProperties[Event],
@@ -296,9 +302,11 @@ export function createFunnelAnalyticsClient(
     },
     getIdentity() {
       if (!enabled) return {};
+      const analyticsId = safeUuid(client.get_distinct_id());
+      const sessionId = safeUuid(client.get_session_id());
       return {
-        analyticsId: client.get_distinct_id(),
-        sessionId: client.get_session_id(),
+        ...(analyticsId ? { analyticsId } : {}),
+        ...(sessionId ? { sessionId } : {}),
       };
     },
     identify(
