@@ -43,6 +43,12 @@ test("an internal test lead reaches the real Cal booking embed", async ({
   await expect(submit).toBeEnabled({ timeout: 30_000 });
   await submit.click();
 
+  await expect.poll(() => submissionResponses.length).toBeGreaterThanOrEqual(1);
+  expect(submissionResponses[0]).toMatchObject({
+    status: 200,
+    body: { accepted: true },
+  });
+
   await expect(page.getByText("Book Free Audit Call")).toBeVisible({
     timeout: 30_000,
   });
@@ -51,7 +57,6 @@ test("an internal test lead reaches the real Cal booking embed", async ({
   });
   await expect.poll(() => submissionResponses.length).toBe(2);
   expect(submissionResponses.map(({ status }) => status)).toEqual([200, 200]);
-  expect(submissionResponses[0]?.body).toMatchObject({ accepted: true });
   expect(submissionResponses[1]?.body).toMatchObject({
     accepted: true,
     nextStep: "booking",
