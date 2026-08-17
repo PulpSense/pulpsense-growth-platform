@@ -9,7 +9,10 @@ import { verifyLeadMagnetEmail } from "./email-verification";
 import type { FunnelEnv } from "./funnel-env";
 import { getClientIp, json, parseJson, rejectCrossOrigin } from "./http";
 import { consumeRateLimit } from "./rate-limit";
-import { verifyTurnstile } from "./turnstile-verification";
+import {
+  resolveTurnstileSecret,
+  verifyTurnstile,
+} from "./turnstile-verification";
 
 const requestSchema = z
   .object({
@@ -46,7 +49,8 @@ export async function handleLeadMagnetOptIn(request: Request, env: FunnelEnv) {
     return json({ error: "rate_limiter_unavailable" }, 503);
   }
   if (rateLimit === "limited") return json({ error: "rate_limited" }, 429);
-  if (!env.TURNSTILE_SECRET_KEY) {
+  const turnstileSecret = resolveTurnstileSecret(env);
+  if (!turnstileSecret) {
     return json({ error: "turnstile_unavailable" }, 503);
   }
 
@@ -54,8 +58,9 @@ export async function handleLeadMagnetOptIn(request: Request, env: FunnelEnv) {
     request,
     token: parsed.data.turnstileToken,
     clientIp,
-    secret: env.TURNSTILE_SECRET_KEY,
+    secret: turnstileSecret,
     expectedAction: "lead_magnet_submit",
+    acceptTestMetadata: Boolean(env.TURNSTILE_TEST_SECRET_KEY),
   });
   if (accepted === undefined) {
     return json({ error: "turnstile_unavailable" }, 503);

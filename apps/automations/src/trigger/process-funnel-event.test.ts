@@ -1,8 +1,10 @@
 import type {
   ApplicationSubmittedEvent,
+  BookingCancelledEvent,
   BookingCompletedEvent,
   BookingRescheduledEvent,
   ContactSubmittedEvent,
+  FunnelEvent,
 } from "@pulpsense/contracts";
 import { describe, expect, it, vi } from "vitest";
 
@@ -151,7 +153,75 @@ const rescheduledEvent: BookingRescheduledEvent = {
   },
 };
 
+const cancelledEvent: BookingCancelledEvent = {
+  ...bookingEvent,
+  eventType: "booking_cancelled",
+  eventId: `booking_cancelled:${bookingEvent.payload.booking.uid}`,
+  payload: {
+    ...bookingEvent.payload,
+    booking: {
+      ...bookingEvent.payload.booking,
+      cancellationReason: "No longer needed",
+    },
+  },
+};
+
 describe("process-funnel-event", () => {
+  it.each(["santi@pulpsense.com", "me@santileoni.com"])(
+    "suppresses every external destination for internal test lead %s",
+    async (email) => {
+      const externalDestinations = {
+        upsertTwentyPerson: vi.fn(),
+        sendMetaLead: vi.fn(),
+        recordTwentyApplication: vi.fn(),
+        sendMetaApplication: vi.fn(),
+        recordTwentyBooking: vi.fn(),
+        sendMetaSchedule: vi.fn(),
+        postSlackLead: vi.fn(),
+        postSlackBooking: vi.fn(),
+        publishBrevoLifecycle: vi.fn(),
+        scheduleMeetingReminders: vi.fn(),
+        schedulePrecallSequence: vi.fn(),
+        capturePostHogLifecycle: vi.fn(),
+        capturePostHogPersonLink: vi.fn(),
+      };
+      const log = { info: vi.fn() };
+      const lifecycleEvents: FunnelEvent[] = [
+        event,
+        qualifiedApplicationEvent,
+        bookingEvent,
+        rescheduledEvent,
+        cancelledEvent,
+      ].map((lifecycleEvent) => ({
+        ...lifecycleEvent,
+        payload: { ...lifecycleEvent.payload, email },
+        environment: "production",
+      })) as FunnelEvent[];
+
+      for (const internalEvent of lifecycleEvents) {
+        await expect(
+          processFunnelEvent(internalEvent, {
+            ...externalDestinations,
+            log,
+          }),
+        ).resolves.toEqual({ ok: true, skipped: "internal_test_lead" });
+        expect(log.info).toHaveBeenLastCalledWith(
+          "Skipped internal test lead",
+          {
+            submissionId: internalEvent.submissionId,
+            eventId: internalEvent.eventId,
+            eventType: internalEvent.eventType,
+            environment: "production",
+          },
+        );
+      }
+
+      for (const destination of Object.values(externalDestinations)) {
+        expect(destination).not.toHaveBeenCalled();
+      }
+    },
+  );
+
   it("links to the canonical Trigger dashboard run page", () => {
     expect(triggerRunUrl("prod", "run_123")).toBe(
       "https://cloud.trigger.dev/orgs/pulpsense-55f9/projects/internal-automations--Y9w/env/prod/runs/run_123",

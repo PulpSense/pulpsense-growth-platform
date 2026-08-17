@@ -2,6 +2,13 @@ name = "pulpsense-funnels-preview"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-08-08"
 
+[env.preview.vars]
+TURNSTILE_TEST_SECRET_KEY = "1x0000000000000000000000000000000AA"
+
+[[env.preview.services]]
+binding = "FUNNEL_RATE_LIMIT_SERVICE"
+service = "pulpsense-funnel-rate-limiter-preview"
+
 [[services]]
 binding = "FUNNEL_RATE_LIMIT_SERVICE"
 service = "pulpsense-funnel-rate-limiter-preview"

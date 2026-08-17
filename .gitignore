@@ -9,6 +9,8 @@ node_modules/
 coverage/
 lighthouse-*.report.html
 lighthouse-*.report.json
+playwright-report/
+test-results/
 
 # astro / cloudflare local state
 .astro/

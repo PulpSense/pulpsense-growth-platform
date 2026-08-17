@@ -1,3 +1,5 @@
+import { isInternalTestLeadEmail } from "@pulpsense/contracts";
+
 import { isBusinessEmail } from "@/utils/businessEmail";
 
 import type { FunnelEnv } from "./funnel-env";
@@ -13,8 +15,6 @@ type BusinessEmailVerification =
   | { result: "business"; status: "verified" }
   | { result: "catch_all" | "provider_error"; status: "unverified" }
   | { result: "invalid"; status: "invalid" };
-
-const INTERNAL_EMAIL_BYPASS = "santi@pulpsense.com";
 
 type MillionVerifierResult = {
   result?: string;
@@ -65,7 +65,7 @@ export const verifyBusinessEmail = async (
   email: string,
   apiKey: string | undefined,
 ): Promise<BusinessEmailVerification> => {
-  if (email.trim().toLowerCase() === INTERNAL_EMAIL_BYPASS) {
+  if (isInternalTestLeadEmail(email)) {
     return { status: "verified", result: "business" };
   }
   if (!apiKey) return providerErrorVerification(email);

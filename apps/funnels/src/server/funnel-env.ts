@@ -5,6 +5,7 @@ export type FunnelRateLimitService = {
 export type FunnelEnv = {
   FUNNEL_RATE_LIMIT_SERVICE?: FunnelRateLimitService;
   TURNSTILE_SECRET_KEY?: string;
+  TURNSTILE_TEST_SECRET_KEY?: string;
   SUBMISSION_SIGNING_SECRET?: string;
   PROSPECT_ID_SECRET?: string;
   PULPSENSE_ENVIRONMENT?: "local" | "preview" | "production";

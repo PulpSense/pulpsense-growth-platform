@@ -1,15 +1,22 @@
+import type { FunnelEnv } from "./funnel-env";
+
+export const resolveTurnstileSecret = (env: FunnelEnv) =>
+  env.TURNSTILE_TEST_SECRET_KEY ?? env.TURNSTILE_SECRET_KEY;
+
 export const verifyTurnstile = async ({
   request,
   token,
   clientIp,
   secret,
   expectedAction,
+  acceptTestMetadata = false,
 }: {
   request: Request;
   token: string;
   clientIp: string;
   secret: string;
   expectedAction: string;
+  acceptTestMetadata?: boolean;
 }) => {
   const body = new FormData();
   body.set("secret", secret);
@@ -28,8 +35,9 @@ export const verifyTurnstile = async ({
     };
     return Boolean(
       result.success &&
-      result.action === expectedAction &&
-      result.hostname === new URL(request.url).hostname,
+      (acceptTestMetadata ||
+        (result.action === expectedAction &&
+          result.hostname === new URL(request.url).hostname)),
     );
   } catch {
     return undefined;
