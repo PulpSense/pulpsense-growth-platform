@@ -109,6 +109,7 @@ export async function processContactSubmission(
       clientIp,
       secret: turnstileSecret,
       expectedAction: "contact_submit",
+      acceptTestMetadata: Boolean(env.TURNSTILE_TEST_SECRET_KEY),
     });
     if (turnstileAccepted === undefined) {
       return json({ error: "turnstile_unavailable" }, 503);

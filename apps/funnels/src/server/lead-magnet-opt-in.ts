@@ -60,6 +60,7 @@ export async function handleLeadMagnetOptIn(request: Request, env: FunnelEnv) {
     clientIp,
     secret: turnstileSecret,
     expectedAction: "lead_magnet_submit",
+    acceptTestMetadata: Boolean(env.TURNSTILE_TEST_SECRET_KEY),
   });
   if (accepted === undefined) {
     return json({ error: "turnstile_unavailable" }, 503);
