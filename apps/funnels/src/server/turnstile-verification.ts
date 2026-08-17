@@ -1,3 +1,8 @@
+import type { FunnelEnv } from "./funnel-env";
+
+export const resolveTurnstileSecret = (env: FunnelEnv) =>
+  env.TURNSTILE_TEST_SECRET_KEY ?? env.TURNSTILE_SECRET_KEY;
+
 export const verifyTurnstile = async ({
   request,
   token,

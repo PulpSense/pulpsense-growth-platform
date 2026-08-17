@@ -12,7 +12,10 @@ import {
 import type { FunnelEnv } from "../funnel-env";
 import { getClientIp, json } from "../http";
 import { consumeRateLimit } from "../rate-limit";
-import { verifyTurnstile } from "../turnstile-verification";
+import {
+  resolveTurnstileSecret,
+  verifyTurnstile,
+} from "../turnstile-verification";
 import { enqueueFunnelEvent } from "./delivery";
 import { createRequestContext } from "./request-context";
 import {
@@ -95,7 +98,8 @@ export async function processContactSubmission(
     }
     identity = retryIdentity;
   } else {
-    if (!env.TURNSTILE_SECRET_KEY) {
+    const turnstileSecret = resolveTurnstileSecret(env);
+    if (!turnstileSecret) {
       return json({ error: "turnstile_unavailable" }, 503);
     }
 
@@ -103,7 +107,7 @@ export async function processContactSubmission(
       request,
       token: submission.turnstileToken,
       clientIp,
-      secret: env.TURNSTILE_SECRET_KEY,
+      secret: turnstileSecret,
       expectedAction: "contact_submit",
     });
     if (turnstileAccepted === undefined) {
