@@ -53,7 +53,7 @@ describe("createFunnelAnalyticsClient", () => {
     );
   });
 
-  it("records production funnels with replay privacy and clean custom events", () => {
+  it("records complete production replay input and network debugging context", () => {
     const posthog = createPostHog();
     const client = createFunnelAnalyticsClient(
       {
@@ -78,8 +78,11 @@ describe("createFunnelAnalyticsClient", () => {
         capture_performance: { network_timing: true, web_vitals: false },
         disable_session_recording: false,
         person_profiles: "identified_only",
-        sanitize_properties: expect.any(Function),
-        session_recording: expect.objectContaining({ maskAllInputs: true }),
+        session_recording: expect.objectContaining({
+          maskAllInputs: false,
+          recordHeaders: true,
+          recordBody: true,
+        }),
       }),
     );
 
@@ -96,36 +99,10 @@ describe("createFunnelAnalyticsClient", () => {
     });
 
     const config = posthog.init.mock.calls[0]![1];
-    expect(
-      config.session_recording.maskCapturedNetworkRequestFn({
-        name: "https://example.com/api/funnel-events?token=secret",
-        entryType: "resource",
-        startTime: 12,
-        method: "POST",
-        requestBody: "private",
-        responseBody: "private",
-        headers: { authorization: "secret" },
-        status: 202,
-        duration: 42,
-      }),
-    ).toEqual({
-      name: "https://example.com/api/funnel-events",
-      entryType: "resource",
-      startTime: 12,
-      method: "POST",
-      status: 202,
-      duration: 42,
-      failure_class: "none",
-    });
-    expect(
-      config.sanitize_properties({
-        $current_url: "https://example.com/landing?email=maya@example.com",
-        $elements: [{ href: "https://example.com/book?token=secret#calendar" }],
-      }),
-    ).toEqual({
-      $current_url: "https://example.com/landing",
-      $elements: [{ href: "https://example.com/book" }],
-    });
+    expect(config).not.toHaveProperty("sanitize_properties");
+    expect(config.session_recording).not.toHaveProperty(
+      "maskCapturedNetworkRequestFn",
+    );
   });
 
   it("does not initialize or capture outside production", () => {
