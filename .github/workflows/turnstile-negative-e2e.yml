@@ -1,0 +1,48 @@
+name: Turnstile negative E2E
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  turnstile-negative-e2e:
+    name: Turnstile rejection E2E
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build with Cloudflare's always-fail Turnstile sitekey
+        env:
+          PUBLIC_PULPSENSE_ENVIRONMENT: preview
+          PUBLIC_ENABLE_META_PIXEL_IN_PREVIEW: "false"
+          PUBLIC_CAL_LINK: ci/preview
+          PUBLIC_CAL_NAMESPACE: ci-preview
+          PUBLIC_TURNSTILE_SITE_KEY: 2x00000000000000000000AB
+        run: pnpm --filter @pulpsense/funnels build
+
+      - name: Verify Turnstile rejection behavior
+        env:
+          E2E_BASE_URL: http://127.0.0.1:4321
+          E2E_TURNSTILE_FAILURE: "true"
+          E2E_WEB_SERVER_COMMAND: pnpm --filter @pulpsense/funnels exec wrangler pages dev dist --ip 127.0.0.1 --port 4321
+        run: pnpm test:e2e:turnstile-failure

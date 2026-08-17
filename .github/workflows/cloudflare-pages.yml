@@ -82,6 +82,8 @@ jobs:
     permissions:
       contents: read
       deployments: write
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.pages-deployment-alias-url || steps.deploy.outputs.deployment-url }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
@@ -110,12 +112,12 @@ jobs:
           test -n "$CLOUDFLARE_PAGES_PROJECT" || { echo "Preview CLOUDFLARE_PAGES_PROJECT is not configured"; exit 1; }
           test -n "$PUBLIC_CAL_LINK" || { echo "Preview PUBLIC_CAL_LINK is not configured"; exit 1; }
           test -n "$PUBLIC_POSTHOG_KEY" || { echo "Preview PUBLIC_POSTHOG_KEY is not configured"; exit 1; }
-          test -n "$PUBLIC_TURNSTILE_SITE_KEY" || { echo "Preview PUBLIC_TURNSTILE_SITE_KEY is not configured"; exit 1; }
+          test "$PUBLIC_TURNSTILE_SITE_KEY" = "1x00000000000000000000AA" || { echo "Preview must use Cloudflare's always-pass Turnstile sitekey"; exit 1; }
 
       - name: Build Preview
         env:
           PUBLIC_PULPSENSE_ENVIRONMENT: preview
-          PUBLIC_ENABLE_META_PIXEL_IN_PREVIEW: ${{ vars.PUBLIC_ENABLE_META_PIXEL_IN_PREVIEW }}
+          PUBLIC_ENABLE_META_PIXEL_IN_PREVIEW: "false"
           PUBLIC_META_PIXEL_ID_AI_SEO_D: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_D }}
           PUBLIC_META_PIXEL_ID_AI_SEO_DI: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_DI }}
           PUBLIC_META_PIXEL_ID_AI_SEO_PS: ${{ vars.PUBLIC_META_PIXEL_ID_AI_SEO_PS }}
@@ -146,6 +148,58 @@ jobs:
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.pages-deployment-alias-url || steps.deploy.outputs.deployment-url }}
         run: |
           printf '### Cloudflare Pages Preview\n\n[%s](%s)\n' "$DEPLOYMENT_URL" "$DEPLOYMENT_URL" >> "$GITHUB_STEP_SUMMARY"
+
+  booking-e2e:
+    name: Booking E2E
+    needs: deploy-preview
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a trusted preview deployment
+        if: needs.deploy-preview.result != 'success'
+        run: |
+          echo "Booking E2E requires a deployed preview. Fork and Dependabot PRs must be reproduced on a trusted repository branch before merge."
+          exit 1
+
+      - name: Check out repository
+        if: needs.deploy-preview.result == 'success'
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        if: needs.deploy-preview.result == 'success'
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        if: needs.deploy-preview.result == 'success'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        if: needs.deploy-preview.result == 'success'
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser
+        if: needs.deploy-preview.result == 'success'
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Verify booking journey
+        if: needs.deploy-preview.result == 'success'
+        env:
+          E2E_BASE_URL: ${{ needs.deploy-preview.outputs.preview_url }}
+        run: pnpm test:e2e
+
+      - name: Upload booking E2E diagnostics
+        if: always() && needs.deploy-preview.result == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: booking-e2e-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
   deploy-production:
     name: Deploy production
