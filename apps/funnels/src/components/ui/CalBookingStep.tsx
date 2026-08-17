@@ -1,7 +1,7 @@
 "use client";
 
-import Cal, { getCalApi } from "@calcom/embed-react";
-import { useEffect } from "react";
+import Cal, { getCalApi, type EmbedEvent } from "@calcom/embed-react";
+import { useEffect, useRef } from "react";
 
 import { trackFunnelEvent } from "@/utils/funnelAnalytics";
 
@@ -14,7 +14,24 @@ type CalBookingStepProps = {
     email: string;
   }>;
   bookingIdentity: { submissionId: string; token: string };
-  onBookingSuccessful(): void;
+  onBookingSuccessful(bookingUid: string): void;
+};
+
+export const bookingUidFromCalEvent = (event: unknown) => {
+  if (!event || typeof event !== "object" || !("detail" in event)) {
+    return undefined;
+  }
+  const detail = event.detail;
+  if (!detail || typeof detail !== "object" || !("data" in detail)) {
+    return undefined;
+  }
+  const data = detail.data;
+  if (!data || typeof data !== "object" || !("uid" in data)) {
+    return undefined;
+  }
+  return typeof data.uid === "string" && data.uid.trim()
+    ? data.uid.trim()
+    : undefined;
 };
 
 export function CalBookingStep({
@@ -24,6 +41,7 @@ export function CalBookingStep({
   bookingIdentity,
   onBookingSuccessful,
 }: CalBookingStepProps) {
+  const handledBookingUids = useRef(new Set<string>());
   const config: Record<string, string> = {
     layout: "month_view",
     theme: "light",
@@ -36,9 +54,12 @@ export function CalBookingStep({
   };
 
   useEffect(() => {
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
     trackFunnelEvent("booking_interaction", { action: "widget_viewed" });
     void (async () => {
       const cal = await getCalApi({ namespace });
+      if (disposed) return;
       cal("ui", {
         theme: "light",
         cssVarsPerTheme: {
@@ -48,11 +69,20 @@ export function CalBookingStep({
         hideEventTypeDetails: true,
         layout: "month_view",
       });
-      cal("on", {
-        action: "bookingSuccessful",
-        callback: onBookingSuccessful,
-      });
+      const callback = (event: EmbedEvent<"bookingSuccessfulV2">) => {
+        const bookingUid = bookingUidFromCalEvent(event);
+        if (!bookingUid || handledBookingUids.current.has(bookingUid)) return;
+        handledBookingUids.current.add(bookingUid);
+        onBookingSuccessful(bookingUid);
+      };
+      cal("on", { action: "bookingSuccessfulV2", callback });
+      unsubscribe = () =>
+        cal("off", { action: "bookingSuccessfulV2", callback });
     })();
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
   }, [namespace, onBookingSuccessful]);
 
   return (

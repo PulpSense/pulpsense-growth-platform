@@ -40,6 +40,30 @@ describe("parseMetaInsight", () => {
       frequency: 1.25,
     });
   });
+
+  it("reads Schedule results from the Meta v26 conversions field", () => {
+    expect(
+      parseMetaInsight({
+        spend: "77.13",
+        conversions: [
+          { action_type: "schedule_total", value: "1" },
+          { action_type: "schedule_website", value: "1" },
+        ],
+      }),
+    ).toMatchObject({ metaBookings: 1, metaCpb: 77.13 });
+  });
+
+  it("deduplicates equivalent Schedule results across actions and conversions", () => {
+    expect(
+      parseMetaInsight({
+        actions: [{ action_type: "schedule", value: "2" }],
+        conversions: [
+          { action_type: "schedule_total", value: "2" },
+          { action_type: "schedule_website", value: "2" },
+        ],
+      }).metaBookings,
+    ).toBe(2);
+  });
 });
 
 describe("decision confidence", () => {

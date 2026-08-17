@@ -51,3 +51,16 @@ export function trackMetaEvent(
 
   return eventId;
 }
+
+export function trackMetaSchedule({
+  bookingUid,
+  funnelId,
+}: {
+  bookingUid: string;
+  funnelId: string;
+}) {
+  return trackMetaEvent("Schedule", { funnel_id: funnelId }, undefined, {
+    eventId: `booking_completed:${bookingUid}`,
+    serverHandled: true,
+  });
+}

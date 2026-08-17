@@ -41,6 +41,7 @@ export const fetchMetaInsights = async (
         ...(level === "campaign" ? ["campaign_id", "campaign_name"] : []),
         "spend",
         "actions",
+        "conversions",
         "clicks",
         "impressions",
         "reach",

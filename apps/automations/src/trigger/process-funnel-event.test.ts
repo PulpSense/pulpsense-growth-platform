@@ -11,6 +11,7 @@ import {
   createProcessorDependencies,
   formatBrevoFailureAlert,
   formatTwentyFailureAlert,
+  normalizeMetaName,
   processFunnelEvent,
 } from "./process-funnel-event.js";
 import { triggerRunUrl } from "./trigger-dashboard.js";
@@ -28,6 +29,14 @@ const retryImmediately =
     }
     throw lastError;
   };
+
+describe("normalizeMetaName", () => {
+  it("lowercases names and removes punctuation before hashing", () => {
+    expect(normalizeMetaName("  Mary-Jane O’Connor  ")).toBe(
+      "maryjaneoconnor",
+    );
+  });
+});
 
 const event: ContactSubmittedEvent = {
   schemaVersion: 1,
@@ -565,6 +574,17 @@ describe("process-funnel-event", () => {
       expect.objectContaining({
         event_name: "Schedule",
         event_id: bookingEvent.eventId,
+        user_data: expect.objectContaining({
+          external_id: [
+            "eeda5bcf31640b053335aec80fb29f5781240b79107f3cb7cbf31d35ad87d6d5",
+          ],
+          fn: [
+            "a95db5b0ac159e4384ff55ef91c94a98dc563d66a88e7b027fcd5190c0f5bed5",
+          ],
+          ln: [
+            "3abd72ec6352d6085d85e34f0478dca7d14ef8048f3c1986e28106d654713946",
+          ],
+        }),
       }),
     ]);
     expect(metaBody.test_event_code).toBe("LAWYER_TEST");

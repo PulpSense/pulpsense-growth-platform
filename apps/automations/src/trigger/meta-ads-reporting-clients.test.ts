@@ -38,6 +38,7 @@ describe("fetchMetaInsights", () => {
     expect(url.searchParams.get("level")).toBe("campaign");
     expect(url.searchParams.get("time_range")).toBe(JSON.stringify(window));
     expect(url.searchParams.get("fields")).toContain("actions");
+    expect(url.searchParams.get("fields")).toContain("conversions");
     expect(url.searchParams.get("action_report_time")).toBe("conversion");
   });
 

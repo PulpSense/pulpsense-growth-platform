@@ -19,7 +19,7 @@ import {
   type FunnelAttribution,
 } from "@/utils/funnelAttribution";
 import { trackFunnelEvent } from "@/utils/funnelAnalytics";
-import { trackMetaEvent } from "@/utils/metaCapi";
+import { trackMetaEvent, trackMetaSchedule } from "@/utils/metaCapi";
 
 declare global {
   interface Window {
@@ -548,6 +548,17 @@ export function AiSeoQualificationForm({
             ? 4
             : 5;
 
+  const handleBookingSuccessful = useCallback(
+    (bookingUid: string) => {
+      trackFunnelEvent("booking_interaction", {
+        action: "booking_successful",
+      });
+      trackMetaSchedule({ bookingUid, funnelId });
+      window.location.assign(qualifiedRedirect);
+    },
+    [funnelId, qualifiedRedirect],
+  );
+
   return (
     <div className="pr-tf">
       <div className="pr-tf-progress" aria-live="polite">
@@ -881,12 +892,7 @@ export function AiSeoQualificationForm({
                 namespace={calNamespace}
                 prefill={contact}
                 bookingIdentity={bookingIdentity}
-                onBookingSuccessful={() => {
-                  trackFunnelEvent("booking_interaction", {
-                    action: "booking_successful",
-                  });
-                  window.location.assign(qualifiedRedirect);
-                }}
+                onBookingSuccessful={handleBookingSuccessful}
               />
             </div>
             <div className="pr-tf-actions">
