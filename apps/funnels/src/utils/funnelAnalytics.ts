@@ -1,4 +1,5 @@
 import type posthog from "posthog-js";
+import { z } from "zod";
 
 import type { DeploymentEnvironment } from "@/lib/funnel/runtime-config";
 
@@ -120,11 +121,11 @@ const safeIdentifier = (value: unknown) =>
     ? value
     : undefined;
 
-const safeUuid = (value: unknown) =>
-  typeof value === "string" &&
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu.test(value)
-    ? value
-    : undefined;
+const uuidSchema = z.uuid();
+const safeUuid = (value: unknown) => {
+  const parsed = uuidSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+};
 
 const sanitizedProperties = <Event extends FunnelAnalyticsEvent>(
   event: Event,

@@ -208,5 +208,14 @@ describe("createFunnelAnalyticsClient", () => {
     expect(client.getIdentity()).toEqual({
       sessionId: "311de7bf-a46f-49f9-a107-5cc030e960c3",
     });
+
+    posthog.get_distinct_id.mockReturnValue(
+      "11111111-1111-1111-1111-111111111111",
+    );
+    posthog.get_session_id.mockReturnValue(
+      "11111111-1111-1111-1111-111111111111",
+    );
+
+    expect(client.getIdentity()).toEqual({});
   });
 });
