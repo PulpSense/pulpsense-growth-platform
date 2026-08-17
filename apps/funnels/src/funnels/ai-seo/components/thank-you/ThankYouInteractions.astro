@@ -9,6 +9,97 @@
   <img id="pr-lightbox-img" src="" alt="" />
 </div>
 <script is:inline>
+  /* Celebrate a confirmed booking without loading a confetti dependency. */
+  (function () {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    var canvas = document.createElement("canvas");
+    var context = canvas.getContext("2d");
+    if (!context) return;
+
+    canvas.setAttribute("aria-hidden", "true");
+    canvas.style.cssText =
+      "position:fixed;inset:0;z-index:9999;width:100%;height:100%;pointer-events:none";
+    document.body.appendChild(canvas);
+
+    var colors = ["#2563eb", "#38bdf8", "#facc15", "#fb7185", "#ffffff"];
+    var particles = [];
+    var start = performance.now();
+    var duration = 3800;
+
+    function resize() {
+      var scale = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(window.innerWidth * scale);
+      canvas.height = Math.round(window.innerHeight * scale);
+      context.setTransform(scale, 0, 0, scale, 0, 0);
+    }
+
+    function makeParticle(side) {
+      var angle =
+        side < 0
+          ? -0.25 - Math.random() * 0.85
+          : Math.PI + 0.25 + Math.random() * 0.85;
+      var speed = 9 + Math.random() * 11;
+      return {
+        x: side < 0 ? -12 : window.innerWidth + 12,
+        y: window.innerHeight * (0.18 + Math.random() * 0.3),
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        size: 6 + Math.random() * 9,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        rotation: Math.random() * Math.PI,
+        spin: (Math.random() - 0.5) * 0.3,
+      };
+    }
+
+    resize();
+    for (var i = 0; i < 220; i += 1) {
+      particles.push(makeParticle(i % 2 === 0 ? -1 : 1));
+    }
+
+    function removeCanvas() {
+      window.removeEventListener("resize", resize);
+      canvas.remove();
+    }
+
+    function draw(now) {
+      var elapsed = now - start;
+      if (elapsed >= duration) {
+        removeCanvas();
+        return;
+      }
+
+      context.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      context.globalAlpha = Math.min(1, (duration - elapsed) / 500);
+
+      particles.forEach(function (particle) {
+        particle.vy += 0.22;
+        particle.vx *= 0.992;
+        particle.x += particle.vx;
+        particle.y += particle.vy;
+        particle.rotation += particle.spin;
+
+        context.save();
+        context.translate(particle.x, particle.y);
+        context.rotate(particle.rotation);
+        context.fillStyle = particle.color;
+        context.fillRect(
+          -particle.size / 2,
+          -particle.size / 4,
+          particle.size,
+          particle.size / 2,
+        );
+        context.restore();
+      });
+
+      requestAnimationFrame(draw);
+    }
+
+    window.addEventListener("resize", resize, { passive: true });
+    requestAnimationFrame(draw);
+  })();
+</script>
+<script is:inline>
   /* Review lightbox — tap a card to view the screenshot at reading size. */
   (function () {
     var box = document.getElementById("pr-lightbox");
