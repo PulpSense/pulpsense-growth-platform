@@ -1,14 +1,11 @@
 import { contactSubmittedEventSchema } from "@pulpsense/contracts";
-import { isBusinessEmail } from "@/utils/businessEmail";
+import { isValidEmail } from "@/utils/email";
 
 import {
   contactSubmissionRequestSchema,
   type ContactSubmissionRequest,
 } from "../contact-submission-contract";
-import {
-  verifyBusinessEmail,
-  type EmailVerification,
-} from "../email-verification";
+import { verifyEmail, type EmailVerification } from "../email-verification";
 import type { FunnelEnv } from "../funnel-env";
 import { getClientIp, json } from "../http";
 import { consumeRateLimit } from "../rate-limit";
@@ -109,10 +106,10 @@ export async function processContactSubmission(
       return json({ error: "turnstile_rejected" }, 403);
     }
 
-    if (!isBusinessEmail(submission.payload.email)) {
+    if (!isValidEmail(submission.payload.email)) {
       return json({ error: "email_invalid" }, 422);
     }
-    const verification = await verifyBusinessEmail(
+    const verification = await verifyEmail(
       submission.payload.email,
       env.MILLION_VERIFIER_API_KEY,
     );

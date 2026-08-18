@@ -224,7 +224,7 @@ describe("POST /api/funnel-events", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("returns server identity only after Trigger.dev accepts the event", async () => {
+  it("accepts a personal email and returns identity after Trigger.dev accepts the event", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -234,7 +234,7 @@ describe("POST /api/funnel-events", () => {
           hostname: "preview.pulpsense.com",
         }),
       )
-      .mockResolvedValueOnce(Response.json({ result: "ok" }))
+      .mockResolvedValueOnce(Response.json({ result: "ok", free: true }))
       .mockResolvedValueOnce(Response.json({ id: "run_123" }));
     vi.stubGlobal("fetch", fetchMock);
 
@@ -248,7 +248,7 @@ describe("POST /api/funnel-events", () => {
         payload: {
           firstName: " Maya ",
           lastName: " Chen ",
-          email: "MAYA@BRAND.COM",
+          email: "MAYA@GMAIL.COM",
           phone: "+1 555 123 4567",
         },
         attribution: {
@@ -289,7 +289,7 @@ describe("POST /api/funnel-events", () => {
     );
     expect(result.prospectId).toMatch(/^prospect_v1_[0-9a-f]{64}$/u);
     expect(result.eventId).toBe(`contact_submitted:${result.submissionId}`);
-    expect(result.retry.token).not.toContain("maya@brand.com");
+    expect(result.retry.token).not.toContain("maya@gmail.com");
 
     const [triggerUrl, triggerInit] = fetchMock.mock.calls[2]!;
     expect(String(triggerUrl)).toContain(
@@ -310,7 +310,7 @@ describe("POST /api/funnel-events", () => {
       prospectId: result.prospectId,
       eventId: result.eventId,
       payload: {
-        email: "maya@brand.com",
+        email: "maya@gmail.com",
         emailVerification: { status: "verified", result: "business" },
       },
     });
@@ -923,7 +923,7 @@ describe("POST /api/funnel-events", () => {
     });
   });
 
-  it("rejects a free mailbox identified by the verifier", async () => {
+  it("accepts a free mailbox identified by the verifier", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -933,7 +933,8 @@ describe("POST /api/funnel-events", () => {
           hostname: "preview.pulpsense.com",
         }),
       )
-      .mockResolvedValueOnce(Response.json({ result: "ok", free: true }));
+      .mockResolvedValueOnce(Response.json({ result: "ok", free: true }))
+      .mockResolvedValueOnce(Response.json({ id: "run_free_mailbox" }));
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await handleFunnelEvent(
@@ -942,12 +943,16 @@ describe("POST /api/funnel-events", () => {
         ...allowingRateLimit,
         TURNSTILE_SECRET_KEY: "turnstile-secret",
         MILLION_VERIFIER_API_KEY: "million-verifier-key",
+        SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+        PROSPECT_ID_SECRET: "preview-prospect-secret",
+        PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
       },
     );
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      error: "email_invalid",
+      accepted: true,
+      runId: "run_free_mailbox",
     });
   });
 });

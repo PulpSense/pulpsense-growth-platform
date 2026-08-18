@@ -172,7 +172,7 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
         HTMLInputElement.prototype,
         "value",
       )?.set;
-      setter?.call(emailInput, "name@examplebusiness.com");
+      setter?.call(emailInput, "name@gmail.com");
       emailInput?.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await act(async () => {
@@ -182,7 +182,7 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     expect(document.querySelector('[aria-label="Email verified"]')).toBeNull();
     expect(document.body.textContent).not.toContain(
-      "Please enter a valid business email.",
+      "Please enter a valid email address.",
     );
   });
 
@@ -216,7 +216,7 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
       document.querySelector('[aria-label="Email is invalid"]'),
     ).not.toBeNull();
     expect(document.body.textContent).toContain(
-      "Email is invalid. Please enter a valid business email.",
+      "Email is invalid. Please enter a valid email address.",
     );
   });
 });

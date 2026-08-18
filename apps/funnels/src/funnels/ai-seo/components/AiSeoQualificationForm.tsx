@@ -12,7 +12,7 @@ import {
 import { COUNTRIES, type Country } from "@/components/ui/phoneCountries";
 import type { AiSeoFunnelId } from "@/funnels/ai-seo/campaigns";
 import { useFunnelSubmission } from "@/lib/funnel/use-funnel-submission";
-import { isBusinessEmail } from "@/utils/businessEmail";
+import { isValidEmail } from "@/utils/email";
 import { getBrowserCookie } from "@/utils/browserCookie";
 import {
   captureFunnelAttribution,
@@ -309,7 +309,7 @@ export function AiSeoQualificationForm({
 
   const verifyEmail = useCallback(async () => {
     const email = contact.email.trim().toLowerCase();
-    if (!email || !isBusinessEmail(email)) {
+    if (!email || !isValidEmail(email)) {
       setEmailStatus("idle");
       return;
     }
@@ -343,7 +343,7 @@ export function AiSeoQualificationForm({
         setEmailStatus("invalid");
         setErrors((current) => ({
           ...current,
-          email: "Please enter a valid business email.",
+          email: "Please enter a valid email address.",
         }));
       } else {
         setEmailStatus("idle");
@@ -407,8 +407,8 @@ export function AiSeoQualificationForm({
   const validateContact = () => {
     const next: Record<string, string> = {};
     if (!contact.firstName.trim()) next.firstName = "First name is required.";
-    if (!isBusinessEmail(contact.email)) {
-      next.email = "Please enter a valid business email.";
+    if (!isValidEmail(contact.email)) {
+      next.email = "Please enter a valid email address.";
     }
     if (!isValidPhoneNumber(contact.phone, phoneCountry)) {
       next.phone = "Please enter a valid phone number.";
@@ -465,7 +465,7 @@ export function AiSeoQualificationForm({
       if (!contactResult.accepted) {
         setSubmissionError(
           contactResult.error === "email_invalid"
-            ? "Please correct your business email and try again."
+            ? "Please correct your email address and try again."
             : contactResult.error === "rate_limited"
               ? "Too many attempts. Please wait a minute and try again."
               : contactResult.error === "turnstile_unavailable"
@@ -733,7 +733,7 @@ export function AiSeoQualificationForm({
                 </div>
                 <div className="pr-tf-field">
                   <label htmlFor="ai-seo-email">
-                    Business email <span className="pr-tf-req">*</span>
+                    Email <span className="pr-tf-req">*</span>
                   </label>
                   <div className="pr-tf-email-control">
                     <input
