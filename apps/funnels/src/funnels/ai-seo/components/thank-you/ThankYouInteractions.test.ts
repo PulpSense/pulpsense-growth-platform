@@ -52,7 +52,7 @@ function runConfetti({
   }
 
   runInNewContext(confettiSource, {
-    Math,
+    Math: Object.assign(Object.create(Math), { random: () => 0.5 }),
     document: {
       body: {
         appendChild(child: MockElement) {
@@ -90,6 +90,18 @@ describe("thank-you confetti", () => {
         String(transform).includes("translate3d("),
       ),
     ).toBe(true);
+  });
+
+  it("keeps every confetti apex inside the viewport", () => {
+    const mobile = runConfetti();
+    const apexYs = mobile.animations.map(({ keyframes }) => {
+      const transform = String(keyframes[1]?.transform);
+      const match = transform.match(/translate3d\([^,]+,(-?[\d.]+)px,/);
+      if (!match?.[1]) throw new Error("Confetti apex was not found");
+      return Number(match[1]);
+    });
+
+    expect(Math.min(...apexYs)).toBeGreaterThanOrEqual(20);
   });
 
   it("preserves reduced motion and a denser desktop celebration", () => {
