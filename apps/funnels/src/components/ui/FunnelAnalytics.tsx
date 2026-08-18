@@ -19,7 +19,7 @@ type FunnelAnalyticsProps = {
 
 export function FunnelAnalytics({
   apiKey,
-  host = "https://us.i.posthog.com",
+  host = "/e",
   funnelId,
   environment,
   page,

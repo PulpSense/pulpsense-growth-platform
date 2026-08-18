@@ -75,9 +75,8 @@ describe("production deployment isolation", () => {
       'test "$CLOUDFLARE_PAGES_PROJECT" = "pulpsense-funnels"',
     );
     expect(validation).toContain('test "$CLOUDFLARE_PAGES_BRANCH" = "master"');
-    expect(validation).toContain(
-      "PUBLIC_POSTHOG_HOST: ${{ vars.PUBLIC_POSTHOG_HOST }}",
-    );
+    expect(validation).toContain("PUBLIC_POSTHOG_HOST: /e");
+    expect(validation).toContain('test "$PUBLIC_POSTHOG_HOST" = "/e"');
     expect(validation).toContain(
       "PUBLIC_CAL_NAMESPACE: ${{ vars.PUBLIC_CAL_NAMESPACE }}",
     );

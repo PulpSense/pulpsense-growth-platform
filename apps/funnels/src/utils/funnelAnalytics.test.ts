@@ -69,6 +69,7 @@ describe("createFunnelAnalyticsClient", () => {
       "phc_production",
       expect.objectContaining({
         api_host: "https://eu.i.posthog.com",
+        ui_host: "https://eu.posthog.com",
         capture_pageview: false,
         capture_exceptions: {
           capture_unhandled_errors: true,
@@ -102,6 +103,28 @@ describe("createFunnelAnalyticsClient", () => {
     expect(config).not.toHaveProperty("sanitize_properties");
     expect(config.session_recording).not.toHaveProperty(
       "maskCapturedNetworkRequestFn",
+    );
+  });
+
+  it("uses the first-party proxy without changing deferred initialization", () => {
+    const posthog = createPostHog();
+
+    createFunnelAnalyticsClient(
+      {
+        apiKey: "phc_production",
+        host: "/e/",
+        environment: "production",
+        funnelId: "ai-seo",
+      },
+      { posthog },
+    );
+
+    expect(posthog.init).toHaveBeenCalledWith(
+      "phc_production",
+      expect.objectContaining({
+        api_host: "/e",
+        ui_host: "https://us.posthog.com",
+      }),
     );
   });
 

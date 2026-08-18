@@ -26,7 +26,7 @@ The `Production` environment must allow only `master`, require the project owner
 - secret `TRIGGER_ACCESS_TOKEN`;
 - variables `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_PAGES_PROJECT`, and `CLOUDFLARE_PAGES_BRANCH`;
 - variables `PUBLIC_META_PIXEL_ID_AI_SEO_L`, `PUBLIC_META_PIXEL_ID_AI_SEO_D`, `PUBLIC_META_PIXEL_ID_AI_SEO_DI`, `PUBLIC_META_PIXEL_ID_AI_SEO_PS`, `PUBLIC_META_PIXEL_ID_AI_SEO_HR`, and `PUBLIC_META_PIXEL_ID_AI_SEO_MS` for the campaign routes;
-- variables `PUBLIC_POSTHOG_KEY`, `PUBLIC_POSTHOG_HOST`, `PUBLIC_CAL_LINK`, `PUBLIC_CAL_NAMESPACE`, and `PUBLIC_TURNSTILE_SITE_KEY`.
+- variables `PUBLIC_POSTHOG_KEY`, `PUBLIC_CAL_LINK`, `PUBLIC_CAL_NAMESPACE`, and `PUBLIC_TURNSTILE_SITE_KEY`. The deployment workflow pins `PUBLIC_POSTHOG_HOST=/e` to the checked-in first-party proxy.
 
 The project must be `pulpsense-funnels`, its production branch must be `master`, and it must have no custom domain until owner approval.
 
