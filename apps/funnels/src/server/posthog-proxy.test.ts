@@ -34,6 +34,20 @@ describe("handlePostHogProxy", () => {
     });
   });
 
+  it("preserves query parameters on the exact proxy route", async () => {
+    let forwarded: Request | undefined;
+    const fetcher = vi.fn(async (request: RequestInfo | URL) => {
+      forwarded = request as Request;
+      return new Response("ok");
+    });
+
+    await handlePostHogProxy(new Request("https://go.pulpsense.com/e?ip=1"), {
+      fetch: fetcher as typeof fetch,
+    });
+
+    expect(forwarded?.url).toBe("https://us.i.posthog.com/?ip=1");
+  });
+
   it("routes and caches PostHog recorder assets", async () => {
     const cachedResponse = new Response("cached recorder");
     const cache = {

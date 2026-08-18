@@ -14,7 +14,7 @@ const isAssetPath = (pathname: string) =>
   pathname.startsWith("/static/") || pathname.startsWith("/array/");
 
 const upstreamPath = (url: URL) => {
-  if (url.pathname === POSTHOG_PROXY_PREFIX) return "/";
+  if (url.pathname === POSTHOG_PROXY_PREFIX) return `/${url.search}`;
   if (!url.pathname.startsWith(`${POSTHOG_PROXY_PREFIX}/`)) return undefined;
 
   return `${url.pathname.slice(POSTHOG_PROXY_PREFIX.length)}${url.search}`;
