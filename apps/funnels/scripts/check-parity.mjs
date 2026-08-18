@@ -43,7 +43,6 @@ const isolatedFallbackBindings = [
   "MILLION_VERIFIER_API_KEY=",
   "PULPSENSE_TRIGGER_SECRET_KEY=",
 ];
-
 const publicRoutes = [
   {
     path: "/visibility-audit/law-firms/",
@@ -53,7 +52,7 @@ const publicRoutes = [
   },
   {
     path: "/visibility-audit/law-firms/thank-you/",
-    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+    markers: ["ONE LAST THING", "Review this quick briefing"],
   },
   {
     path: "/visibility-audit/dental-practices/",
@@ -63,7 +62,7 @@ const publicRoutes = [
   },
   {
     path: "/visibility-audit/dental-practices/thank-you/",
-    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+    markers: ["ONE LAST THING", "Review this quick briefing"],
   },
   {
     path: "/visibility-audit/dental-implants/",
@@ -73,7 +72,7 @@ const publicRoutes = [
   },
   {
     path: "/visibility-audit/dental-implants/thank-you/",
-    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+    markers: ["ONE LAST THING", "Review this quick briefing"],
   },
   {
     path: "/visibility-audit/plastic-surgery/",
@@ -83,7 +82,7 @@ const publicRoutes = [
   },
   {
     path: "/visibility-audit/plastic-surgery/thank-you/",
-    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+    markers: ["ONE LAST THING", "Review this quick briefing"],
   },
   {
     path: "/visibility-audit/hair-restoration/",
@@ -93,7 +92,7 @@ const publicRoutes = [
   },
   {
     path: "/visibility-audit/hair-restoration/thank-you/",
-    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+    markers: ["ONE LAST THING", "Review this quick briefing"],
   },
   {
     path: "/visibility-audit/med-spas/",
@@ -103,7 +102,7 @@ const publicRoutes = [
   },
   {
     path: "/visibility-audit/med-spas/thank-you/",
-    markers: ["ONE LAST THING", "Step 2: Watch the videos below"],
+    markers: ["ONE LAST THING", "Review this quick briefing"],
   },
 ];
 const landerHtmlByFunnelId = new Map();
@@ -206,18 +205,15 @@ try {
     );
     assert.match(
       html,
-      /media-id="8py8vigtf1"/,
-      `${route.path} should embed the configured Wistia media`,
-    );
-    assert.match(
-      html,
-      /autoPlay:\s*false/,
-      `${route.path} should keep Wistia autoplay disabled`,
+      route.funnelId
+        ? /component-export="VisibilityDeckCarousel"/
+        : /component-export="ThankYouDeckCarousel"/,
+      `${route.path} should embed its native deck carousel`,
     );
     assert.doesNotMatch(
       html,
-      /vidalytics/iu,
-      `${route.path} should not load Vidalytics`,
+      /media-id="8py8vigtf1"|vidalytics/iu,
+      `${route.path} should not embed a retired video provider`,
     );
 
     for (const marker of route.markers) {

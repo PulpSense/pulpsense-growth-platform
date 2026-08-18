@@ -36,9 +36,12 @@ export function CalBookingStep({
   };
 
   useEffect(() => {
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
     trackFunnelEvent("booking_interaction", { action: "widget_viewed" });
     void (async () => {
       const cal = await getCalApi({ namespace });
+      if (disposed) return;
       cal("ui", {
         theme: "light",
         cssVarsPerTheme: {
@@ -48,11 +51,14 @@ export function CalBookingStep({
         hideEventTypeDetails: true,
         layout: "month_view",
       });
-      cal("on", {
-        action: "bookingSuccessful",
-        callback: onBookingSuccessful,
-      });
+      const callback = () => onBookingSuccessful();
+      cal("on", { action: "bookingSuccessful", callback });
+      unsubscribe = () => cal("off", { action: "bookingSuccessful", callback });
     })();
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
   }, [namespace, onBookingSuccessful]);
 
   return (

@@ -992,6 +992,9 @@ const sha256 = async (value: string) => {
   ).join("");
 };
 
+export const normalizeMetaName = (value: string) =>
+  value.normalize("NFKC").trim().toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+
 const sendMetaEvent = async (
   event: FunnelEvent,
   eventName: "Lead" | "SubmitApplication" | "Schedule",
@@ -1002,9 +1005,20 @@ const sendMetaEvent = async (
   accessToken: string,
   testEventCode?: string,
 ) => {
+  const normalizedFirstName = normalizeMetaName(event.payload.firstName);
+  const normalizedLastName = event.payload.lastName
+    ? normalizeMetaName(event.payload.lastName)
+    : "";
   const userData: Record<string, unknown> = {
     em: [await sha256(event.payload.email.trim().toLowerCase())],
     ph: [await sha256(event.payload.phone.replace(/\D/gu, ""))],
+    external_id: [await sha256(event.submissionId.trim().toLowerCase())],
+    ...(normalizedFirstName
+      ? { fn: [await sha256(normalizedFirstName)] }
+      : {}),
+    ...(normalizedLastName
+      ? { ln: [await sha256(normalizedLastName)] }
+      : {}),
     client_ip_address: event.requestContext.clientIp,
     client_user_agent: event.requestContext.userAgent,
     ...(event.requestContext.fbp ? { fbp: event.requestContext.fbp } : {}),

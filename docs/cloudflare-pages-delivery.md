@@ -27,7 +27,6 @@ Configure the `Preview` GitHub environment with:
 | Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_HR` | The non-production hair restoration Meta dataset                         |
 | Variable | `PUBLIC_META_PIXEL_ID_AI_SEO_MS` | The non-production med spa Meta dataset                                  |
 | Variable | `PUBLIC_POSTHOG_KEY`            | The public PostHog project key used for privacy-allowlisted funnel events |
-| Variable | `PUBLIC_POSTHOG_HOST`           | The region-appropriate PostHog ingestion host                             |
 | Variable | `PUBLIC_CAL_LINK`               | The non-production Cal event link                                         |
 | Variable | `PUBLIC_CAL_NAMESPACE`          | Optional Cal embed namespace                                              |
 | Variable | `PUBLIC_TURNSTILE_SITE_KEY`     | The browser-facing Turnstile widget key                                   |
@@ -76,7 +75,7 @@ pnpm check-types
 pnpm lint
 PUBLIC_PULPSENSE_ENVIRONMENT=preview \
 PUBLIC_POSTHOG_KEY=<project-key> \
-PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
+PUBLIC_POSTHOG_HOST=/e \
 PUBLIC_CAL_LINK=<sandbox-owner/sandbox-event> \
 PUBLIC_CAL_NAMESPACE=<sandbox-namespace> \
 PUBLIC_TURNSTILE_SITE_KEY=<sandbox-widget-key> \

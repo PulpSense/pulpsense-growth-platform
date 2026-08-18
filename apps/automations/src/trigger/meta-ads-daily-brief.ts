@@ -11,6 +11,7 @@ export type RawMetaInsight = {
   impressions?: string;
   reach?: string;
   actions?: MetaAction[];
+  conversions?: MetaAction[];
 };
 
 export type MetaMetrics = {
@@ -109,6 +110,8 @@ const scheduleAliases = new Set([
   "schedule",
   "offsite_conversion.fb_pixel_schedule",
   "omni_schedule",
+  "schedule_total",
+  "schedule_website",
 ]);
 
 export const parseMetaInsight = (raw: RawMetaInsight): MetaMetrics => {
@@ -117,7 +120,10 @@ export const parseMetaInsight = (raw: RawMetaInsight): MetaMetrics => {
   const impressions = number(raw.impressions);
   const reach = number(raw.reach);
   const leads = actionValue(raw.actions, leadAliases);
-  const metaBookings = actionValue(raw.actions, scheduleAliases);
+  const metaBookings = Math.max(
+    actionValue(raw.actions, scheduleAliases),
+    actionValue(raw.conversions, scheduleAliases),
+  );
 
   return {
     ...(raw.campaign_id ? { campaignId: raw.campaign_id } : {}),

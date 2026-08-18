@@ -38,7 +38,9 @@ Open the lawyer campaign at
 ## Project structure
 
 ```text
-functions/api/              # Cloudflare Pages request handlers
+functions/                  # Thin Cloudflare Pages request adapters
+├── api/                    # Funnel APIs and authenticated webhooks
+└── e/                      # First-party PostHog proxy
 public/                     # Assets, robots.txt, _headers, and _redirects
 src/
 ├── pages/                  # Active Astro routes
@@ -64,7 +66,7 @@ src/funnels/ai-seo/
 Lead magnets remain internal domain objects in `packages/lead-magnets`. Their
 public pages use `/resources/{slug}`; never expose `/lead-magnets/` in new URLs.
 
-Cloudflare files under `functions/api/` are thin adapters. Server handlers keep
+Cloudflare files under `functions/` are thin adapters. Server handlers keep
 the `(request, env) => response` interface, while endpoint internals live behind
 that seam. The funnel-event handler delegates contact and application flows to
 `src/server/funnel-events/`, which also owns signed identities, request context,
@@ -76,7 +78,7 @@ Wrangler local preview does not load `.env.local`. Use an ignored `.dev.vars` co
 
 Browser-facing `PUBLIC_*` values must be present in the Astro build environment. Pages Function secrets belong in the Cloudflare preview environment instead. `PUBLIC_CAL_NAMESPACE` may be set when the sandbox event uses a distinct embed namespace.
 
-Set `PUBLIC_POSTHOG_KEY` and the region-appropriate `PUBLIC_POSTHOG_HOST` to enable privacy-allowlisted CRO events. Ingestion waits for the visitor's first interaction and never includes contact values or raw application answers.
+Set `PUBLIC_POSTHOG_KEY` to enable privacy-allowlisted CRO events. Deployed builds set `PUBLIC_POSTHOG_HOST=/e`, whose Pages Function forwards SDK assets, remote configuration, events, and replay chunks to the US PostHog project without exposing PostHog's ingestion domains to the browser. Ingestion waits for the visitor's first interaction and never includes contact values or raw application answers.
 
 Contact and application lifecycle events are accepted through `/api/funnel-events`. Email verification remains synchronous at `/api/verify-email`. Cal booking completion is accepted only at the signed `/api/webhooks/cal` boundary; the browser callback redirects to confirmation but cannot advance Twenty or emit Meta `Schedule`.
 

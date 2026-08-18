@@ -548,6 +548,13 @@ export function AiSeoQualificationForm({
             ? 4
             : 5;
 
+  const handleBookingSuccessful = useCallback(() => {
+    trackFunnelEvent("booking_interaction", {
+      action: "booking_successful",
+    });
+    window.location.assign(qualifiedRedirect);
+  }, [qualifiedRedirect]);
+
   return (
     <div className="pr-tf">
       <div className="pr-tf-progress" aria-live="polite">
@@ -881,12 +888,7 @@ export function AiSeoQualificationForm({
                 namespace={calNamespace}
                 prefill={contact}
                 bookingIdentity={bookingIdentity}
-                onBookingSuccessful={() => {
-                  trackFunnelEvent("booking_interaction", {
-                    action: "booking_successful",
-                  });
-                  window.location.assign(qualifiedRedirect);
-                }}
+                onBookingSuccessful={handleBookingSuccessful}
               />
             </div>
             <div className="pr-tf-actions">
