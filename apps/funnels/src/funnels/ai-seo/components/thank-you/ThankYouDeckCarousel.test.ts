@@ -57,6 +57,7 @@ describe("AI SEO thank-you briefing deck", () => {
     expect(carouselSource).toContain('from "@/components/ui/carousel"');
     expect(carouselSource).toContain("CarouselPrevious");
     expect(carouselSource).toContain("CarouselNext");
+    expect(carouselSource).toContain("DeckSwipeHint");
     expect(primitiveSource).toContain("tabIndex={0}");
     expect(primitiveSource).toContain("onKeyDown={handleKeyDown}");
     expect(primitiveSource).toContain('aria-label="Previous slide"');

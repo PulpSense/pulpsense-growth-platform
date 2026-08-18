@@ -9,6 +9,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { useDeckSlideAnalytics } from "@/utils/deckSlideAnalytics";
+import { DeckSwipeHint } from "../DeckSwipeHint";
 
 const deckSlides = Array.from({ length: 20 }, (_, index) => {
   const number = index + 1;
@@ -53,11 +54,7 @@ export function ThankYouDeckCarousel() {
                   height="900"
                   draggable="false"
                 />
-                {index === 0 ? (
-                  <span className="pr-ty-deck-tap-hint" aria-hidden="true">
-                    <img src="/ai-seo/images/tap-mouse.svg" alt="" />
-                  </span>
-                ) : null}
+                {index === 0 ? <DeckSwipeHint /> : null}
               </div>
             </CarouselItem>
           ))}

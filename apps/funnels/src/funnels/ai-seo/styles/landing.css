@@ -402,25 +402,6 @@ body {
   width: 0.45rem;
   background: var(--pr-blue);
 }
-#pr-funnel .pr-deck-tap-hint {
-  display: flex;
-  position: absolute;
-  top: 50%;
-  right: 0.25rem;
-  width: 4rem;
-  height: 4rem;
-  align-items: center;
-  justify-content: center;
-  transform: translateY(-50%);
-  background: transparent;
-  pointer-events: none;
-  animation: pr-deck-tap-pulse 1.8s ease-in-out infinite;
-}
-#pr-funnel .pr-deck-tap-hint img {
-  width: 2.3rem;
-  height: 3.1rem;
-  object-fit: contain;
-}
 #pr-funnel .pr-deck-hint {
   margin: 0.25rem 0 0;
   color: var(--pr-muted);
@@ -428,25 +409,9 @@ body {
   font-weight: 600;
   text-align: center;
 }
-@keyframes pr-deck-tap-pulse {
-  0%,
-  100% {
-    opacity: 0.72;
-    transform: translateY(-50%) scale(0.94);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-50%) scale(1.06);
-  }
-}
 @media (max-width: 767px) {
   #pr-funnel .pr-deck-hint {
     display: none;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  #pr-funnel .pr-deck-tap-hint {
-    animation: none;
   }
 }
 #pr-funnel .pr-btn {
