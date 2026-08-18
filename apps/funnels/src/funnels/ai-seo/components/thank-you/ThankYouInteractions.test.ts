@@ -11,98 +11,89 @@ const confettiSource = interactionsSource.match(
   /<script is:inline>\s*(\/\* Celebrate[\s\S]*?)<\/script>/,
 )?.[1];
 
-function seededMath() {
-  let seed = 123456789;
-  const math = Object.create(Math) as Math;
-  math.random = () => {
-    seed = (1664525 * seed + 1013904223) >>> 0;
-    return seed / 4294967296;
-  };
-  return math;
-}
+type MockElement = {
+  animate: (keyframes: Keyframe[], options: KeyframeAnimationOptions) => void;
+  appendChild: (child: MockElement) => void;
+  children: MockElement[];
+  remove: () => void;
+  setAttribute: () => void;
+  style: Record<string, string>;
+};
 
-function simulateFrames(timestamps: number[]) {
+function runConfetti({
+  reducedMotion = false,
+  width = 390,
+}: {
+  reducedMotion?: boolean;
+  width?: number;
+} = {}) {
   if (!confettiSource) throw new Error("Confetti script was not found");
 
-  const callbacks: Array<(timestamp: number) => void> = [];
-  const translations: Array<[number, number]> = [];
-  const context = {
-    clearRect() {},
-    fillRect() {},
-    restore() {},
-    rotate() {},
-    save() {},
-    setTransform() {},
-    translate(x: number, y: number) {
-      translations.push([x, y]);
-    },
-    fillStyle: "",
-    globalAlpha: 1,
-  };
-  const canvas = {
-    getContext: () => context,
-    remove() {},
-    setAttribute() {},
-    style: { cssText: "" },
-    width: 0,
-    height: 0,
-  };
-  const window = {
-    addEventListener() {},
-    devicePixelRatio: 3,
-    innerHeight: 844,
-    innerWidth: 390,
-    matchMedia: () => ({ matches: false }),
-    removeEventListener() {},
-  };
-  const document = {
-    body: { appendChild() {} },
-    createElement: () => canvas,
-  };
+  const animations: Array<{
+    keyframes: Keyframe[];
+    options: KeyframeAnimationOptions;
+  }> = [];
+  const bodyChildren: MockElement[] = [];
 
-  runInNewContext(confettiSource, {
-    Math: seededMath(),
-    document,
-    performance: { now: () => 0 },
-    requestAnimationFrame(callback: (timestamp: number) => void) {
-      callbacks.push(callback);
-      return callbacks.length;
-    },
-    window,
-  });
-
-  for (const timestamp of timestamps) {
-    const callback = callbacks.shift();
-    if (!callback) throw new Error("Confetti animation frame was not queued");
-    callback(timestamp);
+  function createElement(): MockElement {
+    const element: MockElement = {
+      animate(keyframes, options) {
+        animations.push({ keyframes, options });
+      },
+      appendChild(child) {
+        this.children.push(child);
+      },
+      children: [],
+      remove() {},
+      setAttribute() {},
+      style: {},
+    };
+    return element;
   }
 
-  const particleCount = 110;
-  const firstParticle = translations.at(-particleCount);
-  if (!firstParticle) throw new Error("Confetti particles were not rendered");
+  runInNewContext(confettiSource, {
+    Math,
+    document: {
+      body: {
+        appendChild(child: MockElement) {
+          bodyChildren.push(child);
+        },
+      },
+      createElement,
+    },
+    setTimeout() {},
+    window: {
+      innerHeight: 844,
+      innerWidth: width,
+      matchMedia: () => ({ matches: reducedMotion }),
+    },
+  });
 
-  return { canvas, firstParticle };
+  return { animations, bodyChildren };
 }
 
 describe("thank-you confetti", () => {
-  it("produces the same trajectory when mobile frames are dropped", () => {
-    const frame = 1000 / 60;
-    const smooth = simulateFrames(
-      Array.from({ length: 6 }, (_, index) => (index + 1) * frame),
-    );
-    const dropped = simulateFrames([6 * frame]);
+  it("uses compositor animations instead of a main-thread canvas loop", () => {
+    const mobile = runConfetti();
 
-    expect(dropped.firstParticle[0]).toBeCloseTo(smooth.firstParticle[0], 8);
-    expect(dropped.firstParticle[1]).toBeCloseTo(smooth.firstParticle[1], 8);
+    expect(interactionsSource).not.toContain("requestAnimationFrame");
+    expect(interactionsSource).not.toContain('createElement("canvas")');
+    expect(mobile.bodyChildren).toHaveLength(1);
+    expect(mobile.animations).toHaveLength(48);
+    const overlay = mobile.bodyChildren[0];
+    const firstAnimation = mobile.animations[0];
+    if (!overlay || !firstAnimation) throw new Error("Confetti did not render");
+    expect(overlay.children).toHaveLength(48);
+    expect(firstAnimation.keyframes).toHaveLength(3);
+    expect(
+      firstAnimation.keyframes.every(({ transform }) =>
+        String(transform).includes("translate3d("),
+      ),
+    ).toBe(true);
   });
 
-  it("reduces canvas and particle work on mobile screens", () => {
-    const mobile = simulateFrames([1000 / 60]);
-
-    expect(mobile.canvas.width).toBe(390);
-    expect(mobile.canvas.height).toBe(844);
-    expect(interactionsSource).toContain(
-      "var particleCount = isMobile ? 110 : 220",
-    );
+  it("preserves reduced motion and a denser desktop celebration", () => {
+    expect(runConfetti({ reducedMotion: true }).bodyChildren).toHaveLength(0);
+    expect(runConfetti({ width: 1200 }).animations).toHaveLength(80);
   });
 });
