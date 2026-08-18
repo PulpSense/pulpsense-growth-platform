@@ -43,3 +43,31 @@ export const verifyTurnstile = async ({
     return undefined;
   }
 };
+
+export const verifyTurnstileForEnvironment = async ({
+  request,
+  env,
+  token,
+  clientIp,
+  expectedAction,
+}: {
+  request: Request;
+  env: FunnelEnv;
+  token: string;
+  clientIp: string;
+  expectedAction: string;
+}): Promise<"accepted" | "rejected" | "unavailable"> => {
+  const secret = resolveTurnstileSecret(env);
+  if (!secret) return "unavailable";
+
+  const accepted = await verifyTurnstile({
+    request,
+    token,
+    clientIp,
+    secret,
+    expectedAction,
+    acceptTestMetadata: Boolean(env.TURNSTILE_TEST_SECRET_KEY),
+  });
+  if (accepted === undefined) return "unavailable";
+  return accepted ? "accepted" : "rejected";
+};

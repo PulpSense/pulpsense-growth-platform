@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   resolveTurnstileSecret,
   verifyTurnstile,
+  verifyTurnstileForEnvironment,
 } from "./turnstile-verification";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -64,5 +65,47 @@ describe("verifyTurnstile", () => {
     await expect(
       verifyTurnstile({ ...verification, acceptTestMetadata: true }),
     ).resolves.toBe(true);
+  });
+});
+
+describe("verifyTurnstileForEnvironment", () => {
+  const request = new Request("https://preview.example.com/funnel");
+
+  it("owns secret selection and explicit preview test-mode acceptance", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          success: true,
+          action: "test",
+          hostname: "localhost",
+        }),
+      ),
+    );
+
+    await expect(
+      verifyTurnstileForEnvironment({
+        request,
+        env: {
+          TURNSTILE_SECRET_KEY: "real-secret",
+          TURNSTILE_TEST_SECRET_KEY: "test-secret",
+        },
+        token: "dummy-token",
+        clientIp: "203.0.113.10",
+        expectedAction: "contact_submit",
+      }),
+    ).resolves.toBe("accepted");
+  });
+
+  it("reports unavailable when no environment secret is configured", async () => {
+    await expect(
+      verifyTurnstileForEnvironment({
+        request,
+        env: {},
+        token: "dummy-token",
+        clientIp: "203.0.113.10",
+        expectedAction: "contact_submit",
+      }),
+    ).resolves.toBe("unavailable");
   });
 });
