@@ -43,7 +43,6 @@ const isolatedFallbackBindings = [
   "MILLION_VERIFIER_API_KEY=",
   "PULPSENSE_TRIGGER_SECRET_KEY=",
 ];
-
 const publicRoutes = [
   {
     path: "/visibility-audit/law-firms/",

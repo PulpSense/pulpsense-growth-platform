@@ -1,6 +1,6 @@
 # Astro and Cloudflare Pages preview
 
-`apps/funnels` now produces static Astro output in `dist/`. Cloudflare Pages serves that output and runs the request-time handlers under `functions/api/`.
+`apps/funnels` now produces static Astro output in `dist/`. Cloudflare Pages serves that output and runs thin request-time adapters under `functions/`; funnel APIs and webhooks live under `functions/api/`, while `functions/e/` exposes the first-party PostHog proxy.
 
 ## Local parity preview
 
@@ -33,7 +33,7 @@ The existing command remains a manual fallback for the issue #81 branch:
 
 ```bash
 PUBLIC_POSTHOG_KEY=<project-key> \
-PUBLIC_POSTHOG_HOST=https://us.i.posthog.com \
+PUBLIC_POSTHOG_HOST=/e \
 PUBLIC_CAL_LINK=<preview-team/preview-event> \
 PUBLIC_CAL_NAMESPACE=<preview-embed-namespace> \
 pnpm --filter @pulpsense/funnels deploy:preview

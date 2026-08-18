@@ -191,6 +191,13 @@ const sanitizedProperties = <Event extends FunnelAnalyticsEvent>(
 };
 
 const normalizeHost = (host: string) => {
+  if (host.startsWith("/") && !host.startsWith("//")) {
+    const url = new URL(host, "https://proxy.invalid");
+    if (url.search || url.hash) {
+      throw new Error("PostHog proxy path cannot contain a query or hash");
+    }
+    return url.pathname.replace(/\/+$/u, "");
+  }
   const url = new URL(host);
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     throw new Error("PostHog host must use HTTP(S)");
@@ -212,6 +219,9 @@ export function createFunnelAnalyticsClient(
   if (enabled) {
     client.init(config.apiKey, {
       api_host: normalizeHost(config.host),
+      ui_host: config.host.includes("eu.i.posthog.com")
+        ? "https://eu.posthog.com"
+        : "https://us.posthog.com",
       autocapture: true,
       capture_exceptions: {
         capture_unhandled_errors: true,
