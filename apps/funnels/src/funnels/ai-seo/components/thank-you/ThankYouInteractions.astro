@@ -25,10 +25,13 @@
     var colors = ["#2563eb", "#38bdf8", "#facc15", "#fb7185", "#ffffff"];
     var particles = [];
     var start = performance.now();
+    var previousFrame = start;
     var duration = 3800;
+    var isMobile = window.innerWidth < 768;
+    var particleCount = isMobile ? 110 : 220;
 
     function resize() {
-      var scale = Math.min(window.devicePixelRatio || 1, 2);
+      var scale = Math.min(window.devicePixelRatio || 1, isMobile ? 1 : 2);
       canvas.width = Math.round(window.innerWidth * scale);
       canvas.height = Math.round(window.innerHeight * scale);
       context.setTransform(scale, 0, 0, scale, 0, 0);
@@ -53,7 +56,7 @@
     }
 
     resize();
-    for (var i = 0; i < 220; i += 1) {
+    for (var i = 0; i < particleCount; i += 1) {
       particles.push(makeParticle(i % 2 === 0 ? -1 : 1));
     }
 
@@ -69,15 +72,21 @@
         return;
       }
 
+      /* Normalize motion to 60fps so dropped mobile frames do not slow physics. */
+      var frameScale = (now - previousFrame) / (1000 / 60);
+      previousFrame = now;
+
       context.clearRect(0, 0, window.innerWidth, window.innerHeight);
       context.globalAlpha = Math.min(1, (duration - elapsed) / 500);
 
       particles.forEach(function (particle) {
-        particle.vy += 0.22;
-        particle.vx *= 0.992;
-        particle.x += particle.vx;
-        particle.y += particle.vy;
-        particle.rotation += particle.spin;
+        var drag = Math.pow(0.992, frameScale);
+        particle.x += (particle.vx * 0.992 * (1 - drag)) / (1 - 0.992);
+        particle.vx *= drag;
+        particle.y +=
+          particle.vy * frameScale + (0.22 * frameScale * (frameScale + 1)) / 2;
+        particle.vy += 0.22 * frameScale;
+        particle.rotation += particle.spin * frameScale;
 
         context.save();
         context.translate(particle.x, particle.y);
