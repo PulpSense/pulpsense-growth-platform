@@ -11,7 +11,7 @@ export type EmailVerification = {
   result: "business" | "catch_all" | "provider_error";
 };
 
-type BusinessEmailVerification =
+type EmailVerificationResult =
   | { result: "business"; status: "verified" }
   | { result: "catch_all" | "provider_error"; status: "unverified" }
   | { result: "invalid"; status: "invalid" };
@@ -56,15 +56,15 @@ const isNonexistentEmailDomain = async (email: string): Promise<boolean> => {
 
 const providerErrorVerification = async (
   email: string,
-): Promise<BusinessEmailVerification> =>
+): Promise<EmailVerificationResult> =>
   (await isNonexistentEmailDomain(email))
     ? { status: "invalid", result: "invalid" }
     : { status: "unverified", result: "provider_error" };
 
-export const verifyBusinessEmail = async (
+export const verifyEmail = async (
   email: string,
   apiKey: string | undefined,
-): Promise<BusinessEmailVerification> => {
+): Promise<EmailVerificationResult> => {
   if (isInternalTestLeadEmail(email)) {
     return { status: "verified", result: "business" };
   }
@@ -136,10 +136,7 @@ export async function handleVerifyEmail(request: Request, env: FunnelEnv) {
     });
   }
 
-  const verification = await verifyBusinessEmail(
-    email,
-    env.MILLION_VERIFIER_API_KEY,
-  );
+  const verification = await verifyEmail(email, env.MILLION_VERIFIER_API_KEY);
   if (verification.status === "invalid") {
     return json({ valid: false, ...verification });
   }
