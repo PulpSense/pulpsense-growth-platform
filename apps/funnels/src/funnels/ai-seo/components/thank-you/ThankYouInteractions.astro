@@ -9,103 +9,102 @@
   <img id="pr-lightbox-img" src="" alt="" />
 </div>
 <script is:inline>
-  /* Celebrate a confirmed booking without loading a confetti dependency. */
+  /* Celebrate on the compositor so page scripts cannot make confetti stutter. */
   (function () {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    var canvas = document.createElement("canvas");
-    var context = canvas.getContext("2d");
-    if (!context) return;
-
-    canvas.setAttribute("aria-hidden", "true");
-    canvas.style.cssText =
-      "position:fixed;inset:0;z-index:9999;width:100%;height:100%;pointer-events:none";
-    document.body.appendChild(canvas);
+    var overlay = document.createElement("div");
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.style.cssText =
+      "position:fixed;inset:0;z-index:9999;overflow:hidden;pointer-events:none;contain:strict";
+    document.body.appendChild(overlay);
 
     var colors = ["#2563eb", "#38bdf8", "#facc15", "#fb7185", "#ffffff"];
-    var particles = [];
-    var start = performance.now();
-    var previousFrame = start;
-    var duration = 3800;
     var isMobile = window.innerWidth < 768;
-    var particleCount = isMobile ? 110 : 220;
+    var particleCount = isMobile ? 48 : 80;
+    var width = window.innerWidth;
+    var height = window.innerHeight;
 
-    function resize() {
-      var scale = Math.min(window.devicePixelRatio || 1, isMobile ? 1 : 2);
-      canvas.width = Math.round(window.innerWidth * scale);
-      canvas.height = Math.round(window.innerHeight * scale);
-      context.setTransform(scale, 0, 0, scale, 0, 0);
-    }
-
-    function makeParticle(side) {
-      var angle =
-        side < 0
-          ? -0.25 - Math.random() * 0.85
-          : Math.PI + 0.25 + Math.random() * 0.85;
-      var speed = 9 + Math.random() * 11;
-      return {
-        x: side < 0 ? -12 : window.innerWidth + 12,
-        y: window.innerHeight * (0.18 + Math.random() * 0.3),
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        size: 6 + Math.random() * 9,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        rotation: Math.random() * Math.PI,
-        spin: (Math.random() - 0.5) * 0.3,
-      };
-    }
-
-    resize();
     for (var i = 0; i < particleCount; i += 1) {
-      particles.push(makeParticle(i % 2 === 0 ? -1 : 1));
-    }
-
-    function removeCanvas() {
-      window.removeEventListener("resize", resize);
-      canvas.remove();
-    }
-
-    function draw(now) {
-      var elapsed = now - start;
-      if (elapsed >= duration) {
-        removeCanvas();
+      var particle = document.createElement("i");
+      if (typeof particle.animate !== "function") {
+        overlay.remove();
         return;
       }
 
-      /* Normalize motion to 60fps so dropped mobile frames do not slow physics. */
-      var frameScale = (now - previousFrame) / (1000 / 60);
-      previousFrame = now;
+      var side = i % 2 === 0 ? -1 : 1;
+      var size = 6 + Math.random() * 8;
+      var startX = side < 0 ? -24 : width + 24;
+      var startY = height * (0.12 + Math.random() * 0.3);
+      var middleX =
+        width *
+        (side < 0 ? 0.2 + Math.random() * 0.22 : 0.8 - Math.random() * 0.22);
+      var middleY = Math.max(-50, startY - 140 - Math.random() * 240);
+      var endX =
+        width *
+        (side < 0 ? 0.55 + Math.random() * 0.4 : 0.05 + Math.random() * 0.4);
+      var endY = height + 50;
+      var startRotation = Math.random() * 360;
+      var endRotation = startRotation + side * (540 + Math.random() * 720);
 
-      context.clearRect(0, 0, window.innerWidth, window.innerHeight);
-      context.globalAlpha = Math.min(1, (duration - elapsed) / 500);
+      particle.style.cssText =
+        "position:absolute;left:0;top:0;border-radius:1px;will-change:transform,opacity";
+      particle.style.width = size + "px";
+      particle.style.height = size * 0.48 + "px";
+      particle.style.background =
+        colors[Math.floor(Math.random() * colors.length)];
+      overlay.appendChild(particle);
 
-      particles.forEach(function (particle) {
-        var drag = Math.pow(0.992, frameScale);
-        particle.x += (particle.vx * 0.992 * (1 - drag)) / (1 - 0.992);
-        particle.vx *= drag;
-        particle.y +=
-          particle.vy * frameScale + (0.22 * frameScale * (frameScale + 1)) / 2;
-        particle.vy += 0.22 * frameScale;
-        particle.rotation += particle.spin * frameScale;
-
-        context.save();
-        context.translate(particle.x, particle.y);
-        context.rotate(particle.rotation);
-        context.fillStyle = particle.color;
-        context.fillRect(
-          -particle.size / 2,
-          -particle.size / 4,
-          particle.size,
-          particle.size / 2,
-        );
-        context.restore();
-      });
-
-      requestAnimationFrame(draw);
+      particle.animate(
+        [
+          {
+            transform:
+              "translate3d(" +
+              startX +
+              "px," +
+              startY +
+              "px,0) rotate(" +
+              startRotation +
+              "deg)",
+            opacity: 1,
+            easing: "cubic-bezier(0.12,0.7,0.25,1)",
+          },
+          {
+            offset: 0.32,
+            transform:
+              "translate3d(" +
+              middleX +
+              "px," +
+              middleY +
+              "px,0) rotate(" +
+              (startRotation + endRotation) / 2 +
+              "deg)",
+            opacity: 1,
+            easing: "cubic-bezier(0.55,0.05,0.8,0.5)",
+          },
+          {
+            transform:
+              "translate3d(" +
+              endX +
+              "px," +
+              endY +
+              "px,0) rotate(" +
+              endRotation +
+              "deg)",
+            opacity: 0,
+          },
+        ],
+        {
+          duration: 2100 + Math.random() * 700,
+          delay: Math.random() * 100,
+          fill: "forwards",
+        },
+      );
     }
 
-    window.addEventListener("resize", resize, { passive: true });
-    requestAnimationFrame(draw);
+    setTimeout(function () {
+      overlay.remove();
+    }, 3000);
   })();
 </script>
 <script is:inline>
