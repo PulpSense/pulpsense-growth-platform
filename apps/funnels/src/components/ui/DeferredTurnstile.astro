@@ -1,0 +1,19 @@
+---
+type Props = { target: string };
+
+const { target } = Astro.props;
+---
+
+<script
+  is:inline
+  type="application/json"
+  defer
+  data-pulpsense-turnstile
+  data-status="deferred"
+  data-target={target}></script>
+
+<script>
+  import { initializeDeferredTurnstile } from "@/utils/deferredTurnstile";
+
+  initializeDeferredTurnstile();
+</script>

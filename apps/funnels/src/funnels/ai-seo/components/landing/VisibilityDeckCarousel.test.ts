@@ -34,10 +34,26 @@ describe("AI SEO visibility deck", () => {
     expect(primitiveSource).toContain('aria-label="Next slide"');
   });
 
+  it("prioritizes the LCP slide and loads the rest near navigation", () => {
+    expect(heroSource).toContain("VisibilityDeckCarousel client:idle");
+    expect(carouselSource).toContain("new Set([0])");
+    expect(carouselSource).toContain(
+      "loadSlidesNear(api.selectedScrollSnap())",
+    );
+    expect(carouselSource).toContain(
+      'fetchPriority={index === 0 ? "high" : "auto"}',
+    );
+    expect(carouselSource).toContain("slide.image800");
+    expect(carouselSource).toContain("slide.image1200");
+    expect(carouselSource).toContain(
+      'loading={index === 0 ? "eager" : "lazy"}',
+    );
+  });
+
   it("ships the full twenty-slide source-truth deck", () => {
     const deckFiles = readdirSync(
       new URL("../../../../../public/ai-seo/deck/", import.meta.url),
-    ).filter((file) => file.startsWith("slide-") && file.endsWith(".webp"));
+    ).filter((file) => /^slide-\d{2}\.webp$/u.test(file));
 
     expect(deckFiles).toHaveLength(20);
     expect(carouselSource.match(/^  ".+",$/gm)).toHaveLength(20);

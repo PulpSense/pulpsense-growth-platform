@@ -74,6 +74,11 @@ const clients = [
 
 const logoUrl = (asset: string) =>
   `/ai-seo/logos/${asset.replace(/-(webp|png|svg)$/u, ".$1")}`;
+
+const compactLogoUrl = (asset: string) => {
+  const url = logoUrl(asset);
+  return url.endsWith(".webp") ? url.replace(/\.webp$/u, "-160.webp") : url;
+};
 ---
 
 <section
@@ -88,6 +93,12 @@ const logoUrl = (asset: string) =>
           <div class="pr-client-logo" aria-hidden={index >= clients.length}>
             <img
               src={logoUrl(client.asset)}
+              srcset={
+                compactLogoUrl(client.asset) === logoUrl(client.asset)
+                  ? undefined
+                  : `${compactLogoUrl(client.asset)} 160w, ${logoUrl(client.asset)} 320w`
+              }
+              sizes="120px"
               alt={index < clients.length ? `${client.name} logo` : ""}
               height={client.height}
               style={`height: ${client.height}px`}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { MouseEvent } from "react";
 
 import {
@@ -38,13 +38,38 @@ const slides = slideDescriptions.map((description, index) => {
   const number = index + 1;
   return {
     image: `/ai-seo/deck/slide-${String(number).padStart(2, "0")}.webp`,
+    image800: `/ai-seo/deck/slide-${String(number).padStart(2, "0")}-800.webp`,
+    image1200: `/ai-seo/deck/slide-${String(number).padStart(2, "0")}-1200.webp`,
     alt: `Slide ${number} of ${slideDescriptions.length}: ${description}`,
   };
 });
 
 export function VisibilityDeckCarousel() {
   const [api, setApi] = useState<CarouselApi>();
+  const [loadedSlides, setLoadedSlides] = useState(() => new Set([0]));
   useDeckSlideAnalytics(api, "ai-seo-visibility");
+
+  const loadSlidesNear = useCallback((index: number) => {
+    setLoadedSlides((current) => {
+      const next = new Set(current);
+      for (const nearbyIndex of [index - 1, index, index + 1]) {
+        if (nearbyIndex >= 0 && nearbyIndex < slides.length) {
+          next.add(nearbyIndex);
+        }
+      }
+      return next.size === current.size ? current : next;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!api) return;
+    const handleSelection = () => loadSlidesNear(api.selectedScrollSnap());
+    handleSelection();
+    api.on("select", handleSelection);
+    return () => {
+      api.off("select", handleSelection);
+    };
+  }, [api, loadSlidesNear]);
 
   const handleSlideTap = (event: MouseEvent<HTMLDivElement>) => {
     const { left, width } = event.currentTarget.getBoundingClientRect();
@@ -72,10 +97,19 @@ export function VisibilityDeckCarousel() {
                 </span>
                 <img
                   className="pr-deck-image"
-                  src={slide.image}
+                  src={loadedSlides.has(index) ? slide.image800 : undefined}
+                  srcSet={
+                    loadedSlides.has(index)
+                      ? `${slide.image800} 800w, ${slide.image1200} 1200w, ${slide.image} 1600w`
+                      : undefined
+                  }
+                  sizes="(max-width: 640px) calc(100vw - 34px), 900px"
                   alt={slide.alt}
                   width="1600"
                   height="900"
+                  loading={index === 0 ? "eager" : "lazy"}
+                  fetchPriority={index === 0 ? "high" : "auto"}
+                  decoding={index === 0 ? "sync" : "async"}
                   draggable="false"
                 />
                 {index === 0 ? (
