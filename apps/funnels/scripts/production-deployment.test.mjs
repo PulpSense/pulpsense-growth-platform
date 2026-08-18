@@ -7,10 +7,16 @@ const repositoryFile = (path) =>
   fileURLToPath(new URL(`../../../${path}`, import.meta.url));
 
 describe("production deployment isolation", () => {
-  it("loads Turnstile from the document head before the contact step mounts", async () => {
-    const [layout, landingPage, form] = await Promise.all([
+  it("loads Turnstile as the contact form approaches", async () => {
+    const [layout, turnstile, landingPage, form] = await Promise.all([
       readFile(
         repositoryFile("apps/funnels/src/layouts/BaseLayout.astro"),
+        "utf8",
+      ),
+      readFile(
+        repositoryFile(
+          "apps/funnels/src/components/ui/DeferredTurnstile.astro",
+        ),
         "utf8",
       ),
       readFile(
@@ -25,14 +31,10 @@ describe("production deployment isolation", () => {
       ),
     ]);
 
-    expect(landingPage).toContain("loadTurnstile");
-    expect(layout).toContain(
-      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
-    );
-    expect(layout).toContain("data-pulpsense-turnstile");
-    expect(layout).toContain("defer");
-    expect(layout).toContain('data-status="loading"');
-    expect(layout).toContain("pulpsense:turnstile-script-state");
+    expect(landingPage).toContain('turnstileTarget="#pr-funnel-form"');
+    expect(layout).toContain("<DeferredTurnstile target={turnstileTarget} />");
+    expect(turnstile).toContain("data-pulpsense-turnstile");
+    expect(turnstile).toContain("initializeDeferredTurnstile");
     expect(form).not.toContain('document.createElement("script")');
   });
 

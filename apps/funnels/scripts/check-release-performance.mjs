@@ -8,6 +8,7 @@ const execFileAsync = promisify(execFile);
 
 export const releasePerformanceBudgets = Object.freeze({
   cls: 0.1,
+  initialDeckImageRequests: 2,
   lcpMs: 2_500,
 });
 
@@ -24,6 +25,18 @@ const metric = (report, auditName) => {
   return value;
 };
 
+const deckImageRequests = (report) => {
+  const requests = report?.audits?.["network-requests"]?.details?.items;
+  if (!Array.isArray(requests)) {
+    throw new Error("Lighthouse report omitted network-requests");
+  }
+  return requests.filter(
+    ({ url }) =>
+      typeof url === "string" &&
+      /\/ai-seo\/deck\/slide-\d+(?:-\d+)?\.webp(?:\?|$)/u.test(url),
+  ).length;
+};
+
 export function evaluatePerformanceRuns(reports) {
   if (!Array.isArray(reports) || reports.length === 0) {
     throw new Error("At least one Lighthouse report is required");
@@ -35,6 +48,7 @@ export function evaluatePerformanceRuns(reports) {
   const cls = median(
     reports.map((report) => metric(report, "cumulative-layout-shift")),
   );
+  const initialDeckImageRequests = Math.max(...reports.map(deckImageRequests));
 
   if (lcpMs >= releasePerformanceBudgets.lcpMs) {
     throw new Error(
@@ -46,8 +60,16 @@ export function evaluatePerformanceRuns(reports) {
       `CLS ${cls} does not meet the <${releasePerformanceBudgets.cls} release budget`,
     );
   }
+  if (
+    initialDeckImageRequests >
+    releasePerformanceBudgets.initialDeckImageRequests
+  ) {
+    throw new Error(
+      `${initialDeckImageRequests} deck images loaded initially; the release budget allows at most ${releasePerformanceBudgets.initialDeckImageRequests}`,
+    );
+  }
 
-  return { cls, lcpMs };
+  return { cls, initialDeckImageRequests, lcpMs };
 }
 
 const releaseOrigin = () => {
@@ -111,7 +133,7 @@ async function run() {
 
     const result = evaluatePerformanceRuns(reports);
     console.log(
-      `Mobile performance passed (${runCount}-run median): LCP ${result.lcpMs}ms, CLS ${result.cls}.`,
+      `Mobile performance passed (${runCount}-run median): LCP ${result.lcpMs}ms, CLS ${result.cls}, ${result.initialDeckImageRequests} initial deck images.`,
     );
   } finally {
     await rm(reportDirectory, { force: true, recursive: true });

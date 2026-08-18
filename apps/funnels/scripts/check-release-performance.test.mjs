@@ -2,10 +2,17 @@ import { describe, expect, it } from "vitest";
 
 import { evaluatePerformanceRuns } from "./check-release-performance.mjs";
 
-const report = (lcpMs, cls) => ({
+const report = (lcpMs, cls, deckImageCount = 2) => ({
   audits: {
     "largest-contentful-paint": { numericValue: lcpMs },
     "cumulative-layout-shift": { numericValue: cls },
+    "network-requests": {
+      details: {
+        items: Array.from({ length: deckImageCount }, (_, index) => ({
+          url: `https://example.com/ai-seo/deck/slide-${String(index + 1).padStart(2, "0")}-1200.webp`,
+        })),
+      },
+    },
   },
 });
 
@@ -17,7 +24,7 @@ describe("release performance qualification", () => {
         report(2_300, 0.08),
         report(2_400, 0.12),
       ]),
-    ).toEqual({ cls: 0.08, lcpMs: 2_400 });
+    ).toEqual({ cls: 0.08, initialDeckImageRequests: 2, lcpMs: 2_400 });
   });
 
   it("rejects an LCP above 2.5 seconds", () => {
@@ -56,5 +63,11 @@ describe("release performance qualification", () => {
         report(2_300, 0.1004),
       ]),
     ).toThrow("CLS 0.1 does not meet the <0.1 release budget");
+  });
+
+  it("rejects releases that eagerly request more than two deck images", () => {
+    expect(() => evaluatePerformanceRuns([report(2_100, 0.01, 3)])).toThrow(
+      "3 deck images loaded initially; the release budget allows at most 2",
+    );
   });
 });

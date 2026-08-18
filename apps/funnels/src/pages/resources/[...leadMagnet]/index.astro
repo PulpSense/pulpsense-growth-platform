@@ -18,7 +18,7 @@ const { config } = Astro.props;
 <BaseLayout
   title={config.seo.title}
   description={config.seo.description}
-  loadTurnstile
+  turnstileTarget=".lm-card"
 >
   <main id="lm-funnel" class="lm-page">
     <div class="lm-topbar">PulpSense Agent Resources</div>
