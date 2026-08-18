@@ -10,6 +10,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import { useDeckSlideAnalytics } from "@/utils/deckSlideAnalytics";
+import { DeckSwipeHint } from "../DeckSwipeHint";
 
 const slideDescriptions = [
   "45 new calls in 90 days by ranking at the top of Google and AI, or PulpSense works free until the business gets them.",
@@ -112,11 +113,7 @@ export function VisibilityDeckCarousel() {
                   decoding={index === 0 ? "sync" : "async"}
                   draggable="false"
                 />
-                {index === 0 ? (
-                  <span className="pr-deck-tap-hint" aria-hidden="true">
-                    <img src="/ai-seo/images/tap-mouse.svg" alt="" />
-                  </span>
-                ) : null}
+                {index === 0 ? <DeckSwipeHint /> : null}
               </div>
             </CarouselItem>
           ))}
