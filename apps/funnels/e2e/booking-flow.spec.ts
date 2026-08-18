@@ -16,7 +16,7 @@ const reachContactStep = async (page: Page) => {
     .click();
   await page.getByLabel("First name").fill("E2E");
   await page.getByLabel("Last name (optional)").fill("Test");
-  await page.getByLabel("Business email").fill("santi@pulpsense.com");
+  await page.getByLabel("Email").fill("santi@pulpsense.com");
   await page.locator("#ai-seo-phone").fill("4155550123");
 };
 

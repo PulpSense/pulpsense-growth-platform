@@ -269,8 +269,8 @@ try {
     assert.equal(personalEmailResponse.status, 200);
     assert.deepEqual(await personalEmailResponse.json(), {
       valid: false,
-      status: "invalid",
-      result: "non_business_email",
+      status: "unverified",
+      result: "provider_error",
     });
 
     const sandboxEmailResponse = await postJson("/api/verify-email", {

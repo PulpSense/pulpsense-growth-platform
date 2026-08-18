@@ -1,5 +1,5 @@
 import { contactSubmittedEventSchema } from "@pulpsense/contracts";
-import { isBusinessEmail } from "@/utils/businessEmail";
+import { isValidEmail } from "@/utils/email";
 
 import {
   contactSubmissionRequestSchema,
@@ -109,7 +109,7 @@ export async function processContactSubmission(
       return json({ error: "turnstile_rejected" }, 403);
     }
 
-    if (!isBusinessEmail(submission.payload.email)) {
+    if (!isValidEmail(submission.payload.email)) {
       return json({ error: "email_invalid" }, 422);
     }
     const verification = await verifyBusinessEmail(

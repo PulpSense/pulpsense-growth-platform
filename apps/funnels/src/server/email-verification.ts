@@ -1,6 +1,6 @@
 import { isInternalTestLeadEmail } from "@pulpsense/contracts";
 
-import { isBusinessEmail } from "@/utils/businessEmail";
+import { isValidEmail } from "@/utils/email";
 
 import type { FunnelEnv } from "./funnel-env";
 import { getClientIp, json, parseJson, rejectCrossOrigin } from "./http";
@@ -72,7 +72,6 @@ export const verifyBusinessEmail = async (
 
   const verification = await fetchMillionVerifier(email, apiKey);
   if (
-    verification?.free === true ||
     verification?.result === "invalid" ||
     verification?.result === "disposable"
   ) {
@@ -129,11 +128,11 @@ export async function handleVerifyEmail(request: Request, env: FunnelEnv) {
     return json({ error: "Email is required" }, 400);
   }
 
-  if (!isBusinessEmail(email)) {
+  if (!isValidEmail(email)) {
     return json({
       valid: false,
       status: "invalid",
-      result: "non_business_email",
+      result: "invalid",
     });
   }
 
