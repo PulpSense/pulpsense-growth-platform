@@ -613,6 +613,39 @@ const restoreTwentyPerson = async (client: TwentyClient, personId: string) => {
   }
 };
 
+const twentyAttributionInput = (event: FunnelEvent) => {
+  const { firstTouch, lastTouch } = event.attribution;
+
+  return {
+    ...(firstTouch.utmSource
+      ? { firstTouchSource: firstTouch.utmSource }
+      : {}),
+    ...(firstTouch.utmMedium
+      ? { firstTouchMedium: firstTouch.utmMedium }
+      : {}),
+    ...(firstTouch.utmCampaign
+      ? { firstTouchCampaign: firstTouch.utmCampaign }
+      : {}),
+    ...(firstTouch.utmContent
+      ? { firstTouchContent: firstTouch.utmContent }
+      : {}),
+    ...(firstTouch.landingPage
+      ? { firstTouchLandingPage: firstTouch.landingPage }
+      : {}),
+    ...(lastTouch.utmSource ? { lastTouchSource: lastTouch.utmSource } : {}),
+    ...(lastTouch.utmMedium ? { lastTouchMedium: lastTouch.utmMedium } : {}),
+    ...(lastTouch.utmCampaign
+      ? { lastTouchCampaign: lastTouch.utmCampaign }
+      : {}),
+    ...(lastTouch.utmContent
+      ? { lastTouchContent: lastTouch.utmContent }
+      : {}),
+    ...(lastTouch.landingPage
+      ? { lastTouchLandingPage: lastTouch.landingPage }
+      : {}),
+  };
+};
+
 const personInput = (event: FunnelEvent) => ({
   name: {
     firstName: event.payload.firstName,
@@ -626,6 +659,7 @@ const personInput = (event: FunnelEvent) => ({
     primaryPhoneNumber: event.payload.phone,
   },
   ...(event.prospectId ? { prospectId: event.prospectId } : {}),
+  ...twentyAttributionInput(event),
 });
 
 const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
@@ -934,7 +968,10 @@ const recordTwentyApplication = async (
       ...(openOpportunity ? {} : { stage }),
       ...(openOpportunity
         ? {}
-        : { originatingLeadJourneyId: event.submissionId }),
+        : {
+            originatingLeadJourneyId: event.submissionId,
+            ...twentyAttributionInput(event),
+          }),
       pointOfContactId: personId,
       ...(companyId ? { companyId } : {}),
     },

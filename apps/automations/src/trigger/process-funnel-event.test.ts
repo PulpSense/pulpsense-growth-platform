@@ -57,8 +57,20 @@ const event: ContactSubmittedEvent = {
     emailVerification: { status: "verified", result: "business" },
   },
   attribution: {
-    firstTouch: { utmSource: "meta" },
-    lastTouch: { utmSource: "newsletter" },
+    firstTouch: {
+      utmSource: "meta",
+      utmMedium: "paid-social",
+      utmCampaign: "ai-seo-audit",
+      utmContent: "founder-video-1",
+      landingPage: "https://preview.pulpsense.com/ai-seo/",
+    },
+    lastTouch: {
+      utmSource: "newsletter",
+      utmMedium: "email",
+      utmCampaign: "qualified-lead-nurture",
+      utmContent: "case-study-cta",
+      landingPage: "https://preview.pulpsense.com/ai-seo/apply",
+    },
   },
   requestContext: {
     clientIp: "203.0.113.10",
@@ -828,6 +840,18 @@ describe("process-funnel-event", () => {
     expect(requests[2]?.body).toMatchObject({
       variables: { domainUrl: "https://brand.com" },
     });
+    expect(requests[1]?.body).toMatchObject({
+      firstTouchSource: "meta",
+      firstTouchMedium: "paid-social",
+      firstTouchCampaign: "ai-seo-audit",
+      firstTouchContent: "founder-video-1",
+      firstTouchLandingPage: "https://preview.pulpsense.com/ai-seo/",
+      lastTouchSource: "newsletter",
+      lastTouchMedium: "email",
+      lastTouchCampaign: "qualified-lead-nurture",
+      lastTouchContent: "case-study-cta",
+      lastTouchLandingPage: "https://preview.pulpsense.com/ai-seo/apply",
+    });
     expect(requests[3]?.body).toMatchObject({
       id: applicationEvent.submissionId,
       title: `Application ${applicationEvent.submissionId}`,
@@ -923,6 +947,16 @@ describe("process-funnel-event", () => {
       originatingLeadJourneyId: qualifiedApplicationEvent.submissionId,
       pointOfContactId: "person_existing",
       companyId: "company_brand",
+      firstTouchSource: "meta",
+      firstTouchMedium: "paid-social",
+      firstTouchCampaign: "ai-seo-audit",
+      firstTouchContent: "founder-video-1",
+      firstTouchLandingPage: "https://preview.pulpsense.com/ai-seo/",
+      lastTouchSource: "newsletter",
+      lastTouchMedium: "email",
+      lastTouchCampaign: "qualified-lead-nurture",
+      lastTouchContent: "case-study-cta",
+      lastTouchLandingPage: "https://preview.pulpsense.com/ai-seo/apply",
     });
     expect(
       JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
