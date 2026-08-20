@@ -18,9 +18,7 @@ export const funnelIdSchema = z.enum([
 
 export type FunnelId = z.infer<typeof funnelIdSchema>;
 
-export const prospectIdSchema = z
-  .string()
-  .regex(/^prospect_v1_[0-9a-f]{64}$/u);
+export const prospectIdSchema = z.string().regex(/^prospect_v1_[0-9a-f]{64}$/u);
 
 const attributionTouchSchema = z
   .object({
@@ -105,11 +103,13 @@ export const aiSeoApplicationAnswersSchema = z
       "$1,500+/month",
       "Under $500/month or not set yet",
     ]),
-    investmentIntent: z.enum([
-      "Yes, if the numbers make sense",
-      "Maybe—I’m exploring options",
-      "No, I’m only looking for free information",
-    ]),
+    investmentIntent: z
+      .enum([
+        "Yes, if the numbers make sense",
+        "Maybe—I’m exploring options",
+        "No, I’m only looking for free information",
+      ])
+      .optional(),
   })
   .strict();
 

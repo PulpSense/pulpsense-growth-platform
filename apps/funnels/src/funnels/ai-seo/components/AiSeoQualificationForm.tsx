@@ -46,14 +46,10 @@ declare global {
 type Step =
   | "owner"
   | "marketing-budget"
-  | "investment"
   | "contact"
   | "calendar"
   | "not-qualified";
 type MarketingBudget = "$500–$1,500/month" | "$1,500+/month";
-type InvestmentIntent =
-  | "Yes, if the numbers make sense"
-  | "Maybe—I’m exploring options";
 type EmailStatus = "idle" | "verifying" | "valid" | "invalid";
 type TurnstileStatus =
   | "loading"
@@ -70,6 +66,8 @@ const unavailableTurnstileStatuses = new Set<TurnstileStatus>([
   "timeout",
   "unsupported",
 ]);
+
+const TURNSTILE_ALWAYS_PASS_SITE_KEY = "1x00000000000000000000AA";
 
 type ContactData = {
   firstName: string;
@@ -100,8 +98,6 @@ const qualificationQuestions = {
     "Are you the owner or primary decision-maker for the business?",
   marketing_budget:
     "What monthly marketing budget have you set aside to generate more leads?",
-  investment_intent:
-    "If there is a clear opportunity to generate more leads, would you be open to investing in fixing it?",
 } as const;
 
 const recordQualificationSnapshot = (
@@ -111,7 +107,7 @@ const recordQualificationSnapshot = (
   trackFunnelEvent("funnel_qualification_submitted", {
     qualification_status: status,
     qualification_form_id: "ai-seo",
-    qualification_form_version: "2026-08-15",
+    qualification_form_version: "2026-08-20",
     qualification_questions: qualificationQuestions,
     qualification_answers: answers,
   });
@@ -120,12 +116,13 @@ export function AiSeoQualificationForm({
   funnelId,
   calLink,
   calNamespace,
-  turnstileSiteKey,
+  turnstileSiteKey: configuredTurnstileSiteKey,
   qualifiedRedirect,
 }: Props) {
-  const [step, setStep] = useState<Step>("owner");
-  const [marketingBudget, setMarketingBudget] = useState<MarketingBudget>();
-  const [investmentIntent, setInvestmentIntent] = useState<InvestmentIntent>();
+  const turnstileSiteKey =
+    configuredTurnstileSiteKey ??
+    (import.meta.env.DEV ? TURNSTILE_ALWAYS_PASS_SITE_KEY : undefined);
+  const [step, setStep] = useState<Step>("contact");
   const [contact, setContact] = useState<ContactData>(initialContact);
   const [phoneCountry, setPhoneCountry] = useState<Country>(
     DEFAULT_PHONE_COUNTRY,
@@ -159,7 +156,7 @@ export function AiSeoQualificationForm({
       referrer: document.referrer,
       storage: window.localStorage,
     });
-    trackFunnelEvent("funnel_step_viewed", { step: "qualification" });
+    trackFunnelEvent("funnel_step_viewed", { step: "contact" });
   }, [funnelId]);
 
   useEffect(() => {
@@ -369,7 +366,7 @@ export function AiSeoQualificationForm({
     }
   };
 
-  const chooseMarketingBudget = (
+  const chooseMarketingBudget = async (
     budget: MarketingBudget | "under-500-per-month",
   ) => {
     if (budget === "under-500-per-month") {
@@ -381,27 +378,61 @@ export function AiSeoQualificationForm({
       setStep("not-qualified");
       return;
     }
-    setMarketingBudget(budget);
-    setStep("investment");
-  };
-
-  const chooseInvestmentIntent = (
-    intent: InvestmentIntent | "free-information-only",
-  ) => {
-    if (intent === "free-information-only") {
-      trackFunnelEvent("qualification_outcome", { status: "unqualified" });
-      recordQualificationSnapshot("unqualified", {
-        business_owner: "yes",
-        marketing_budget: marketingBudget,
-        investment_intent: "No, I’m only looking for free information",
-      });
-      setStep("not-qualified");
-      return;
-    }
-    setInvestmentIntent(intent);
     trackFunnelEvent("qualification_outcome", { status: "qualified" });
-    setStep("contact");
-    trackFunnelEvent("funnel_step_viewed", { step: "contact" });
+    setSubmitting(true);
+    setSubmissionError("");
+
+    const sourceUrl = window.location.href;
+    const referrer = document.referrer || undefined;
+    const fbp = getBrowserCookie("_fbp");
+    const fbc = getBrowserCookie("_fbc");
+
+    try {
+      const applicationResult = await submitApplication({
+        data: {
+          businessOwner: "yes",
+          marketingBudget: budget,
+        },
+        sourceUrl,
+        ...(referrer ? { referrer } : {}),
+        ...(fbp ? { fbp } : {}),
+        ...(fbc ? { fbc } : {}),
+      });
+      if (
+        !applicationResult.accepted ||
+        applicationResult.nextStep !== "booking" ||
+        !applicationResult.bookingIdentity
+      ) {
+        setSubmissionError(
+          "Booking is not available for this submission. Please check your email and try again.",
+        );
+        return;
+      }
+
+      trackFunnelEvent("funnel_step_completed", { step: "qualification" });
+      recordQualificationSnapshot("qualified", {
+        business_owner: "yes",
+        marketing_budget: budget,
+      });
+      trackMetaEvent(
+        "SubmitApplication",
+        { qualification_status: "qualified" },
+        {
+          email: contact.email,
+          phone: `${phoneCountry.code} ${contact.phone}`,
+        },
+        { eventId: applicationResult.eventId, serverHandled: true },
+      );
+      setBookingIdentity(applicationResult.bookingIdentity);
+      setStep("calendar");
+      trackFunnelEvent("funnel_step_viewed", { step: "booking" });
+    } catch {
+      setSubmissionError(
+        "We could not submit your application yet. Please try again.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const validateContact = () => {
@@ -434,10 +465,6 @@ export function AiSeoQualificationForm({
       setSubmissionError(
         "We couldn't submit your details yet. Please try again.",
       );
-      return;
-    }
-    if (!marketingBudget || !investmentIntent) {
-      setStep("owner");
       return;
     }
     setSubmitting(true);
@@ -490,44 +517,8 @@ export function AiSeoQualificationForm({
         },
         { eventId: contactResult.eventId, serverHandled: true },
       );
-
-      const applicationResult = await submitApplication({
-        data: {
-          businessOwner: "yes",
-          marketingBudget,
-          investmentIntent,
-        },
-        ...sharedContext,
-      });
-      if (
-        !applicationResult.accepted ||
-        applicationResult.nextStep !== "booking" ||
-        !applicationResult.bookingIdentity
-      ) {
-        setSubmissionError(
-          "Booking is not available for this submission. Please check your email and try again.",
-        );
-        return;
-      }
-
-      trackFunnelEvent("funnel_step_completed", { step: "qualification" });
-      recordQualificationSnapshot("qualified", {
-        business_owner: "yes",
-        marketing_budget: marketingBudget,
-        investment_intent: investmentIntent,
-      });
-      trackMetaEvent(
-        "SubmitApplication",
-        { qualification_status: "qualified" },
-        {
-          email: contact.email,
-          phone: `${phoneCountry.code} ${contact.phone}`,
-        },
-        { eventId: applicationResult.eventId, serverHandled: true },
-      );
-      setBookingIdentity(applicationResult.bookingIdentity);
-      setStep("calendar");
-      trackFunnelEvent("funnel_step_viewed", { step: "booking" });
+      setStep("owner");
+      trackFunnelEvent("funnel_step_viewed", { step: "qualification" });
     } catch {
       setSubmissionError(
         "We could not save your details yet. Please try again.",
@@ -538,15 +529,13 @@ export function AiSeoQualificationForm({
   };
 
   const currentStep =
-    step === "owner" || step === "not-qualified"
+    step === "contact"
       ? 1
-      : step === "marketing-budget"
+      : step === "owner"
         ? 2
-        : step === "investment"
+        : step === "marketing-budget"
           ? 3
-          : step === "contact"
-            ? 4
-            : 5;
+          : 4;
 
   const handleBookingSuccessful = useCallback(() => {
     trackFunnelEvent("booking_interaction", {
@@ -558,11 +547,11 @@ export function AiSeoQualificationForm({
   return (
     <div className="pr-tf">
       <div className="pr-tf-progress" aria-live="polite">
-        <span>Step {currentStep} of 5</span>
+        <span>Step {currentStep} of 4</span>
         <div className="pr-tf-progress-bar">
           <div
             className="pr-tf-progress-fill"
-            style={{ width: `${(currentStep / 5) * 100}%` }}
+            style={{ width: `${(currentStep / 4) * 100}%` }}
           />
         </div>
       </div>
@@ -601,25 +590,35 @@ export function AiSeoQualificationForm({
               <button
                 type="button"
                 className="pr-tf-choice"
-                onClick={() => chooseMarketingBudget("$1,500+/month")}
+                disabled={submitting}
+                onClick={() => void chooseMarketingBudget("$1,500+/month")}
               >
                 $1,500+/month
               </button>
               <button
                 type="button"
                 className="pr-tf-choice"
-                onClick={() => chooseMarketingBudget("$500–$1,500/month")}
+                disabled={submitting}
+                onClick={() => void chooseMarketingBudget("$500–$1,500/month")}
               >
                 $500–$1,500/month
               </button>
               <button
                 type="button"
                 className="pr-tf-choice"
-                onClick={() => chooseMarketingBudget("under-500-per-month")}
+                disabled={submitting}
+                onClick={() =>
+                  void chooseMarketingBudget("under-500-per-month")
+                }
               >
                 Under $500/month or not set yet
               </button>
             </div>
+            {submissionError && (
+              <p className="pr-tf-error" role="alert">
+                {submissionError}
+              </p>
+            )}
             <div className="pr-tf-actions">
               <button
                 type="button"
@@ -632,55 +631,10 @@ export function AiSeoQualificationForm({
           </div>
         )}
 
-        {step === "investment" && (
-          <div className="pr-tf-step is-active">
-            <p className="pr-tf-q">
-              If we identify a clear opportunity to generate more qualified
-              leads, would you be open to investing in fixing it?
-            </p>
-            <div className="pr-tf-choices">
-              <button
-                type="button"
-                className="pr-tf-choice"
-                onClick={() =>
-                  chooseInvestmentIntent("Yes, if the numbers make sense")
-                }
-              >
-                Yes, if the numbers make sense
-              </button>
-              <button
-                type="button"
-                className="pr-tf-choice"
-                onClick={() =>
-                  chooseInvestmentIntent("Maybe—I’m exploring options")
-                }
-              >
-                Maybe, I&apos;m exploring options
-              </button>
-              <button
-                type="button"
-                className="pr-tf-choice"
-                onClick={() => chooseInvestmentIntent("free-information-only")}
-              >
-                No, I&apos;m only looking for free information
-              </button>
-            </div>
-            <div className="pr-tf-actions">
-              <button
-                type="button"
-                className="pr-tf-back"
-                onClick={() => setStep("marketing-budget")}
-              >
-                ← Back
-              </button>
-            </div>
-          </div>
-        )}
-
         {step === "contact" && (
           <div className="pr-tf-step is-active">
             <p className="pr-tf-q">
-              Great — enter your details to book your free audit call
+              Enter your details to start your free audit request
             </p>
             <p className="pr-tf-legend">
               <span className="pr-tf-req" aria-hidden="true">
@@ -861,14 +815,7 @@ export function AiSeoQualificationForm({
                       !unavailableTurnstileStatuses.has(turnstileStatus))
                   }
                 >
-                  {submitting ? "Submitting…" : "See Available Times"}
-                </button>
-                <button
-                  type="button"
-                  className="pr-tf-back"
-                  onClick={() => setStep("investment")}
-                >
-                  ← Back
+                  {submitting ? "Submitting…" : "Continue"}
                 </button>
               </div>
             </form>
@@ -895,7 +842,7 @@ export function AiSeoQualificationForm({
               <button
                 type="button"
                 className="pr-tf-back"
-                onClick={() => setStep("contact")}
+                onClick={() => setStep("marketing-budget")}
               >
                 ← Back
               </button>

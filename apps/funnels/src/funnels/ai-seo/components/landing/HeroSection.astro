@@ -9,9 +9,7 @@ type Props = {
 const { heroCallout } = Astro.props;
 ---
 
-<div class="pr-bar">
-  📌{" "}{heroCallout}
-</div>
+<div class="pr-bar">{heroCallout}</div>
 
 <div class="pr-hero-inner pr-center">
   <div class="pr-badge">
@@ -43,7 +41,7 @@ const { heroCallout } = Astro.props;
       </svg>
     </span>
     <span class="pr-badge-copy"
-      >Rated 4.9/5 by 500+ Service Business Owners</span
+      >Rated 4.9/5 by 100+ Service Business Owners</span
     >
   </div>
   <h1 class="pr-h1">
@@ -54,7 +52,7 @@ const { heroCallout } = Astro.props;
   </h1>
   <p class="pr-lead">
     Get found when people in your market are ready to call. No ad spend. No
-    shared leads. The entire visibility system managed for you.
+    shared leads. Results guaranteed, or we work free until you get them.
   </p>
   <VisibilityDeckCarousel client:idle />
   <a class="pr-btn" href="#pr-funnel-form">Get Your Visibility Audit</a>
