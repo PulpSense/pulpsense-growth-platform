@@ -613,40 +613,62 @@ const restoreTwentyPerson = async (client: TwentyClient, personId: string) => {
   }
 };
 
-const twentyAttributionInput = (event: FunnelEvent) => {
-  const { firstTouch, lastTouch } = event.attribution;
+// Keep these projections aligned with the custom attribution fields provisioned
+// on Twenty People and Opportunities.
+const twentyVerticalLabels = {
+  "ai-seo": "Law Firms",
+  "ai-seo-dentists": "Dental Practices",
+  "ai-seo-dental-implants": "Dental Implants",
+  "ai-seo-plastic-surgery": "Plastic Surgery",
+  "ai-seo-hair-restoration": "Hair Restoration",
+  "ai-seo-med-spas": "Med Spas",
+} as const satisfies Record<FunnelEvent["funnelId"], string>;
+
+const twentyContentWithVertical = (event: FunnelEvent, content?: string) =>
+  content
+    ? `${twentyVerticalLabels[event.funnelId]} · ${content}`
+    : twentyVerticalLabels[event.funnelId];
+
+type TwentyPersonWriteMode = "create" | "update";
+
+const twentyFirstTouchInput = (event: FunnelEvent) => {
+  const { firstTouch } = event.attribution;
 
   return {
-    ...(firstTouch.utmSource
-      ? { firstTouchSource: firstTouch.utmSource }
-      : {}),
-    ...(firstTouch.utmMedium
-      ? { firstTouchMedium: firstTouch.utmMedium }
-      : {}),
+    ...(firstTouch.utmSource ? { firstTouchSource: firstTouch.utmSource } : {}),
+    ...(firstTouch.utmMedium ? { firstTouchMedium: firstTouch.utmMedium } : {}),
     ...(firstTouch.utmCampaign
       ? { firstTouchCampaign: firstTouch.utmCampaign }
       : {}),
-    ...(firstTouch.utmContent
-      ? { firstTouchContent: firstTouch.utmContent }
-      : {}),
+    firstTouchContent: twentyContentWithVertical(event, firstTouch.utmContent),
     ...(firstTouch.landingPage
       ? { firstTouchLandingPage: firstTouch.landingPage }
-      : {}),
-    ...(lastTouch.utmSource ? { lastTouchSource: lastTouch.utmSource } : {}),
-    ...(lastTouch.utmMedium ? { lastTouchMedium: lastTouch.utmMedium } : {}),
-    ...(lastTouch.utmCampaign
-      ? { lastTouchCampaign: lastTouch.utmCampaign }
-      : {}),
-    ...(lastTouch.utmContent
-      ? { lastTouchContent: lastTouch.utmContent }
-      : {}),
-    ...(lastTouch.landingPage
-      ? { lastTouchLandingPage: lastTouch.landingPage }
       : {}),
   };
 };
 
-const personInput = (event: FunnelEvent) => ({
+const twentyLastTouchInput = (
+  event: FunnelEvent,
+  mode: TwentyPersonWriteMode,
+) => {
+  const { lastTouch } = event.attribution;
+  const missingValue = mode === "update" ? null : undefined;
+
+  return {
+    lastTouchSource: lastTouch.utmSource ?? missingValue,
+    lastTouchMedium: lastTouch.utmMedium ?? missingValue,
+    lastTouchCampaign: lastTouch.utmCampaign ?? missingValue,
+    lastTouchContent: twentyContentWithVertical(event, lastTouch.utmContent),
+    lastTouchLandingPage: lastTouch.landingPage ?? missingValue,
+  };
+};
+
+const twentyAttributionInput = (event: FunnelEvent) => ({
+  ...twentyFirstTouchInput(event),
+  ...twentyLastTouchInput(event, "create"),
+});
+
+const personInput = (event: FunnelEvent, mode: TwentyPersonWriteMode) => ({
   name: {
     firstName: event.payload.firstName,
     lastName: event.payload.lastName,
@@ -659,7 +681,8 @@ const personInput = (event: FunnelEvent) => ({
     primaryPhoneNumber: event.payload.phone,
   },
   ...(event.prospectId ? { prospectId: event.prospectId } : {}),
-  ...twentyAttributionInput(event),
+  ...(mode === "create" ? twentyFirstTouchInput(event) : {}),
+  ...twentyLastTouchInput(event, mode),
 });
 
 const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
@@ -671,7 +694,7 @@ const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
   const response = await client.fetch(endpoint, {
     method: existingId ? "PATCH" : "POST",
     headers: twentyHeaders(client.apiKey),
-    body: JSON.stringify(personInput(event)),
+    body: JSON.stringify(personInput(event, existingId ? "update" : "create")),
   });
 
   if (!response.ok) {
@@ -698,7 +721,7 @@ const upsertTwentyPerson = async (event: FunnelEvent, client: TwentyClient) => {
         {
           method: "PATCH",
           headers: twentyHeaders(client.apiKey),
-          body: JSON.stringify(personInput(event)),
+          body: JSON.stringify(personInput(event, "update")),
         },
       );
       if (!updateResponse.ok) {
