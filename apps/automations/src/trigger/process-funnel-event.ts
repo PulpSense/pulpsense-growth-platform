@@ -711,6 +711,13 @@ const personInput = (event: FunnelEvent, mode: TwentyPersonWriteMode) => ({
   phones: {
     primaryPhoneNumber: event.payload.phone,
   },
+  ...(event.eventType === "booking_completed" && event.payload.phone.trim()
+    ? {
+        smsConsentStatus: "OPTED_IN",
+        smsConsentSource: "PULPSENSE_ADS_FUNNEL_BOOKING",
+        smsConsentUpdatedAt: event.occurredAt,
+      }
+    : {}),
   ...(event.prospectId ? { prospectId: event.prospectId } : {}),
   ...(mode === "create" ? twentyFirstTouchInput(event) : {}),
   ...twentyLastTouchInput(event, mode),
