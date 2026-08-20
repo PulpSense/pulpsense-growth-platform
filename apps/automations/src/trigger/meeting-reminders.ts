@@ -17,6 +17,9 @@ export const reminderThresholdSchema = z.enum([
 export type ReminderThreshold = z.infer<typeof reminderThresholdSchema>;
 export const reminderChannelSchema = z.enum(["gmail", "sms"]);
 export type ReminderChannel = z.infer<typeof reminderChannelSchema>;
+export type ReminderScheduleTarget =
+  | { channel: "gmail" }
+  | { channel: "sms"; personId: string };
 
 export const meetingReminderPayloadSchema = z
   .object({
@@ -93,25 +96,21 @@ type ReminderTrigger = (
 
 export const scheduleMeetingReminders = async (
   event: SchedulableBookingEvent,
-  channel: ReminderChannel,
-  personId: string | undefined,
+  target: ReminderScheduleTarget,
   trigger: ReminderTrigger,
   now = new Date(),
   createIdempotencyKey: (key: string) => Promise<string> = (key) =>
     idempotencyKeys.create(key),
 ) => {
-  if (channel === "sms" && !personId) {
-    throw new Error("Twenty Person ID is required to schedule SMS reminders");
-  }
   const startMs = new Date(event.payload.booking.startTime).getTime();
   const scheduled: ScheduledReminder[] = [];
   for (const definition of thresholdDefinitions) {
-    if (definition.channel !== channel) continue;
+    if (definition.channel !== target.channel) continue;
     const sendAt = new Date(startMs - definition.beforeMs);
     if (sendAt.getTime() <= now.getTime()) continue;
     const payload: MeetingReminderPayload = {
       submissionId: event.submissionId,
-      ...(definition.channel === "sms" ? { personId } : {}),
+      ...(target.channel === "sms" ? { personId: target.personId } : {}),
       firstName: event.payload.firstName,
       channel: definition.channel,
       bookingUid: event.payload.booking.uid,

@@ -74,8 +74,7 @@ describe("meeting reminder scheduling", () => {
     await expect(
       scheduleMeetingReminders(
         bookingEvent,
-        "gmail",
-        undefined,
+        { channel: "gmail" },
         trigger,
         new Date("2026-08-12T13:30:00.000Z"),
         createKey,
@@ -84,8 +83,10 @@ describe("meeting reminder scheduling", () => {
     await expect(
       scheduleMeetingReminders(
         bookingEvent,
-        "sms",
-        "11111111-1111-4111-8111-111111111111",
+        {
+          channel: "sms",
+          personId: "11111111-1111-4111-8111-111111111111",
+        },
         trigger,
         new Date("2026-08-12T13:30:00.000Z"),
         createKey,

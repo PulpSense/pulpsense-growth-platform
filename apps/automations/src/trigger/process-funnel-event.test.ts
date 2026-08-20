@@ -341,15 +341,13 @@ describe("process-funnel-event", () => {
       }),
     ).resolves.toEqual({ ok: true, bookingUid: "cal_booking_456" });
     expect(publishBrevoLifecycle).toHaveBeenCalledWith(rescheduledEvent);
-    expect(scheduleMeetingReminders).toHaveBeenCalledWith(
-      rescheduledEvent,
-      "gmail",
-    );
-    expect(scheduleMeetingReminders).toHaveBeenCalledWith(
-      rescheduledEvent,
-      "sms",
-      "person_123",
-    );
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(rescheduledEvent, {
+      channel: "gmail",
+    });
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(rescheduledEvent, {
+      channel: "sms",
+      personId: "person_123",
+    });
     expect(upsertTwentyPerson).toHaveBeenCalledWith(rescheduledEvent);
   });
 
@@ -411,15 +409,13 @@ describe("process-funnel-event", () => {
       }),
     ).rejects.toThrow("Meta unavailable");
 
-    expect(scheduleMeetingReminders).toHaveBeenCalledWith(
-      bookingEvent,
-      "gmail",
-    );
-    expect(scheduleMeetingReminders).toHaveBeenCalledWith(
-      bookingEvent,
-      "sms",
-      "person_123",
-    );
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(bookingEvent, {
+      channel: "gmail",
+    });
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(bookingEvent, {
+      channel: "sms",
+      personId: "person_123",
+    });
   });
 
   it.each([bookingEvent, rescheduledEvent])(
@@ -443,14 +439,12 @@ describe("process-funnel-event", () => {
         }),
       ).rejects.toThrow("Twenty unavailable");
 
-      expect(scheduleMeetingReminders).toHaveBeenCalledWith(
-        failedEvent,
-        "gmail",
-      );
+      expect(scheduleMeetingReminders).toHaveBeenCalledWith(failedEvent, {
+        channel: "gmail",
+      });
       expect(scheduleMeetingReminders).not.toHaveBeenCalledWith(
         failedEvent,
-        "sms",
-        expect.anything(),
+        expect.objectContaining({ channel: "sms" }),
       );
     },
   );
@@ -663,15 +657,13 @@ describe("process-funnel-event", () => {
       "person_123",
     );
     expect(sendMetaSchedule).toHaveBeenCalledWith(bookingEvent);
-    expect(scheduleMeetingReminders).toHaveBeenCalledWith(
-      bookingEvent,
-      "gmail",
-    );
-    expect(scheduleMeetingReminders).toHaveBeenCalledWith(
-      bookingEvent,
-      "sms",
-      "person_123",
-    );
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(bookingEvent, {
+      channel: "gmail",
+    });
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(bookingEvent, {
+      channel: "sms",
+      personId: "person_123",
+    });
   });
 
   it("writes a stable booking activity, advances Call Booked, and sends the matching CAPI event", async () => {
