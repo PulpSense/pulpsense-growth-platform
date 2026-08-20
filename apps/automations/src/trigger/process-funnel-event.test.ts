@@ -79,6 +79,51 @@ const event: ContactSubmittedEvent = {
   environment: "preview",
 };
 
+const expectedTwentyFirstTouchAttribution = {
+  firstTouchSource: "meta",
+  firstTouchMedium: "paid-social",
+  firstTouchCampaign: "ai-seo-audit",
+  firstTouchContent: "Law Firms · founder-video-1",
+  firstTouchLandingPage: "https://preview.pulpsense.com/ai-seo/",
+};
+
+const expectedTwentyLastTouchAttribution = {
+  lastTouchSource: "newsletter",
+  lastTouchMedium: "email",
+  lastTouchCampaign: "qualified-lead-nurture",
+  lastTouchContent: "Law Firms · case-study-cta",
+  lastTouchLandingPage: "https://preview.pulpsense.com/ai-seo/apply",
+};
+
+const expectedTwentyDirectLastTouchAttribution = {
+  lastTouchSource: null,
+  lastTouchMedium: null,
+  lastTouchCampaign: null,
+  lastTouchContent: "Law Firms",
+  lastTouchLandingPage: "https://preview.pulpsense.com/ai-seo/direct",
+};
+
+const expectedTwentyAttribution = {
+  ...expectedTwentyFirstTouchAttribution,
+  ...expectedTwentyLastTouchAttribution,
+};
+
+const expectNoTwentyFirstTouch = (input: unknown) => {
+  for (const field of Object.keys(expectedTwentyFirstTouchAttribution)) {
+    expect(input).not.toHaveProperty(field);
+  }
+};
+
+const directContactEvent: ContactSubmittedEvent = {
+  ...event,
+  attribution: {
+    firstTouch: event.attribution.firstTouch,
+    lastTouch: {
+      landingPage: expectedTwentyDirectLastTouchAttribution.lastTouchLandingPage,
+    },
+  },
+};
+
 const applicationEvent: ApplicationSubmittedEvent = {
   schemaVersion: 1,
   eventType: "application_submitted",
@@ -505,6 +550,7 @@ describe("process-funnel-event", () => {
   it("replays contact delivery without duplicating the Person or Meta identity", async () => {
     let personId: string | undefined;
     let personCreates = 0;
+    const personWrites: Array<Record<string, unknown>> = [];
     const metaEventIds: string[] = [];
     const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
       const url = String(input);
@@ -519,10 +565,12 @@ describe("process-funnel-event", () => {
       }
       if (url === "https://twenty.sandbox.example/rest/people") {
         personCreates += 1;
+        personWrites.push(JSON.parse(String(init?.body)));
         personId = "person_replay_safe";
         return Response.json({ data: { createPerson: { id: personId } } });
       }
       if (url.endsWith("/rest/people/person_replay_safe")) {
+        personWrites.push(JSON.parse(String(init?.body)));
         return Response.json({ data: { updatePerson: { id: personId } } });
       }
       if (url.includes("graph.facebook.com")) {
@@ -553,6 +601,9 @@ describe("process-funnel-event", () => {
     expect(first.personId).toBe("person_replay_safe");
     expect(replay.personId).toBe("person_replay_safe");
     expect(personCreates).toBe(1);
+    expect(personWrites[0]).toMatchObject(expectedTwentyAttribution);
+    expect(personWrites[1]).toMatchObject(expectedTwentyLastTouchAttribution);
+    expectNoTwentyFirstTouch(personWrites[1]);
     expect(metaEventIds).toEqual([event.eventId, event.eventId]);
   });
 
@@ -924,18 +975,8 @@ describe("process-funnel-event", () => {
     expect(requests[2]?.body).toMatchObject({
       variables: { domainUrl: "https://brand.com" },
     });
-    expect(requests[1]?.body).toMatchObject({
-      firstTouchSource: "meta",
-      firstTouchMedium: "paid-social",
-      firstTouchCampaign: "ai-seo-audit",
-      firstTouchContent: "founder-video-1",
-      firstTouchLandingPage: "https://preview.pulpsense.com/ai-seo/",
-      lastTouchSource: "newsletter",
-      lastTouchMedium: "email",
-      lastTouchCampaign: "qualified-lead-nurture",
-      lastTouchContent: "case-study-cta",
-      lastTouchLandingPage: "https://preview.pulpsense.com/ai-seo/apply",
-    });
+    expect(requests[1]?.body).toMatchObject(expectedTwentyLastTouchAttribution);
+    expectNoTwentyFirstTouch(requests[1]?.body);
     expect(requests[3]?.body).toMatchObject({
       id: applicationEvent.submissionId,
       title: `Application ${applicationEvent.submissionId}`,
@@ -1031,16 +1072,7 @@ describe("process-funnel-event", () => {
       originatingLeadJourneyId: qualifiedApplicationEvent.submissionId,
       pointOfContactId: "person_existing",
       companyId: "company_brand",
-      firstTouchSource: "meta",
-      firstTouchMedium: "paid-social",
-      firstTouchCampaign: "ai-seo-audit",
-      firstTouchContent: "founder-video-1",
-      firstTouchLandingPage: "https://preview.pulpsense.com/ai-seo/",
-      lastTouchSource: "newsletter",
-      lastTouchMedium: "email",
-      lastTouchCampaign: "qualified-lead-nurture",
-      lastTouchContent: "case-study-cta",
-      lastTouchLandingPage: "https://preview.pulpsense.com/ai-seo/apply",
+      ...expectedTwentyAttribution,
     });
     expect(
       JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
@@ -1224,7 +1256,7 @@ describe("process-funnel-event", () => {
     expect(routineLogs).not.toContain(event.payload.firstName);
   });
 
-  it("updates the existing Twenty person by normalized email and sends CAPI with the same event ID", async () => {
+  it("updates the existing Twenty person without retaining stale last-touch attribution", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -1252,7 +1284,7 @@ describe("process-funnel-event", () => {
       { fetch: fetchMock, log },
     );
 
-    await processFunnelEvent(event, dependencies);
+    await processFunnelEvent(directContactEvent, dependencies);
 
     expect(fetchMock).toHaveBeenCalledTimes(3);
     const [findUrl, findInit] = fetchMock.mock.calls[0]!;
@@ -1270,7 +1302,9 @@ describe("process-funnel-event", () => {
       name: { firstName: "Maya", lastName: "Chen" },
       emails: { primaryEmail: "maya@brand.com" },
       prospectId: event.prospectId,
+      ...expectedTwentyDirectLastTouchAttribution,
     });
+    expectNoTwentyFirstTouch(JSON.parse(String(updateInit?.body)));
 
     const [metaUrl, metaInit] = fetchMock.mock.calls[2]!;
     expect(String(metaUrl)).toContain("/v26.0/pixel_123/events");
