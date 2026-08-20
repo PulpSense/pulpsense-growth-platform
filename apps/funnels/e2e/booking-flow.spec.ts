@@ -6,6 +6,7 @@ const metaRequestPattern =
 
 const enterContactDetails = async (page: Page) => {
   await page.goto(funnelPath);
+  await page.locator("#pr-funnel-form").scrollIntoViewIfNeeded();
   const submit = page.getByRole("button", { name: "Continue" });
   await expect(submit).toBeEnabled({ timeout: 30_000 });
   await page.getByLabel("First name").fill("E2E");
