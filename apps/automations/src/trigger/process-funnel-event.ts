@@ -130,6 +130,7 @@ type ProcessorDependencies = {
   publishBrevoLifecycle?(event: BrevoLifecycleEvent): Promise<unknown>;
   scheduleMeetingReminders?(
     event: BookingCompletedEvent | BookingRescheduledEvent,
+    personId: string,
   ): Promise<unknown>;
   schedulePrecallSequence?(
     event: BookingCompletedEvent | BookingRescheduledEvent,
@@ -308,10 +309,20 @@ export async function processFunnelEvent(
       previousBookingUid: event.payload.booking.previousUid,
       environment: event.environment,
     });
+    const reminders = dependencies.scheduleMeetingReminders
+      ? (async () => {
+          const { personId } = await executeTwenty(
+            event,
+            dependencies,
+            "upsert_person",
+            () => dependencies.upsertTwentyPerson(event),
+          );
+          return dependencies.scheduleMeetingReminders!(event, personId);
+        })()
+      : Promise.resolve();
     await runIndependent({
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      reminders:
-        dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
+      reminders,
       measurement: capturePostHogSafely(event, dependencies),
     });
     await dependencies.schedulePrecallSequence?.(event);
@@ -349,14 +360,17 @@ export async function processFunnelEvent(
     // emails when a destination has stale data or a provider outage.
     await dependencies.schedulePrecallSequence?.(event);
 
+    const person = executeTwenty(event, dependencies, "upsert_person", () =>
+      dependencies.upsertTwentyPerson(event),
+    );
+    const reminders = dependencies.scheduleMeetingReminders
+      ? person.then(({ personId }) =>
+          dependencies.scheduleMeetingReminders!(event, personId),
+        )
+      : Promise.resolve();
     const destinations = await runIndependent({
       core: (async () => {
-        const { personId } = await executeTwenty(
-          event,
-          dependencies,
-          "upsert_person",
-          () => dependencies.upsertTwentyPerson(event),
-        );
+        const { personId } = await person;
         const booking = await executeTwenty(
           event,
           dependencies,
@@ -372,8 +386,7 @@ export async function processFunnelEvent(
       })(),
       slack: dependencies.postSlackBooking?.(event) ?? Promise.resolve(),
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      reminders:
-        dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
+      reminders,
       measurement: capturePostHogSafely(event, dependencies),
     });
     const { personId, booking, eventsReceived } = destinations.core;
@@ -617,12 +630,8 @@ const twentyAttributionInput = (event: FunnelEvent) => {
   const { firstTouch, lastTouch } = event.attribution;
 
   return {
-    ...(firstTouch.utmSource
-      ? { firstTouchSource: firstTouch.utmSource }
-      : {}),
-    ...(firstTouch.utmMedium
-      ? { firstTouchMedium: firstTouch.utmMedium }
-      : {}),
+    ...(firstTouch.utmSource ? { firstTouchSource: firstTouch.utmSource } : {}),
+    ...(firstTouch.utmMedium ? { firstTouchMedium: firstTouch.utmMedium } : {}),
     ...(firstTouch.utmCampaign
       ? { firstTouchCampaign: firstTouch.utmCampaign }
       : {}),
@@ -637,9 +646,7 @@ const twentyAttributionInput = (event: FunnelEvent) => {
     ...(lastTouch.utmCampaign
       ? { lastTouchCampaign: lastTouch.utmCampaign }
       : {}),
-    ...(lastTouch.utmContent
-      ? { lastTouchContent: lastTouch.utmContent }
-      : {}),
+    ...(lastTouch.utmContent ? { lastTouchContent: lastTouch.utmContent } : {}),
     ...(lastTouch.landingPage
       ? { lastTouchLandingPage: lastTouch.landingPage }
       : {}),
@@ -1030,7 +1037,11 @@ const sha256 = async (value: string) => {
 };
 
 export const normalizeMetaName = (value: string) =>
-  value.normalize("NFKC").trim().toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  value
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, "");
 
 const sendMetaEvent = async (
   event: FunnelEvent,
@@ -1050,12 +1061,8 @@ const sendMetaEvent = async (
     em: [await sha256(event.payload.email.trim().toLowerCase())],
     ph: [await sha256(event.payload.phone.replace(/\D/gu, ""))],
     external_id: [await sha256(event.submissionId.trim().toLowerCase())],
-    ...(normalizedFirstName
-      ? { fn: [await sha256(normalizedFirstName)] }
-      : {}),
-    ...(normalizedLastName
-      ? { ln: [await sha256(normalizedLastName)] }
-      : {}),
+    ...(normalizedFirstName ? { fn: [await sha256(normalizedFirstName)] } : {}),
+    ...(normalizedLastName ? { ln: [await sha256(normalizedLastName)] } : {}),
     client_ip_address: event.requestContext.clientIp,
     client_user_agent: event.requestContext.userAgent,
     ...(event.requestContext.fbp ? { fbp: event.requestContext.fbp } : {}),
@@ -1446,6 +1453,7 @@ export function createProcessorDependencies(
       ? {
           scheduleMeetingReminders: (
             event: BookingCompletedEvent | BookingRescheduledEvent,
+            personId: string,
           ) =>
             executeWithRetry(
               {
@@ -1453,7 +1461,7 @@ export function createProcessorDependencies(
                 operation: "schedule_meeting_reminders",
               },
               () =>
-                scheduleMeetingReminders(event, (payload, options) =>
+                scheduleMeetingReminders(event, personId, (payload, options) =>
                   sendMeetingReminderTask.trigger(payload, options),
                 ),
             ),
