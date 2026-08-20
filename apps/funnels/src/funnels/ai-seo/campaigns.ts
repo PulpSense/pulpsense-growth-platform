@@ -59,7 +59,7 @@ const defineCampaign = (
 export const AI_SEO_CAMPAIGNS = [
   defineCampaign({
     key: "lawyers",
-    heroCallout: "Law Firms: Get Picked First by Google & AI",
+    heroCallout: "⚖️ Proudly serving law firms nationwide",
     slug: "visibility-audit/law-firms",
     funnelId: "ai-seo",
     browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_L",
@@ -73,7 +73,7 @@ export const AI_SEO_CAMPAIGNS = [
   }),
   defineCampaign({
     key: "dentists",
-    heroCallout: "Dental Practices: Get Picked First by Google & AI",
+    heroCallout: "🦷 Proudly serving dental practices nationwide",
     slug: "visibility-audit/dental-practices",
     funnelId: "ai-seo-dentists",
     browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_D",
@@ -89,7 +89,7 @@ export const AI_SEO_CAMPAIGNS = [
   }),
   defineCampaign({
     key: "dental-implants",
-    heroCallout: "Implant Practices: Get Picked First by Google & AI",
+    heroCallout: "🦷 Proudly serving dental implant practices nationwide",
     slug: "visibility-audit/dental-implants",
     funnelId: "ai-seo-dental-implants",
     browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_DI",
@@ -105,7 +105,7 @@ export const AI_SEO_CAMPAIGNS = [
   }),
   defineCampaign({
     key: "plastic-surgery",
-    heroCallout: "Plastic Surgery: Get Picked First by Google & AI",
+    heroCallout: "✨ Proudly serving plastic surgery practices nationwide",
     slug: "visibility-audit/plastic-surgery",
     funnelId: "ai-seo-plastic-surgery",
     browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_PS",
@@ -122,7 +122,7 @@ export const AI_SEO_CAMPAIGNS = [
   }),
   defineCampaign({
     key: "hair-restoration",
-    heroCallout: "Hair Restoration: Get Picked First by Google & AI",
+    heroCallout: "💇 Proudly serving hair restoration practices nationwide",
     slug: "visibility-audit/hair-restoration",
     funnelId: "ai-seo-hair-restoration",
     browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_HR",
@@ -139,7 +139,7 @@ export const AI_SEO_CAMPAIGNS = [
   }),
   defineCampaign({
     key: "med-spas",
-    heroCallout: "Med Spas: Get Picked First by Google & AI",
+    heroCallout: "💉 Proudly serving med spas nationwide",
     slug: "visibility-audit/med-spas",
     funnelId: "ai-seo-med-spas",
     browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_MS",

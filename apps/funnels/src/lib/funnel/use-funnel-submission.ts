@@ -87,6 +87,8 @@ const knownSubmissionErrors = new Set<ContactSubmissionError>([
   "submission_failed",
 ]);
 
+const isLocalDevelopment = import.meta.env.DEV;
+
 const normalizeSubmissionError = (
   error: string | undefined,
 ): ContactSubmissionError =>
@@ -111,6 +113,20 @@ export function useFunnelSubmission(funnelId: FunnelId) {
       }
 
       attemptIdRef.current ||= crypto.randomUUID();
+      if (isLocalDevelopment) {
+        const submissionId = attemptIdRef.current;
+        retryRef.current = {
+          submissionId,
+          token: "local-development",
+        };
+        return {
+          accepted: true,
+          eventId: `contact_submitted:${submissionId}`,
+          prospectId: `local-${submissionId}`,
+          leadJourneyId: submissionId,
+        };
+      }
+
       const phone = input.data.phone as string | undefined;
       const measurement = getFunnelAnalyticsIdentity();
       const response = await fetch("/api/funnel-events", {
@@ -206,6 +222,16 @@ export function useFunnelSubmission(funnelId: FunnelId) {
     ): Promise<ApplicationSubmissionResult> => {
       if (!retryRef.current) {
         return { accepted: false, error: "invalid_submission_identity" };
+      }
+
+      if (isLocalDevelopment) {
+        return {
+          accepted: true,
+          eventId: `application_submitted:${retryRef.current.submissionId}`,
+          qualificationStatus: "qualified",
+          nextStep: "booking",
+          bookingIdentity: retryRef.current,
+        };
       }
 
       const response = await fetch("/api/funnel-events", {

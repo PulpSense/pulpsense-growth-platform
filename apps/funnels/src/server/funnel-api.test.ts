@@ -461,89 +461,104 @@ describe("POST /api/funnel-events", () => {
     });
   });
 
-  it("calculates an unqualified application on the server before allowing navigation", async () => {
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        Response.json({
-          success: true,
-          action: "contact_submit",
-          hostname: "preview.pulpsense.com",
-        }),
-      )
-      .mockResolvedValueOnce(Response.json({ result: "ok" }))
-      .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
-      .mockResolvedValueOnce(Response.json({ id: "run_application" }));
-    vi.stubGlobal("fetch", fetchMock);
-    const env = {
-      ...allowingRateLimit,
-      TURNSTILE_SECRET_KEY: "turnstile-secret",
-      MILLION_VERIFIER_API_KEY: "million-verifier-key",
-      SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
-      PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
-      PULPSENSE_ENVIRONMENT: "preview" as const,
-    };
-
-    const contactResponse = await handleFunnelEvent(
-      contactRequest("https://preview.pulpsense.com"),
-      env,
-    );
-    const contact = (await contactResponse.json()) as {
-      submissionId: string;
-      retry: { submissionId: string; token: string };
-    };
-    const response = await handleFunnelEvent(
-      requestWithBody({
-        schemaVersion: 1,
-        eventType: "application_submitted",
-        funnelId: "ai-seo",
-        identity: contact.retry,
-        payload: {
-          businessOwner: "yes",
-          marketingBudget: "Under $500/month or not set yet",
-          investmentIntent: "Yes, if the numbers make sense",
-        },
-        sourceUrl: "https://preview.pulpsense.com/ai-seo/",
-      }),
-      env,
-    );
-
-    expect(response.status).toBe(200);
-    const applicationResult = (await response.json()) as Record<
-      string,
-      unknown
-    >;
-    expect(applicationResult).toMatchObject({
-      accepted: true,
-      submissionId: contact.submissionId,
-      eventId: `application_submitted:${contact.submissionId}`,
-      qualificationStatus: "unqualified",
-      nextStep: "unqualified",
-      runId: "run_application",
-    });
-    expect(applicationResult).not.toHaveProperty("bookingIdentity");
-
-    const applicationTriggerBody = JSON.parse(
-      String(fetchMock.mock.calls[3]?.[1]?.body),
-    ) as {
+  it.each([
+    {
+      reason: "the marketing budget is below the threshold",
       payload: {
-        eventType: string;
-        submissionId: string;
-        qualificationStatus: string;
+        businessOwner: "yes" as const,
+        marketingBudget: "Under $500/month or not set yet" as const,
+      },
+    },
+    {
+      reason: "a legacy submission declines investment",
+      payload: {
+        businessOwner: "yes" as const,
+        marketingBudget: "$1,500+/month" as const,
+        investmentIntent: "No, I’m only looking for free information" as const,
+      },
+    },
+  ])(
+    "calculates an unqualified application when $reason",
+    async ({ payload }) => {
+      const fetchMock = vi
+        .fn<typeof fetch>()
+        .mockResolvedValueOnce(
+          Response.json({
+            success: true,
+            action: "contact_submit",
+            hostname: "preview.pulpsense.com",
+          }),
+        )
+        .mockResolvedValueOnce(Response.json({ result: "ok" }))
+        .mockResolvedValueOnce(Response.json({ id: "run_contact" }))
+        .mockResolvedValueOnce(Response.json({ id: "run_application" }));
+      vi.stubGlobal("fetch", fetchMock);
+      const env = {
+        ...allowingRateLimit,
+        TURNSTILE_SECRET_KEY: "turnstile-secret",
+        MILLION_VERIFIER_API_KEY: "million-verifier-key",
+        SUBMISSION_SIGNING_SECRET: "submission-signing-secret",
+        PULPSENSE_TRIGGER_SECRET_KEY: "trigger-secret",
+        PULPSENSE_ENVIRONMENT: "preview" as const,
       };
-      options: { idempotencyKey: string };
-    };
-    expect(applicationTriggerBody).toMatchObject({
-      payload: {
-        eventType: "application_submitted",
+
+      const contactResponse = await handleFunnelEvent(
+        contactRequest("https://preview.pulpsense.com"),
+        env,
+      );
+      const contact = (await contactResponse.json()) as {
+        submissionId: string;
+        retry: { submissionId: string; token: string };
+      };
+      const response = await handleFunnelEvent(
+        requestWithBody({
+          schemaVersion: 1,
+          eventType: "application_submitted",
+          funnelId: "ai-seo",
+          identity: contact.retry,
+          payload,
+          sourceUrl: "https://preview.pulpsense.com/ai-seo/",
+        }),
+        env,
+      );
+
+      expect(response.status).toBe(200);
+      const applicationResult = (await response.json()) as Record<
+        string,
+        unknown
+      >;
+      expect(applicationResult).toMatchObject({
+        accepted: true,
         submissionId: contact.submissionId,
+        eventId: `application_submitted:${contact.submissionId}`,
         qualificationStatus: "unqualified",
-      },
-      options: {
-        idempotencyKey: `application_submitted:${contact.submissionId}`,
-      },
-    });
-  });
+        nextStep: "unqualified",
+        runId: "run_application",
+      });
+      expect(applicationResult).not.toHaveProperty("bookingIdentity");
+
+      const applicationTriggerBody = JSON.parse(
+        String(fetchMock.mock.calls[3]?.[1]?.body),
+      ) as {
+        payload: {
+          eventType: string;
+          submissionId: string;
+          qualificationStatus: string;
+        };
+        options: { idempotencyKey: string };
+      };
+      expect(applicationTriggerBody).toMatchObject({
+        payload: {
+          eventType: "application_submitted",
+          submissionId: contact.submissionId,
+          qualificationStatus: "unqualified",
+        },
+        options: {
+          idempotencyKey: `application_submitted:${contact.submissionId}`,
+        },
+      });
+    },
+  );
 
   it("rejects a client-supplied qualification result", async () => {
     const response = await handleFunnelEvent(

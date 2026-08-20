@@ -159,6 +159,17 @@ describe("AI SEO campaigns", () => {
     }
   });
 
+  it("provides a relevant nationwide service callout for every niche", () => {
+    expect(AI_SEO_CAMPAIGNS.map(({ heroCallout }) => heroCallout)).toEqual([
+      "⚖️ Proudly serving law firms nationwide",
+      "🦷 Proudly serving dental practices nationwide",
+      "🦷 Proudly serving dental implant practices nationwide",
+      "✨ Proudly serving plastic surgery practices nationwide",
+      "💇 Proudly serving hair restoration practices nationwide",
+      "💉 Proudly serving med spas nationwide",
+    ]);
+  });
+
   it("allows a niche to override only the qualification callout", () => {
     expect(AI_SEO_CAMPAIGNS[0].qualificationCallout).toContain(
       "established businesses",
