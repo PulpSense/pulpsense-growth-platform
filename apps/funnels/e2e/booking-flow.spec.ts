@@ -4,16 +4,8 @@ const funnelPath = "/visibility-audit/law-firms/";
 const metaRequestPattern =
   /(?:connect\.facebook\.net|facebook\.com\/tr|graph\.facebook\.com)/u;
 
-const reachContactStep = async (page: Page) => {
+const enterContactDetails = async (page: Page) => {
   await page.goto(funnelPath);
-  const ownerYes = page.getByRole("button", { name: "Yes", exact: true });
-  await ownerYes.focus();
-  await page.waitForTimeout(500);
-  await ownerYes.click();
-  await page.getByRole("button", { name: "$1,500+/month" }).click();
-  await page
-    .getByRole("button", { name: "Yes, if the numbers make sense" })
-    .click();
   await page.getByLabel("First name").fill("E2E");
   await page.getByLabel("Last name (optional)").fill("Test");
   await page.getByLabel("Email").fill("santi@pulpsense.com");
@@ -38,8 +30,8 @@ test("an internal test lead reaches the real Cal booking embed", async ({
     });
   });
 
-  await reachContactStep(page);
-  const submit = page.getByRole("button", { name: "See Available Times" });
+  await enterContactDetails(page);
+  const submit = page.getByRole("button", { name: "Continue" });
   await expect(submit).toBeEnabled({ timeout: 30_000 });
   await submit.click();
 
@@ -48,6 +40,9 @@ test("an internal test lead reaches the real Cal booking embed", async ({
     status: 200,
     body: { accepted: true },
   });
+
+  await page.getByRole("button", { name: "Yes", exact: true }).click();
+  await page.getByRole("button", { name: "$1,500+/month" }).click();
 
   await expect(page.getByText("Book Free Audit Call")).toBeVisible({
     timeout: 30_000,
@@ -80,8 +75,8 @@ test("the always-fail Turnstile widget blocks submission", async ({ page }) => {
     }
   });
 
-  await reachContactStep(page);
-  const submit = page.getByRole("button", { name: "See Available Times" });
+  await enterContactDetails(page);
+  const submit = page.getByRole("button", { name: "Continue" });
   await expect(submit).toBeEnabled({ timeout: 30_000 });
   await submit.click();
 
