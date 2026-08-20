@@ -34,9 +34,7 @@ const retryImmediately =
 
 describe("normalizeMetaName", () => {
   it("lowercases names and removes punctuation before hashing", () => {
-    expect(normalizeMetaName("  Mary-Jane O’Connor  ")).toBe(
-      "maryjaneoconnor",
-    );
+    expect(normalizeMetaName("  Mary-Jane O’Connor  ")).toBe("maryjaneoconnor");
   });
 });
 
@@ -374,7 +372,9 @@ describe("process-funnel-event", () => {
     const scheduleMeetingReminders = vi
       .fn()
       .mockResolvedValue({ scheduled: ["24h", "2h", "15m"] });
-    const upsertTwentyPerson = vi.fn();
+    const upsertTwentyPerson = vi
+      .fn()
+      .mockResolvedValue({ personId: "person_123" });
 
     await expect(
       processFunnelEvent(rescheduledEvent, {
@@ -386,8 +386,14 @@ describe("process-funnel-event", () => {
       }),
     ).resolves.toEqual({ ok: true, bookingUid: "cal_booking_456" });
     expect(publishBrevoLifecycle).toHaveBeenCalledWith(rescheduledEvent);
-    expect(scheduleMeetingReminders).toHaveBeenCalledWith(rescheduledEvent);
-    expect(upsertTwentyPerson).not.toHaveBeenCalled();
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(rescheduledEvent, {
+      channel: "gmail",
+    });
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(rescheduledEvent, {
+      channel: "sms",
+      personId: "person_123",
+    });
+    expect(upsertTwentyPerson).toHaveBeenCalledWith(rescheduledEvent);
   });
 
   it("retries a delayed booking prerequisite without repeating Person upsert", async () => {
@@ -420,6 +426,73 @@ describe("process-funnel-event", () => {
     expect(recordTwentyBooking).toHaveBeenCalledTimes(2);
     expect(sendMetaSchedule).toHaveBeenCalledOnce();
   });
+
+  it("schedules reminders after Person upsert even when Meta delivery fails", async () => {
+    const upsertTwentyPerson = vi
+      .fn()
+      .mockResolvedValue({ personId: "person_123" });
+    const recordTwentyBooking = vi.fn().mockResolvedValue({
+      activityId: "booking_activity_123",
+      opportunityId: "opportunity_123",
+    });
+    const sendMetaSchedule = vi
+      .fn()
+      .mockRejectedValue(new Error("Meta unavailable"));
+    const scheduleMeetingReminders = vi
+      .fn()
+      .mockResolvedValue({ scheduled: [] });
+
+    await expect(
+      processFunnelEvent(bookingEvent, {
+        upsertTwentyPerson,
+        recordTwentyBooking,
+        sendMetaSchedule,
+        scheduleMeetingReminders,
+        sendMetaLead: vi.fn(),
+        executeAdapter: retryImmediately(1),
+        log: { info: vi.fn() },
+      }),
+    ).rejects.toThrow("Meta unavailable");
+
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(bookingEvent, {
+      channel: "gmail",
+    });
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(bookingEvent, {
+      channel: "sms",
+      personId: "person_123",
+    });
+  });
+
+  it.each([bookingEvent, rescheduledEvent])(
+    "still schedules Gmail reminders when Twenty Person upsert fails for $eventType",
+    async (failedEvent) => {
+      const scheduleMeetingReminders = vi
+        .fn()
+        .mockResolvedValue({ scheduled: [] });
+
+      await expect(
+        processFunnelEvent(failedEvent, {
+          upsertTwentyPerson: vi
+            .fn()
+            .mockRejectedValue(new Error("Twenty unavailable")),
+          recordTwentyBooking: vi.fn(),
+          sendMetaSchedule: vi.fn(),
+          sendMetaLead: vi.fn(),
+          scheduleMeetingReminders,
+          executeAdapter: retryImmediately(1),
+          log: { info: vi.fn() },
+        }),
+      ).rejects.toThrow("Twenty unavailable");
+
+      expect(scheduleMeetingReminders).toHaveBeenCalledWith(failedEvent, {
+        channel: "gmail",
+      });
+      expect(scheduleMeetingReminders).not.toHaveBeenCalledWith(
+        failedEvent,
+        expect.objectContaining({ channel: "sms" }),
+      );
+    },
+  );
 
   it("alerts Slack with redacted run identifiers after Twenty retry exhaustion", async () => {
     const slackBodies: Array<Record<string, unknown>> = [];
@@ -610,11 +683,15 @@ describe("process-funnel-event", () => {
       opportunityId: "opportunity_123",
     });
     const sendMetaSchedule = vi.fn().mockResolvedValue({ eventsReceived: 1 });
+    const scheduleMeetingReminders = vi
+      .fn()
+      .mockResolvedValue({ scheduled: [] });
 
     const result = await processFunnelEvent(bookingEvent, {
       upsertTwentyPerson,
       recordTwentyBooking,
       sendMetaSchedule,
+      scheduleMeetingReminders,
       sendMetaLead: vi.fn(),
       log: { info: vi.fn() },
     });
@@ -631,6 +708,13 @@ describe("process-funnel-event", () => {
       "person_123",
     );
     expect(sendMetaSchedule).toHaveBeenCalledWith(bookingEvent);
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(bookingEvent, {
+      channel: "gmail",
+    });
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(bookingEvent, {
+      channel: "sms",
+      personId: "person_123",
+    });
   });
 
   it("writes a stable booking activity, advances Call Booked, and sends the matching CAPI event", async () => {

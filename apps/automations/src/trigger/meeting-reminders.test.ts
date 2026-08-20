@@ -74,20 +74,34 @@ describe("meeting reminder scheduling", () => {
     await expect(
       scheduleMeetingReminders(
         bookingEvent,
+        { channel: "gmail" },
         trigger,
         new Date("2026-08-12T13:30:00.000Z"),
         createKey,
       ),
-    ).resolves.toEqual({ scheduled: ["gmail:15m", "sms:5m"] });
+    ).resolves.toEqual({ scheduled: ["gmail:15m"] });
+    await expect(
+      scheduleMeetingReminders(
+        bookingEvent,
+        {
+          channel: "sms",
+          personId: "11111111-1111-4111-8111-111111111111",
+        },
+        trigger,
+        new Date("2026-08-12T13:30:00.000Z"),
+        createKey,
+      ),
+    ).resolves.toEqual({ scheduled: ["sms:5m"] });
     expect(trigger).toHaveBeenCalledTimes(2);
     expect(trigger.mock.calls[0]?.[0]).toMatchObject({
       firstName: "Maya",
-      phone: "+1 555 123 4567",
       channel: "gmail",
       threshold: "15m",
       bookingUid: "cal_uid_123",
       expiresAt: "2026-08-12T14:00:00.000Z",
     });
+    expect(trigger.mock.calls[0]?.[0]).not.toHaveProperty("phone");
+    expect(trigger.mock.calls[0]?.[0]).not.toHaveProperty("personId");
     expect(trigger.mock.calls[0]?.[1]).toMatchObject({
       delay: new Date("2026-08-12T13:45:00.000Z"),
       idempotencyKey:
@@ -95,6 +109,7 @@ describe("meeting reminder scheduling", () => {
     });
     expect(trigger.mock.calls[1]?.[0]).toMatchObject({
       channel: "sms",
+      personId: "11111111-1111-4111-8111-111111111111",
       threshold: "5m",
       expiresAt: "2026-08-12T14:00:00.000Z",
     });
@@ -204,7 +219,7 @@ describe("meeting reminder delivery", () => {
     );
   });
 
-  it("sends a configured Telnyx SMS to the normalized booking phone", async () => {
+  it("sends a Person-bound SMS through the Twenty communications action", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -223,22 +238,32 @@ describe("meeting reminder delivery", () => {
           },
         }),
       )
-      .mockResolvedValueOnce(Response.json({ data: { id: "sms-id" } }));
+      .mockResolvedValueOnce(
+        Response.json({
+          accepted: true,
+          interactionId: "interaction-1",
+          messageId: "sms-id",
+          status: "accepted",
+        }),
+      );
+
+    const smsPayload = {
+      ...payload,
+      personId: "11111111-1111-4111-8111-111111111111",
+      channel: "sms" as const,
+      threshold: "90m" as const,
+      expiresAt: "2026-08-12T13:45:00.000Z",
+    };
 
     await expect(
       deliverMeetingReminder(
-        {
-          ...payload,
-          channel: "sms",
-          threshold: "90m",
-          expiresAt: "2026-08-12T13:45:00.000Z",
-        },
+        smsPayload,
         {
           ...enabledEnvironment,
           GMAIL_REMINDERS_ENABLED: "false",
           TELNYX_SMS_REMINDERS_ENABLED: "true",
-          TELNYX_API_KEY: "telnyx-test",
-          TELNYX_FROM_NUMBER: "+13072490829",
+          TWENTY_API_KEY: "twenty-test",
+          TWENTY_API_ORIGIN: "https://twenty.test/",
           TELNYX_SMS_REMINDER_90M_BODY:
             "PulpSense reminder: Hi {{first_name}}, your call is at {{local_time}}. {{meeting_url}}",
         },
@@ -252,21 +277,111 @@ describe("meeting reminder delivery", () => {
       channel: "sms",
     });
     expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(fetcher.mock.calls[1]?.[0]).toBe(
-      "https://api.telnyx.com/v2/messages",
-    );
+    expect(fetcher.mock.calls[1]?.[0]).toBe("https://twenty.test/s/telnyx/sms");
     expect(fetcher.mock.calls[1]?.[1]).toMatchObject({
       method: "POST",
       headers: {
-        Authorization: "Bearer telnyx-test",
+        Authorization: "Bearer twenty-test",
         "Content-Type": "application/json",
       },
     });
     expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toEqual({
-      from: "+13072490829",
-      to: "+15551234567",
+      clientRequestId:
+        "appointment-reminder:cal_uid_123:2026-08-12T14:00:00.000Z:90m",
+      personId: "11111111-1111-4111-8111-111111111111",
       text: "PulpSense reminder: Hi Maya, your call is at 10:00am. https://meet.example.com/cal_uid_123",
     });
+    expect(
+      fetcher.mock.calls.some(([url]) =>
+        String(url).includes("api.telnyx.com"),
+      ),
+    ).toBe(false);
+  });
+
+  it("fails closed for a legacy queued SMS without a Twenty Person", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      Response.json({
+        status: "success",
+        data: {
+          uid: payload.bookingUid,
+          title: "AI SEO Audit",
+          status: "accepted",
+          start: payload.expectedStartTime,
+          end: "2026-08-12T14:30:00.000Z",
+          meetingUrl: "https://meet.example.com/cal_uid_123",
+          attendees: [
+            { email: "maya@brand.com", timeZone: "America/New_York" },
+          ],
+        },
+      }),
+    );
+
+    await expect(
+      deliverMeetingReminder(
+        { ...payload, channel: "sms", threshold: "90m" },
+        {
+          ...enabledEnvironment,
+          GMAIL_REMINDERS_ENABLED: "false",
+          TELNYX_SMS_REMINDERS_ENABLED: "true",
+          TWENTY_API_KEY: "twenty-test",
+          TWENTY_API_ORIGIN: "https://twenty.test",
+          TELNYX_SMS_REMINDER_90M_BODY: "Join: {{meeting_url}}",
+        },
+        {
+          fetch: fetcher,
+          now: () => new Date("2026-08-12T13:00:00.000Z"),
+        },
+      ),
+    ).rejects.toThrow("Twenty Person ID is required for an SMS reminder");
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("treats a Twenty application-level refusal as a failed reminder", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          status: "success",
+          data: {
+            uid: payload.bookingUid,
+            title: "AI SEO Audit",
+            status: "accepted",
+            start: payload.expectedStartTime,
+            end: "2026-08-12T14:30:00.000Z",
+            meetingUrl: "https://meet.example.com/cal_uid_123",
+            attendees: [
+              { email: "maya@brand.com", timeZone: "America/New_York" },
+            ],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ accepted: false, error: "SMS consent is required" }),
+      );
+
+    await expect(
+      deliverMeetingReminder(
+        {
+          ...payload,
+          personId: "11111111-1111-4111-8111-111111111111",
+          channel: "sms",
+          threshold: "90m",
+        },
+        {
+          ...enabledEnvironment,
+          GMAIL_REMINDERS_ENABLED: "false",
+          TELNYX_SMS_REMINDERS_ENABLED: "true",
+          TWENTY_API_KEY: "twenty-test",
+          TWENTY_API_ORIGIN: "https://twenty.test",
+          TELNYX_SMS_REMINDER_90M_BODY: "Join: {{meeting_url}}",
+        },
+        {
+          fetch: fetcher,
+          now: () => new Date("2026-08-12T13:00:00.000Z"),
+        },
+      ),
+    ).rejects.toThrow("Twenty SMS reminder refused: SMS consent is required");
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
   it("fails closed before sending SMS when Cal omits the join link", async () => {
@@ -288,13 +403,18 @@ describe("meeting reminder delivery", () => {
 
     await expect(
       deliverMeetingReminder(
-        { ...payload, channel: "sms", threshold: "90m" },
+        {
+          ...payload,
+          personId: "11111111-1111-4111-8111-111111111111",
+          channel: "sms",
+          threshold: "90m",
+        },
         {
           ...enabledEnvironment,
           GMAIL_REMINDERS_ENABLED: "false",
           TELNYX_SMS_REMINDERS_ENABLED: "true",
-          TELNYX_API_KEY: "telnyx-test",
-          TELNYX_FROM_NUMBER: "+13072490829",
+          TWENTY_API_KEY: "twenty-test",
+          TWENTY_API_ORIGIN: "https://twenty.test",
           TELNYX_SMS_REMINDER_90M_BODY: "Join: {{meeting_url}}",
         },
         {

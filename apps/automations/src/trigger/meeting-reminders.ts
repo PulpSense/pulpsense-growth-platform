@@ -17,10 +17,14 @@ export const reminderThresholdSchema = z.enum([
 export type ReminderThreshold = z.infer<typeof reminderThresholdSchema>;
 export const reminderChannelSchema = z.enum(["gmail", "sms"]);
 export type ReminderChannel = z.infer<typeof reminderChannelSchema>;
+export type ReminderScheduleTarget =
+  | { channel: "gmail" }
+  | { channel: "sms"; personId: string };
 
 export const meetingReminderPayloadSchema = z
   .object({
     submissionId: z.string().uuid(),
+    personId: z.string().uuid().optional(),
     firstName: z.string().trim().min(1).max(100),
     phone: z.string().trim().min(7).max(40).optional(),
     channel: reminderChannelSchema.default("gmail"),
@@ -35,8 +39,7 @@ export const meetingReminderPayloadSchema = z
     const valid =
       (payload.channel === "gmail" &&
         ["24h", "2h", "15m"].includes(payload.threshold)) ||
-      (payload.channel === "sms" &&
-        ["90m", "5m"].includes(payload.threshold));
+      (payload.channel === "sms" && ["90m", "5m"].includes(payload.threshold));
     if (!valid) {
       context.addIssue({
         code: "custom",
@@ -93,6 +96,7 @@ type ReminderTrigger = (
 
 export const scheduleMeetingReminders = async (
   event: SchedulableBookingEvent,
+  target: ReminderScheduleTarget,
   trigger: ReminderTrigger,
   now = new Date(),
   createIdempotencyKey: (key: string) => Promise<string> = (key) =>
@@ -101,12 +105,13 @@ export const scheduleMeetingReminders = async (
   const startMs = new Date(event.payload.booking.startTime).getTime();
   const scheduled: ScheduledReminder[] = [];
   for (const definition of thresholdDefinitions) {
+    if (definition.channel !== target.channel) continue;
     const sendAt = new Date(startMs - definition.beforeMs);
     if (sendAt.getTime() <= now.getTime()) continue;
     const payload: MeetingReminderPayload = {
       submissionId: event.submissionId,
+      ...(target.channel === "sms" ? { personId: target.personId } : {}),
       firstName: event.payload.firstName,
-      phone: event.payload.phone,
       channel: definition.channel,
       bookingUid: event.payload.booking.uid,
       expectedStartTime: event.payload.booking.startTime,
@@ -157,8 +162,8 @@ type ReminderEnvironment = {
   GMAIL_REMINDER_15M_SUBJECT?: string;
   GMAIL_REMINDER_15M_BODY?: string;
   TELNYX_SMS_REMINDERS_ENABLED?: string;
-  TELNYX_API_KEY?: string;
-  TELNYX_FROM_NUMBER?: string;
+  TWENTY_API_KEY?: string;
+  TWENTY_API_ORIGIN?: string;
   TELNYX_SMS_REMINDER_90M_BODY?: string;
   TELNYX_SMS_REMINDER_5M_BODY?: string;
   SLACK_FAILURE_WEBHOOK_URL?: string;
@@ -366,16 +371,9 @@ const sendGmailReminder = async (
   }
 };
 
-const normalizeE164 = (phone: string) => {
-  const normalized = phone.trim().replace(/[\s().-]/gu, "");
-  if (!/^\+[1-9]\d{7,14}$/u.test(normalized)) {
-    throw new Error("Appointment phone number is not valid E.164");
-  }
-  return normalized;
-};
-
-const sendTelnyxSmsReminder = async (
+const sendTwentySmsReminder = async (
   payload: MeetingReminderPayload,
+  personId: string,
   booking: CalBooking,
   attendee: { timeZone: string },
   environment: ReminderEnvironment,
@@ -391,24 +389,41 @@ const sendTelnyxSmsReminder = async (
     template,
     buildReminderTemplateVariables(payload, booking, attendee.timeZone),
   );
-  const response = await fetcher("https://api.telnyx.com/v2/messages", {
+  const twentyOrigin = required(
+    environment.TWENTY_API_ORIGIN,
+    "TWENTY_API_ORIGIN",
+  ).replace(/\/+$/u, "");
+  const response = await fetcher(`${twentyOrigin}/s/telnyx/sms`, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${required(environment.TELNYX_API_KEY, "TELNYX_API_KEY")}`,
+      Authorization: [
+        "Bearer",
+        required(environment.TWENTY_API_KEY, "TWENTY_API_KEY"),
+      ].join(" "),
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: normalizeE164(
-        required(environment.TELNYX_FROM_NUMBER, "TELNYX_FROM_NUMBER"),
-      ),
-      to: normalizeE164(
-        required(payload.phone, "Appointment phone number"),
-      ),
+      clientRequestId: [
+        "appointment-reminder",
+        payload.bookingUid,
+        payload.expectedStartTime,
+        payload.threshold,
+      ].join(":"),
+      personId,
       text,
     }),
   });
   if (!response.ok) {
-    throw new Error(`Telnyx SMS reminder send failed (${response.status})`);
+    throw new Error(`Twenty SMS reminder send failed (${response.status})`);
+  }
+  const result = (await response.json()) as {
+    accepted?: boolean;
+    error?: string;
+  };
+  if (result.accepted !== true) {
+    throw new Error(
+      `Twenty SMS reminder refused: ${result.error?.trim() || "unknown reason"}`,
+    );
   }
 };
 
@@ -457,6 +472,10 @@ export const deliverMeetingReminder = async (
   if (payload.environment !== environment.PULPSENSE_AUTOMATION_ENVIRONMENT) {
     throw new Error("Reminder environment does not match destinations");
   }
+  if (payload.channel === "sms" && !payload.personId) {
+    throw new Error("Twenty Person ID is required for an SMS reminder");
+  }
+  const smsPersonId = payload.channel === "sms" ? payload.personId : undefined;
   const attempt = runtime.attempt ?? (async (operation) => operation());
   const booking = await attempt(() =>
     fetchCurrentBooking(
@@ -480,19 +499,14 @@ export const deliverMeetingReminder = async (
   if (!attendee) throw new Error("Cal booking omitted its attendee");
   if (payload.channel === "gmail") {
     await attempt(() =>
-      sendGmailReminder(
-        payload,
-        booking,
-        attendee,
-        environment,
-        runtime.fetch,
-      ),
+      sendGmailReminder(payload, booking, attendee, environment, runtime.fetch),
     );
   }
   if (payload.channel === "sms") {
     await attempt(() =>
-      sendTelnyxSmsReminder(
+      sendTwentySmsReminder(
         payload,
+        smsPersonId!,
         booking,
         attendee,
         environment,
@@ -526,14 +540,11 @@ export const sendMeetingReminderTask = schemaTask({
       GMAIL_REMINDER_2H_BODY: process.env.GMAIL_REMINDER_2H_BODY,
       GMAIL_REMINDER_15M_SUBJECT: process.env.GMAIL_REMINDER_15M_SUBJECT,
       GMAIL_REMINDER_15M_BODY: process.env.GMAIL_REMINDER_15M_BODY,
-      TELNYX_SMS_REMINDERS_ENABLED:
-        process.env.TELNYX_SMS_REMINDERS_ENABLED,
-      TELNYX_API_KEY: process.env.TELNYX_API_KEY,
-      TELNYX_FROM_NUMBER: process.env.TELNYX_FROM_NUMBER,
-      TELNYX_SMS_REMINDER_90M_BODY:
-        process.env.TELNYX_SMS_REMINDER_90M_BODY,
-      TELNYX_SMS_REMINDER_5M_BODY:
-        process.env.TELNYX_SMS_REMINDER_5M_BODY,
+      TELNYX_SMS_REMINDERS_ENABLED: process.env.TELNYX_SMS_REMINDERS_ENABLED,
+      TWENTY_API_KEY: process.env.TWENTY_API_KEY,
+      TWENTY_API_ORIGIN: process.env.TWENTY_API_ORIGIN,
+      TELNYX_SMS_REMINDER_90M_BODY: process.env.TELNYX_SMS_REMINDER_90M_BODY,
+      TELNYX_SMS_REMINDER_5M_BODY: process.env.TELNYX_SMS_REMINDER_5M_BODY,
       SLACK_FAILURE_WEBHOOK_URL: process.env.SLACK_FAILURE_WEBHOOK_URL,
     };
     const attempt = <Result>(operation: () => Promise<Result>) =>

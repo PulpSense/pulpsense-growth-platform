@@ -18,6 +18,7 @@ import {
 import {
   scheduleMeetingReminders,
   sendMeetingReminderTask,
+  type ReminderScheduleTarget,
 } from "./meeting-reminders.js";
 import { runPrecallSequenceTask } from "./precall-sequence.js";
 import {
@@ -130,6 +131,7 @@ type ProcessorDependencies = {
   publishBrevoLifecycle?(event: BrevoLifecycleEvent): Promise<unknown>;
   scheduleMeetingReminders?(
     event: BookingCompletedEvent | BookingRescheduledEvent,
+    target: ReminderScheduleTarget,
   ): Promise<unknown>;
   schedulePrecallSequence?(
     event: BookingCompletedEvent | BookingRescheduledEvent,
@@ -308,10 +310,27 @@ export async function processFunnelEvent(
       previousBookingUid: event.payload.booking.previousUid,
       environment: event.environment,
     });
+    const gmailReminders =
+      dependencies.scheduleMeetingReminders?.(event, { channel: "gmail" }) ??
+      Promise.resolve();
+    const smsReminders = dependencies.scheduleMeetingReminders
+      ? (async () => {
+          const { personId } = await executeTwenty(
+            event,
+            dependencies,
+            "upsert_person",
+            () => dependencies.upsertTwentyPerson(event),
+          );
+          return dependencies.scheduleMeetingReminders!(event, {
+            channel: "sms",
+            personId,
+          });
+        })()
+      : Promise.resolve();
     await runIndependent({
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      reminders:
-        dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
+      gmailReminders,
+      smsReminders,
       measurement: capturePostHogSafely(event, dependencies),
     });
     await dependencies.schedulePrecallSequence?.(event);
@@ -349,31 +368,43 @@ export async function processFunnelEvent(
     // emails when a destination has stale data or a provider outage.
     await dependencies.schedulePrecallSequence?.(event);
 
+    const person = executeTwenty(event, dependencies, "upsert_person", () =>
+      dependencies.upsertTwentyPerson(event),
+    );
+    const gmailReminders =
+      dependencies.scheduleMeetingReminders?.(event, { channel: "gmail" }) ??
+      Promise.resolve();
     const destinations = await runIndependent({
       core: (async () => {
-        const { personId } = await executeTwenty(
-          event,
-          dependencies,
-          "upsert_person",
-          () => dependencies.upsertTwentyPerson(event),
-        );
-        const booking = await executeTwenty(
-          event,
-          dependencies,
-          "record_booking",
-          () => dependencies.recordTwentyBooking!(event, personId),
-        );
-        const { eventsReceived } = await executeAdapter(
-          dependencies,
-          { destination: "meta", operation: "deliver_schedule" },
-          () => dependencies.sendMetaSchedule!(event),
-        );
-        return { personId, booking, eventsReceived };
+        const { personId } = await person;
+        const smsReminders =
+          dependencies.scheduleMeetingReminders?.(event, {
+            channel: "sms",
+            personId,
+          }) ?? Promise.resolve();
+        const bookingAndMeasurement = (async () => {
+          const booking = await executeTwenty(
+            event,
+            dependencies,
+            "record_booking",
+            () => dependencies.recordTwentyBooking!(event, personId),
+          );
+          const { eventsReceived } = await executeAdapter(
+            dependencies,
+            { destination: "meta", operation: "deliver_schedule" },
+            () => dependencies.sendMetaSchedule!(event),
+          );
+          return { personId, booking, eventsReceived };
+        })();
+        const [result] = await Promise.all([
+          bookingAndMeasurement,
+          smsReminders,
+        ]);
+        return result;
       })(),
       slack: dependencies.postSlackBooking?.(event) ?? Promise.resolve(),
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      reminders:
-        dependencies.scheduleMeetingReminders?.(event) ?? Promise.resolve(),
+      gmailReminders,
       measurement: capturePostHogSafely(event, dependencies),
     });
     const { personId, booking, eventsReceived } = destinations.core;
@@ -1053,7 +1084,11 @@ const sha256 = async (value: string) => {
 };
 
 export const normalizeMetaName = (value: string) =>
-  value.normalize("NFKC").trim().toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  value
+    .normalize("NFKC")
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, "");
 
 const sendMetaEvent = async (
   event: FunnelEvent,
@@ -1073,12 +1108,8 @@ const sendMetaEvent = async (
     em: [await sha256(event.payload.email.trim().toLowerCase())],
     ph: [await sha256(event.payload.phone.replace(/\D/gu, ""))],
     external_id: [await sha256(event.submissionId.trim().toLowerCase())],
-    ...(normalizedFirstName
-      ? { fn: [await sha256(normalizedFirstName)] }
-      : {}),
-    ...(normalizedLastName
-      ? { ln: [await sha256(normalizedLastName)] }
-      : {}),
+    ...(normalizedFirstName ? { fn: [await sha256(normalizedFirstName)] } : {}),
+    ...(normalizedLastName ? { ln: [await sha256(normalizedLastName)] } : {}),
     client_ip_address: event.requestContext.clientIp,
     client_user_agent: event.requestContext.userAgent,
     ...(event.requestContext.fbp ? { fbp: event.requestContext.fbp } : {}),
@@ -1469,6 +1500,7 @@ export function createProcessorDependencies(
       ? {
           scheduleMeetingReminders: (
             event: BookingCompletedEvent | BookingRescheduledEvent,
+            target: ReminderScheduleTarget,
           ) =>
             executeWithRetry(
               {
@@ -1476,7 +1508,7 @@ export function createProcessorDependencies(
                 operation: "schedule_meeting_reminders",
               },
               () =>
-                scheduleMeetingReminders(event, (payload, options) =>
+                scheduleMeetingReminders(event, target, (payload, options) =>
                   sendMeetingReminderTask.trigger(payload, options),
                 ),
             ),
