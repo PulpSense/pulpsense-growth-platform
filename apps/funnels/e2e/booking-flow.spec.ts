@@ -6,10 +6,13 @@ const metaRequestPattern =
 
 const enterContactDetails = async (page: Page) => {
   await page.goto(funnelPath);
+  const submit = page.getByRole("button", { name: "Continue" });
+  await expect(submit).toBeEnabled({ timeout: 30_000 });
   await page.getByLabel("First name").fill("E2E");
   await page.getByLabel("Last name (optional)").fill("Test");
   await page.getByLabel("Email").fill("santi@pulpsense.com");
   await page.locator("#ai-seo-phone").fill("4155550123");
+  return submit;
 };
 
 test("an internal test lead reaches the real Cal booking embed", async ({
@@ -30,9 +33,7 @@ test("an internal test lead reaches the real Cal booking embed", async ({
     });
   });
 
-  await enterContactDetails(page);
-  const submit = page.getByRole("button", { name: "Continue" });
-  await expect(submit).toBeEnabled({ timeout: 30_000 });
+  const submit = await enterContactDetails(page);
   await submit.click();
 
   await expect.poll(() => submissionResponses.length).toBeGreaterThanOrEqual(1);
@@ -75,9 +76,7 @@ test("the always-fail Turnstile widget blocks submission", async ({ page }) => {
     }
   });
 
-  await enterContactDetails(page);
-  const submit = page.getByRole("button", { name: "Continue" });
-  await expect(submit).toBeEnabled({ timeout: 30_000 });
+  const submit = await enterContactDetails(page);
   await submit.click();
 
   await expect(page.getByRole("alert")).toContainText(
