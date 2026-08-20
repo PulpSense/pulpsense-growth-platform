@@ -343,6 +343,11 @@ describe("process-funnel-event", () => {
     expect(publishBrevoLifecycle).toHaveBeenCalledWith(rescheduledEvent);
     expect(scheduleMeetingReminders).toHaveBeenCalledWith(
       rescheduledEvent,
+      "gmail",
+    );
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(
+      rescheduledEvent,
+      "sms",
       "person_123",
     );
     expect(upsertTwentyPerson).toHaveBeenCalledWith(rescheduledEvent);
@@ -408,9 +413,47 @@ describe("process-funnel-event", () => {
 
     expect(scheduleMeetingReminders).toHaveBeenCalledWith(
       bookingEvent,
+      "gmail",
+    );
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(
+      bookingEvent,
+      "sms",
       "person_123",
     );
   });
+
+  it.each([bookingEvent, rescheduledEvent])(
+    "still schedules Gmail reminders when Twenty Person upsert fails for $eventType",
+    async (failedEvent) => {
+      const scheduleMeetingReminders = vi
+        .fn()
+        .mockResolvedValue({ scheduled: [] });
+
+      await expect(
+        processFunnelEvent(failedEvent, {
+          upsertTwentyPerson: vi
+            .fn()
+            .mockRejectedValue(new Error("Twenty unavailable")),
+          recordTwentyBooking: vi.fn(),
+          sendMetaSchedule: vi.fn(),
+          sendMetaLead: vi.fn(),
+          scheduleMeetingReminders,
+          executeAdapter: retryImmediately(1),
+          log: { info: vi.fn() },
+        }),
+      ).rejects.toThrow("Twenty unavailable");
+
+      expect(scheduleMeetingReminders).toHaveBeenCalledWith(
+        failedEvent,
+        "gmail",
+      );
+      expect(scheduleMeetingReminders).not.toHaveBeenCalledWith(
+        failedEvent,
+        "sms",
+        expect.anything(),
+      );
+    },
+  );
 
   it("alerts Slack with redacted run identifiers after Twenty retry exhaustion", async () => {
     const slackBodies: Array<Record<string, unknown>> = [];
@@ -622,6 +665,11 @@ describe("process-funnel-event", () => {
     expect(sendMetaSchedule).toHaveBeenCalledWith(bookingEvent);
     expect(scheduleMeetingReminders).toHaveBeenCalledWith(
       bookingEvent,
+      "gmail",
+    );
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(
+      bookingEvent,
+      "sms",
       "person_123",
     );
   });

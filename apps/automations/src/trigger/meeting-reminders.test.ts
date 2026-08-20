@@ -74,12 +74,23 @@ describe("meeting reminder scheduling", () => {
     await expect(
       scheduleMeetingReminders(
         bookingEvent,
+        "gmail",
+        undefined,
+        trigger,
+        new Date("2026-08-12T13:30:00.000Z"),
+        createKey,
+      ),
+    ).resolves.toEqual({ scheduled: ["gmail:15m"] });
+    await expect(
+      scheduleMeetingReminders(
+        bookingEvent,
+        "sms",
         "11111111-1111-4111-8111-111111111111",
         trigger,
         new Date("2026-08-12T13:30:00.000Z"),
         createKey,
       ),
-    ).resolves.toEqual({ scheduled: ["gmail:15m", "sms:5m"] });
+    ).resolves.toEqual({ scheduled: ["sms:5m"] });
     expect(trigger).toHaveBeenCalledTimes(2);
     expect(trigger.mock.calls[0]?.[0]).toMatchObject({
       firstName: "Maya",
@@ -89,6 +100,7 @@ describe("meeting reminder scheduling", () => {
       expiresAt: "2026-08-12T14:00:00.000Z",
     });
     expect(trigger.mock.calls[0]?.[0]).not.toHaveProperty("phone");
+    expect(trigger.mock.calls[0]?.[0]).not.toHaveProperty("personId");
     expect(trigger.mock.calls[0]?.[1]).toMatchObject({
       delay: new Date("2026-08-12T13:45:00.000Z"),
       idempotencyKey:
@@ -320,7 +332,7 @@ describe("meeting reminder delivery", () => {
         },
       ),
     ).rejects.toThrow("Twenty Person ID is required for an SMS reminder");
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).not.toHaveBeenCalled();
   });
 
   it("treats a Twenty application-level refusal as a failed reminder", async () => {

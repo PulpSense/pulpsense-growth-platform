@@ -93,20 +93,25 @@ type ReminderTrigger = (
 
 export const scheduleMeetingReminders = async (
   event: SchedulableBookingEvent,
-  personId: string,
+  channel: ReminderChannel,
+  personId: string | undefined,
   trigger: ReminderTrigger,
   now = new Date(),
   createIdempotencyKey: (key: string) => Promise<string> = (key) =>
     idempotencyKeys.create(key),
 ) => {
+  if (channel === "sms" && !personId) {
+    throw new Error("Twenty Person ID is required to schedule SMS reminders");
+  }
   const startMs = new Date(event.payload.booking.startTime).getTime();
   const scheduled: ScheduledReminder[] = [];
   for (const definition of thresholdDefinitions) {
+    if (definition.channel !== channel) continue;
     const sendAt = new Date(startMs - definition.beforeMs);
     if (sendAt.getTime() <= now.getTime()) continue;
     const payload: MeetingReminderPayload = {
       submissionId: event.submissionId,
-      personId,
+      ...(definition.channel === "sms" ? { personId } : {}),
       firstName: event.payload.firstName,
       channel: definition.channel,
       bookingUid: event.payload.booking.uid,
@@ -369,15 +374,12 @@ const sendGmailReminder = async (
 
 const sendTwentySmsReminder = async (
   payload: MeetingReminderPayload,
+  personId: string,
   booking: CalBooking,
   attendee: { timeZone: string },
   environment: ReminderEnvironment,
   fetcher: typeof fetch,
 ) => {
-  if (!payload.personId) {
-    throw new Error("Twenty Person ID is required for an SMS reminder");
-  }
-  const personId = payload.personId;
   if (!(payload.threshold in smsTemplateNames)) {
     throw new Error("SMS reminder threshold is invalid");
   }
@@ -471,6 +473,10 @@ export const deliverMeetingReminder = async (
   if (payload.environment !== environment.PULPSENSE_AUTOMATION_ENVIRONMENT) {
     throw new Error("Reminder environment does not match destinations");
   }
+  if (payload.channel === "sms" && !payload.personId) {
+    throw new Error("Twenty Person ID is required for an SMS reminder");
+  }
+  const smsPersonId = payload.channel === "sms" ? payload.personId : undefined;
   const attempt = runtime.attempt ?? (async (operation) => operation());
   const booking = await attempt(() =>
     fetchCurrentBooking(
@@ -501,6 +507,7 @@ export const deliverMeetingReminder = async (
     await attempt(() =>
       sendTwentySmsReminder(
         payload,
+        smsPersonId!,
         booking,
         attendee,
         environment,

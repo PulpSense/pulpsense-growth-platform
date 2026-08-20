@@ -18,6 +18,7 @@ import {
 import {
   scheduleMeetingReminders,
   sendMeetingReminderTask,
+  type ReminderChannel,
 } from "./meeting-reminders.js";
 import { runPrecallSequenceTask } from "./precall-sequence.js";
 import {
@@ -130,7 +131,8 @@ type ProcessorDependencies = {
   publishBrevoLifecycle?(event: BrevoLifecycleEvent): Promise<unknown>;
   scheduleMeetingReminders?(
     event: BookingCompletedEvent | BookingRescheduledEvent,
-    personId: string,
+    channel: ReminderChannel,
+    personId?: string,
   ): Promise<unknown>;
   schedulePrecallSequence?(
     event: BookingCompletedEvent | BookingRescheduledEvent,
@@ -309,7 +311,10 @@ export async function processFunnelEvent(
       previousBookingUid: event.payload.booking.previousUid,
       environment: event.environment,
     });
-    const reminders = dependencies.scheduleMeetingReminders
+    const gmailReminders =
+      dependencies.scheduleMeetingReminders?.(event, "gmail") ??
+      Promise.resolve();
+    const smsReminders = dependencies.scheduleMeetingReminders
       ? (async () => {
           const { personId } = await executeTwenty(
             event,
@@ -317,12 +322,13 @@ export async function processFunnelEvent(
             "upsert_person",
             () => dependencies.upsertTwentyPerson(event),
           );
-          return dependencies.scheduleMeetingReminders!(event, personId);
+          return dependencies.scheduleMeetingReminders!(event, "sms", personId);
         })()
       : Promise.resolve();
     await runIndependent({
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      reminders,
+      gmailReminders,
+      smsReminders,
       measurement: capturePostHogSafely(event, dependencies),
     });
     await dependencies.schedulePrecallSequence?.(event);
@@ -363,30 +369,38 @@ export async function processFunnelEvent(
     const person = executeTwenty(event, dependencies, "upsert_person", () =>
       dependencies.upsertTwentyPerson(event),
     );
-    const reminders = dependencies.scheduleMeetingReminders
-      ? person.then(({ personId }) =>
-          dependencies.scheduleMeetingReminders!(event, personId),
-        )
-      : Promise.resolve();
+    const gmailReminders =
+      dependencies.scheduleMeetingReminders?.(event, "gmail") ??
+      Promise.resolve();
     const destinations = await runIndependent({
       core: (async () => {
         const { personId } = await person;
-        const booking = await executeTwenty(
-          event,
-          dependencies,
-          "record_booking",
-          () => dependencies.recordTwentyBooking!(event, personId),
-        );
-        const { eventsReceived } = await executeAdapter(
-          dependencies,
-          { destination: "meta", operation: "deliver_schedule" },
-          () => dependencies.sendMetaSchedule!(event),
-        );
-        return { personId, booking, eventsReceived };
+        const smsReminders =
+          dependencies.scheduleMeetingReminders?.(event, "sms", personId) ??
+          Promise.resolve();
+        const bookingAndMeasurement = (async () => {
+          const booking = await executeTwenty(
+            event,
+            dependencies,
+            "record_booking",
+            () => dependencies.recordTwentyBooking!(event, personId),
+          );
+          const { eventsReceived } = await executeAdapter(
+            dependencies,
+            { destination: "meta", operation: "deliver_schedule" },
+            () => dependencies.sendMetaSchedule!(event),
+          );
+          return { personId, booking, eventsReceived };
+        })();
+        const [result] = await Promise.all([
+          bookingAndMeasurement,
+          smsReminders,
+        ]);
+        return result;
       })(),
       slack: dependencies.postSlackBooking?.(event) ?? Promise.resolve(),
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      reminders,
+      gmailReminders,
       measurement: capturePostHogSafely(event, dependencies),
     });
     const { personId, booking, eventsReceived } = destinations.core;
@@ -1453,7 +1467,8 @@ export function createProcessorDependencies(
       ? {
           scheduleMeetingReminders: (
             event: BookingCompletedEvent | BookingRescheduledEvent,
-            personId: string,
+            channel: ReminderChannel,
+            personId?: string,
           ) =>
             executeWithRetry(
               {
@@ -1461,8 +1476,12 @@ export function createProcessorDependencies(
                 operation: "schedule_meeting_reminders",
               },
               () =>
-                scheduleMeetingReminders(event, personId, (payload, options) =>
-                  sendMeetingReminderTask.trigger(payload, options),
+                scheduleMeetingReminders(
+                  event,
+                  channel,
+                  personId,
+                  (payload, options) =>
+                    sendMeetingReminderTask.trigger(payload, options),
                 ),
             ),
         }
