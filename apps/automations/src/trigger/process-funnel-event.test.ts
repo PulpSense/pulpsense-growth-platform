@@ -770,6 +770,13 @@ describe("process-funnel-event", () => {
       opportunityId: "opportunity_qualified",
       metaEventId: bookingEvent.eventId,
     });
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body)),
+    ).toMatchObject({
+      smsConsentStatus: "OPTED_IN",
+      smsConsentSource: "PULPSENSE_ADS_FUNNEL_BOOKING",
+      smsConsentUpdatedAt: bookingEvent.occurredAt,
+    });
     expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
       id: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
       title: "Booking cal_booking_123",
@@ -1298,13 +1305,17 @@ describe("process-funnel-event", () => {
       "https://twenty.sandbox.example/rest/people/person_existing",
     );
     expect(updateInit?.method).toBe("PATCH");
-    expect(JSON.parse(String(updateInit?.body))).toMatchObject({
+    const updateBody = JSON.parse(String(updateInit?.body));
+    expect(updateBody).toMatchObject({
       name: { firstName: "Maya", lastName: "Chen" },
       emails: { primaryEmail: "maya@brand.com" },
       prospectId: event.prospectId,
       ...expectedTwentyDirectLastTouchAttribution,
     });
-    expectNoTwentyFirstTouch(JSON.parse(String(updateInit?.body)));
+    expect(updateBody).not.toHaveProperty("smsConsentStatus");
+    expect(updateBody).not.toHaveProperty("smsConsentSource");
+    expect(updateBody).not.toHaveProperty("smsConsentUpdatedAt");
+    expectNoTwentyFirstTouch(updateBody);
 
     const [metaUrl, metaInit] = fetchMock.mock.calls[2]!;
     expect(String(metaUrl)).toContain("/v26.0/pixel_123/events");
