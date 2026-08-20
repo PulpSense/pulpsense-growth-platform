@@ -39,8 +39,26 @@ type TurnstileOptions = Parameters<
 
 const getSubmitButton = () =>
   Array.from(document.querySelectorAll("button")).find((button) =>
-    button.textContent?.includes("See Available Times"),
+    button.textContent?.includes("Continue"),
   ) as HTMLButtonElement;
+
+const getButton = (label: string) =>
+  Array.from(document.querySelectorAll("button")).find(
+    (button) => button.textContent === label,
+  ) as HTMLButtonElement;
+
+const enterValue = async (selector: string, value: string) => {
+  const input = document.querySelector<HTMLInputElement>(selector);
+  expect(input).toBeInstanceOf(HTMLInputElement);
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set;
+    setter?.call(input, value);
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+};
 
 const renderForm = async () => {
   const container = document.createElement("div");
@@ -57,22 +75,6 @@ const renderForm = async () => {
       />,
     );
   });
-
-  const ownerButton = Array.from(document.querySelectorAll("button")).find(
-    (button) => button.textContent === "Yes",
-  );
-  expect(ownerButton).toBeInstanceOf(HTMLButtonElement);
-  await act(async () => ownerButton?.click());
-  const budgetButton = Array.from(document.querySelectorAll("button")).find(
-    (button) => button.textContent === "$1,500+/month",
-  );
-  expect(budgetButton).toBeInstanceOf(HTMLButtonElement);
-  await act(async () => budgetButton?.click());
-  const investmentButton = Array.from(document.querySelectorAll("button")).find(
-    (button) => button.textContent === "Yes, if the numbers make sense",
-  );
-  expect(investmentButton).toBeInstanceOf(HTMLButtonElement);
-  await act(async () => investmentButton?.click());
 };
 
 beforeEach(() => {
@@ -91,7 +93,7 @@ afterEach(async () => {
 });
 
 describe("AiSeoQualificationForm Turnstile gate", () => {
-  it("renders Turnstile when the contact step mounts after the API is ready", async () => {
+  it("renders Turnstile when the initial contact step mounts", async () => {
     let issueToken: ((token: string) => void) | undefined;
     const render = vi.fn((_element, options) => {
       issueToken = options.callback;
@@ -218,5 +220,98 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
     expect(document.body.textContent).toContain(
       "Email is invalid. Please enter a valid email address.",
     );
+  });
+});
+
+describe("AiSeoQualificationForm step order", () => {
+  it("captures the lead before showing qualification questions", async () => {
+    let issueToken: ((token: string) => void) | undefined;
+    window.turnstile = {
+      render: vi.fn((_element, options) => {
+        issueToken = options.callback;
+        return "widget-id";
+      }),
+      remove: vi.fn(),
+      reset: vi.fn(),
+    };
+    submission.submitContact.mockResolvedValue({
+      accepted: true,
+      eventId: "contact_submitted:submission-id",
+      prospectId: "prospect-id",
+      leadJourneyId: "submission-id",
+    });
+
+    await renderForm();
+
+    expect(document.body.textContent).toContain(
+      "Enter your details to start your free audit request",
+    );
+    expect(document.body.textContent).not.toContain(
+      "Are you the owner or primary decision-maker",
+    );
+
+    await act(async () => issueToken?.("verified-token"));
+    await enterValue("#ai-seo-first", "Santi");
+    await enterValue("#ai-seo-email", "santi@example.com");
+    await enterValue("#ai-seo-phone", "2125551212");
+    expect(
+      document.querySelector<HTMLInputElement>("#ai-seo-phone")?.value,
+    ).toBe("(212) 555-1212");
+    await act(async () => getSubmitButton().click());
+
+    expect(submission.submitContact).toHaveBeenCalledOnce();
+    expect(submission.submitApplication).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain(
+      "Are you the owner or primary decision-maker",
+    );
+  });
+
+  it("submits the qualified application after the lead", async () => {
+    let issueToken: ((token: string) => void) | undefined;
+    window.turnstile = {
+      render: vi.fn((_element, options) => {
+        issueToken = options.callback;
+        return "widget-id";
+      }),
+      remove: vi.fn(),
+      reset: vi.fn(),
+    };
+    submission.submitContact.mockResolvedValue({
+      accepted: true,
+      eventId: "contact_submitted:submission-id",
+      prospectId: "prospect-id",
+      leadJourneyId: "submission-id",
+    });
+    submission.submitApplication.mockResolvedValue({
+      accepted: true,
+      eventId: "application_submitted:submission-id",
+      qualificationStatus: "qualified",
+      nextStep: "booking",
+      bookingIdentity: { submissionId: "submission-id", token: "token" },
+    });
+
+    await renderForm();
+    await act(async () => issueToken?.("verified-token"));
+    await enterValue("#ai-seo-first", "Santi");
+    await enterValue("#ai-seo-email", "santi@example.com");
+    await enterValue("#ai-seo-phone", "2125551212");
+    await act(async () => getSubmitButton().click());
+    await act(async () => getButton("Yes").click());
+    await act(async () => getButton("$1,500+/month").click());
+
+    expect(submission.submitContact).toHaveBeenCalledOnce();
+    expect(submission.submitApplication).toHaveBeenCalledOnce();
+    expect(submission.submitApplication).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          businessOwner: "yes",
+          marketingBudget: "$1,500+/month",
+        },
+      }),
+    );
+    expect(document.body.textContent).not.toContain(
+      "would you be open to investing",
+    );
+    expect(document.body.textContent).toContain("Book Free Audit Call");
   });
 });
