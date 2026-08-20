@@ -67,6 +67,8 @@ const unavailableTurnstileStatuses = new Set<TurnstileStatus>([
   "unsupported",
 ]);
 
+const TURNSTILE_ALWAYS_PASS_SITE_KEY = "1x00000000000000000000AA";
+
 type ContactData = {
   firstName: string;
   lastName: string;
@@ -114,9 +116,12 @@ export function AiSeoQualificationForm({
   funnelId,
   calLink,
   calNamespace,
-  turnstileSiteKey,
+  turnstileSiteKey: configuredTurnstileSiteKey,
   qualifiedRedirect,
 }: Props) {
+  const turnstileSiteKey =
+    configuredTurnstileSiteKey ??
+    (import.meta.env.DEV ? TURNSTILE_ALWAYS_PASS_SITE_KEY : undefined);
   const [step, setStep] = useState<Step>("contact");
   const [contact, setContact] = useState<ContactData>(initialContact);
   const [phoneCountry, setPhoneCountry] = useState<Country>(

@@ -12,7 +12,9 @@ import { createBookingToken, readRetryToken } from "./submission-identity";
 import { createRequestContext } from "./request-context";
 
 const determineQualificationStatus = (request: ApplicationSubmissionRequest) =>
-  request.payload.marketingBudget === "Under $500/month or not set yet"
+  request.payload.marketingBudget === "Under $500/month or not set yet" ||
+  request.payload.investmentIntent ===
+    "No, I’m only looking for free information"
     ? ("unqualified" as const)
     : ("qualified" as const);
 

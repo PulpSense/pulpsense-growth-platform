@@ -60,7 +60,9 @@ const enterValue = async (selector: string, value: string) => {
   });
 };
 
-const renderForm = async () => {
+const renderForm = async (
+  turnstileSiteKey: string | null = "test-site-key",
+) => {
   const container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -70,7 +72,7 @@ const renderForm = async () => {
       <AiSeoQualificationForm
         funnelId="ai-seo"
         calLink="pulpsense/audit"
-        turnstileSiteKey="test-site-key"
+        turnstileSiteKey={turnstileSiteKey ?? undefined}
         qualifiedRedirect="/thank-you"
       />,
     );
@@ -93,6 +95,22 @@ afterEach(async () => {
 });
 
 describe("AiSeoQualificationForm Turnstile gate", () => {
+  it("uses the always-pass Turnstile site key in local development", async () => {
+    const render = vi.fn(() => "widget-id");
+    window.turnstile = {
+      render,
+      remove: vi.fn(),
+      reset: vi.fn(),
+    };
+
+    await renderForm(null);
+
+    expect(render).toHaveBeenCalledWith(
+      expect.any(HTMLElement),
+      expect.objectContaining({ sitekey: "1x00000000000000000000AA" }),
+    );
+  });
+
   it("renders Turnstile when the initial contact step mounts", async () => {
     let issueToken: ((token: string) => void) | undefined;
     const render = vi.fn((_element, options) => {
