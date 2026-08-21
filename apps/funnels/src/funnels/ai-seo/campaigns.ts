@@ -30,6 +30,7 @@ export type AiSeoCampaign = {
     | "AI_SEO_HR"
     | "AI_SEO_MS";
   landingPath: string;
+  qualificationPath: string;
   thankYouPath: string;
   heroCallout: string;
   landingTitle: string;
@@ -45,12 +46,16 @@ export const DEFAULT_AI_SEO_QUALIFICATION_CALLOUT =
 const defineCampaign = (
   campaign: Omit<
     AiSeoCampaign,
-    "landingPath" | "thankYouPath" | "qualificationCallout"
+    | "landingPath"
+    | "qualificationPath"
+    | "thankYouPath"
+    | "qualificationCallout"
   > &
     Partial<Pick<AiSeoCampaign, "qualificationCallout">>,
 ): AiSeoCampaign => ({
   ...campaign,
   landingPath: `/${campaign.slug}/`,
+  qualificationPath: `/${campaign.slug}/apply/`,
   thankYouPath: `/${campaign.slug}/thank-you/`,
   qualificationCallout:
     campaign.qualificationCallout ?? DEFAULT_AI_SEO_QUALIFICATION_CALLOUT,

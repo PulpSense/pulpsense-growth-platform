@@ -79,11 +79,11 @@ describe("thank-you confetti", () => {
     expect(interactionsSource).not.toContain("requestAnimationFrame");
     expect(interactionsSource).not.toContain('createElement("canvas")');
     expect(mobile.bodyChildren).toHaveLength(1);
-    expect(mobile.animations).toHaveLength(48);
+    expect(mobile.animations).toHaveLength(60);
     const overlay = mobile.bodyChildren[0];
     const firstAnimation = mobile.animations[0];
     if (!overlay || !firstAnimation) throw new Error("Confetti did not render");
-    expect(overlay.children).toHaveLength(48);
+    expect(overlay.children).toHaveLength(60);
     expect(firstAnimation.keyframes).toHaveLength(3);
     expect(
       firstAnimation.keyframes.every(({ transform }) =>
@@ -101,11 +101,29 @@ describe("thank-you confetti", () => {
       return Number(match[1]);
     });
 
-    expect(Math.min(...apexYs)).toBeGreaterThanOrEqual(20);
+    expect(Math.min(...apexYs)).toBeGreaterThanOrEqual(24);
+  });
+
+  it("launches low enough to give the confetti a long upward arc", () => {
+    const mobile = runConfetti();
+    const firstAnimation = mobile.animations[0];
+    if (!firstAnimation) throw new Error("Confetti did not render");
+    const yFrom = (keyframe: Keyframe) => {
+      const match = String(keyframe.transform).match(
+        /translate3d\([^,]+,(-?[\d.]+)px,/,
+      );
+      if (!match?.[1]) throw new Error("Confetti position was not found");
+      return Number(match[1]);
+    };
+    const launchY = yFrom(firstAnimation.keyframes[0] ?? {});
+    const apexY = yFrom(firstAnimation.keyframes[1] ?? {});
+
+    expect(launchY).toBeGreaterThan(844 * 0.6);
+    expect(launchY - apexY).toBeGreaterThan(300);
   });
 
   it("preserves reduced motion and a denser desktop celebration", () => {
     expect(runConfetti({ reducedMotion: true }).bodyChildren).toHaveLength(0);
-    expect(runConfetti({ width: 1200 }).animations).toHaveLength(80);
+    expect(runConfetti({ width: 1200 }).animations).toHaveLength(96);
   });
 });

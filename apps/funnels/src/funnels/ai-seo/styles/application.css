@@ -1,0 +1,61 @@
+#pr-funnel.pr-application-page .pr-main {
+  background: #fff;
+}
+
+#pr-funnel.pr-application-page #pr-funnel-form {
+  min-height: calc(100vh - 10rem);
+  min-height: calc(100dvh - 10rem);
+  padding-top: clamp(2rem, 5vw, 4rem);
+  background: #fff;
+  transition: padding 0.25s ease;
+}
+
+#pr-funnel .pr-application-intro {
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+
+#pr-funnel .pr-application-intro .pr-badge {
+  margin-bottom: 1.25rem;
+}
+
+#pr-funnel .pr-application-intro .pr-stars {
+  color: #fbbf24;
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+}
+
+#pr-funnel.pr-qualification-active .pr-application-intro,
+#pr-funnel.pr-qualification-active .pr-expect,
+#pr-funnel.pr-qualification-active .pr-footer {
+  display: none;
+}
+
+#pr-funnel.pr-qualification-active #pr-funnel-form {
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding-top: clamp(2rem, 8vh, 6rem);
+  padding-bottom: clamp(2rem, 8vh, 6rem);
+  place-items: start center;
+}
+
+#pr-funnel.pr-qualification-active .pr-funnel-layout {
+  display: block;
+  max-width: 46rem;
+}
+
+#pr-funnel.pr-qualification-active .pr-tf {
+  max-width: 46rem;
+}
+
+#pr-funnel.pr-qualification-active .pr-tf-card {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#pr-funnel.pr-qualification-active .pr-tf-q {
+  text-align: center;
+}

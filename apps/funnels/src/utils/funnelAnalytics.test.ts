@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  CTA_PLACEMENTS,
   configureFunnelAnalytics,
   createFunnelAnalyticsClient,
+  isCtaPlacement,
   trackFunnelEvent,
 } from "./funnelAnalytics";
 
@@ -13,6 +15,17 @@ const createPostHog = () => ({
   reset: vi.fn(),
   get_distinct_id: vi.fn(() => "anonymous-id"),
   get_session_id: vi.fn(() => "session-id"),
+});
+
+describe("CTA placements", () => {
+  it("uses the shared placement contract for runtime validation", () => {
+    for (const placement of CTA_PLACEMENTS) {
+      expect(isCtaPlacement(placement)).toBe(true);
+    }
+
+    expect(isCtaPlacement("unknown")).toBe(false);
+    expect(isCtaPlacement(undefined)).toBe(false);
+  });
 });
 
 describe("createFunnelAnalyticsClient", () => {

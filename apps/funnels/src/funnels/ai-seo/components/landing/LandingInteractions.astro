@@ -3,28 +3,17 @@
     var root = document.getElementById("pr-funnel");
     if (!root) return;
     var sticky = root.querySelector(".pr-sticky-cta");
-    var form = document.getElementById("pr-funnel-form");
-    if (!sticky || !form) return;
+    if (!sticky) return;
     root.classList.add("pr-has-sticky");
-    var formVisible = false;
     var scrolledPast = false;
     function update() {
-      if (scrolledPast && !formVisible) {
+      if (scrolledPast) {
         sticky.classList.add("is-visible");
         sticky.setAttribute("aria-hidden", "false");
       } else {
         sticky.classList.remove("is-visible");
         sticky.setAttribute("aria-hidden", "true");
       }
-    }
-    if ("IntersectionObserver" in window) {
-      new IntersectionObserver(
-        function (entries) {
-          formVisible = entries[0].isIntersecting;
-          update();
-        },
-        { threshold: 0.05 },
-      ).observe(form);
     }
     var threshold = window.innerHeight * 0.6;
     function onScroll() {
@@ -40,38 +29,21 @@
   })();
 </script>
 <script is:inline>
-  /* Re-anchor CTA jumps after lazy media above the form changes page height. */
-  var formSection = document.getElementById("pr-funnel-form");
-  document
-    .querySelectorAll('a[href="#pr-funnel-form"]')
-    .forEach(function (anchor) {
-      anchor.addEventListener("click", function (event) {
-        if (!formSection) return;
-        event.preventDefault();
-        formSection.scrollIntoView({ behavior: "smooth" });
-
-        var lastY = -1;
-        var still = 0;
-        var deadline = Date.now() + 3000;
-
-        (function settle() {
-          if (Date.now() > deadline) return;
-
-          var y = window.scrollY;
-          still = y === lastY ? still + 1 : 0;
-          lastY = y;
-
-          if (still >= 12) {
-            if (formSection.getBoundingClientRect().top > 40) {
-              formSection.scrollIntoView({ behavior: "smooth" });
-            }
-            return;
-          }
-
-          requestAnimationFrame(settle);
-        })();
-      });
+  /* Carry campaign attribution to the dedicated application page. */
+  document.querySelectorAll("a[data-funnel-cta]").forEach(function (anchor) {
+    var target = new URL(anchor.href, window.location.href);
+    new URLSearchParams(window.location.search).forEach(function (value, key) {
+      if (!target.searchParams.has(key)) target.searchParams.set(key, value);
     });
+    anchor.href = target.pathname + target.search + target.hash;
+    anchor.addEventListener("click", function () {
+      window.dispatchEvent(
+        new CustomEvent("pulpsense:cta-clicked", {
+          detail: { placement: anchor.dataset.funnelCta },
+        }),
+      );
+    });
+  });
 </script>
 <div class="pr-lightbox" id="pr-lightbox" hidden>
   <button

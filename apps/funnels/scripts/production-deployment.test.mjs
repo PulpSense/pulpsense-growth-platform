@@ -8,7 +8,7 @@ const repositoryFile = (path) =>
 
 describe("production deployment isolation", () => {
   it("loads Turnstile as the contact form approaches", async () => {
-    const [layout, turnstile, landingPage, form] = await Promise.all([
+    const [layout, turnstile, applicationPage, form] = await Promise.all([
       readFile(
         repositoryFile("apps/funnels/src/layouts/BaseLayout.astro"),
         "utf8",
@@ -20,7 +20,9 @@ describe("production deployment isolation", () => {
         "utf8",
       ),
       readFile(
-        repositoryFile("apps/funnels/src/pages/[...campaign]/index.astro"),
+        repositoryFile(
+          "apps/funnels/src/pages/[...campaign]/apply/index.astro",
+        ),
         "utf8",
       ),
       readFile(
@@ -31,7 +33,7 @@ describe("production deployment isolation", () => {
       ),
     ]);
 
-    expect(landingPage).toContain('turnstileTarget="#pr-funnel-form"');
+    expect(applicationPage).toContain('turnstileTarget="#pr-funnel-form"');
     expect(layout).toContain("<DeferredTurnstile target={turnstileTarget} />");
     expect(turnstile).toContain("data-pulpsense-turnstile");
     expect(turnstile).toContain("initializeDeferredTurnstile");

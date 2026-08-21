@@ -24,6 +24,7 @@ export function CalBookingStep({
   bookingIdentity,
   onBookingSuccessful,
 }: CalBookingStepProps) {
+  const isLocalDryRun = import.meta.env.DEV;
   const config: Record<string, string> = {
     layout: "month_view",
     theme: "light",
@@ -33,6 +34,7 @@ export function CalBookingStep({
     email: prefill.email,
     "metadata[pulpsenseSubmissionId]": bookingIdentity.submissionId,
     "metadata[pulpsenseBookingToken]": bookingIdentity.token,
+    ...(isLocalDryRun ? { "cal.isBookingDryRun": "true" } : {}),
   };
 
   useEffect(() => {
@@ -52,14 +54,28 @@ export function CalBookingStep({
         layout: "month_view",
       });
       const callback = () => onBookingSuccessful();
+      const dryRunCallback = (event: unknown) => {
+        const eventType = (
+          event as { detail?: { type?: string } } | null | undefined
+        )?.detail?.type;
+        if (eventType === "dryRunBookingSuccessfulV2") callback();
+      };
       cal("on", { action: "bookingSuccessful", callback });
-      unsubscribe = () => cal("off", { action: "bookingSuccessful", callback });
+      if (isLocalDryRun) {
+        cal("on", { action: "*", callback: dryRunCallback });
+      }
+      unsubscribe = () => {
+        cal("off", { action: "bookingSuccessful", callback });
+        if (isLocalDryRun) {
+          cal("off", { action: "*", callback: dryRunCallback });
+        }
+      };
     })();
     return () => {
       disposed = true;
       unsubscribe?.();
     };
-  }, [namespace, onBookingSuccessful]);
+  }, [isLocalDryRun, namespace, onBookingSuccessful]);
 
   return (
     <Cal
