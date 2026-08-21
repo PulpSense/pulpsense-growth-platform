@@ -1148,7 +1148,7 @@ describe("process-funnel-event", () => {
       }),
     ]);
     expect(JSON.stringify(requests[5]?.body)).not.toContain(
-      applicationEvent.payload.application.marketingBudget,
+      "Under $500/month or not set yet",
     );
   });
 

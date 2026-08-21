@@ -75,6 +75,7 @@ const allowedFields = new Set([
   "businessOwner",
   "marketingBudget",
   "investmentIntent",
+  "growthConstraint",
 ]);
 
 const ctaPlacements: ReadonlySet<string> = new Set(CTA_PLACEMENTS);

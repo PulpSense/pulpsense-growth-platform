@@ -37,9 +37,7 @@ describe("measurement submission contracts", () => {
           token: "signed-token",
         },
         payload: {
-          businessOwner: "yes",
-          marketingBudget: "$1,500+/month",
-          investmentIntent: "Yes, if the numbers make sense",
+          growthConstraint: "Not enough new-client inquiries",
         },
         sourceUrl: "https://preview.pulpsense.com/ai-seo/",
         analyticsId,

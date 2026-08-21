@@ -274,14 +274,14 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
   application: {
     pageTitle: "See If Your Law Firm Qualifies | PulpSense",
     pageDescription:
-      "Answer a few questions to see whether your law firm fits the 45 qualified new-client inquiry pilot.",
+      "Share your details and one quick answer before booking a law-firm growth audit.",
     badge: null,
     promise: "45 Qualified New-Client Inquiries",
     timeframe: "90 Days",
     titleSeparator: "—",
     titleSuffix: "or Get Fully Refunded and Keep Everything We Build.",
     intro:
-      "Answer a few questions to see whether your firm fits the pilot's practice-area, market, capacity, access, and intake requirements. The existing application determines initial fit; final guarantee eligibility and baseline terms are approved in writing.",
+      "Enter your details, then answer one quick question about what is holding back signed-matter growth. Final guarantee eligibility and baseline terms are approved in writing.",
     expectationHeading: "What to prepare for the live audit",
     expectations: [
       {

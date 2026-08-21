@@ -9,7 +9,10 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const contactRequest = (origin: string) =>
+const contactRequest = (
+  origin: string,
+  funnelId: "ai-seo" | "ai-seo-dentists" = "ai-seo",
+) =>
   new Request("https://preview.pulpsense.com/api/funnel-events", {
     method: "POST",
     headers: {
@@ -19,7 +22,7 @@ const contactRequest = (origin: string) =>
     body: JSON.stringify({
       schemaVersion: 1,
       eventType: "contact_submitted",
-      funnelId: "ai-seo",
+      funnelId,
       attemptId: "ab318a82-7872-4a66-bebd-a780fb25a71e",
       turnstileToken: "turnstile-token",
       payload: {
@@ -62,9 +65,7 @@ const qualifiedApplicationRequest = (identity: {
     funnelId: "ai-seo",
     identity,
     payload: {
-      businessOwner: "yes",
-      marketingBudget: "$1,500+/month",
-      investmentIntent: "Yes, if the numbers make sense",
+      growthConstraint: "Not enough new-client inquiries",
     },
     sourceUrl: "https://preview.pulpsense.com/ai-seo/",
   });
@@ -366,7 +367,7 @@ describe("POST /api/funnel-events", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("accepts an AI SEO owner with an optional last name and returns a signed Cal identity", async () => {
+  it("accepts a law-firm growth constraint with an optional last name and returns a signed Cal identity", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -419,9 +420,7 @@ describe("POST /api/funnel-events", () => {
         funnelId: "ai-seo",
         identity: contact.retry,
         payload: {
-          businessOwner: "yes",
-          marketingBudget: "$1,500+/month",
-          investmentIntent: "Yes, if the numbers make sense",
+          growthConstraint: "Not enough new-client inquiries",
         },
         sourceUrl: "https://preview.pulpsense.com/ai-seo/",
       }),
@@ -453,9 +452,7 @@ describe("POST /api/funnel-events", () => {
       qualificationStatus: "qualified",
       payload: {
         application: {
-          businessOwner: "yes",
-          marketingBudget: "$1,500+/month",
-          investmentIntent: "Yes, if the numbers make sense",
+          growthConstraint: "Not enough new-client inquiries",
         },
       },
     });
@@ -503,7 +500,7 @@ describe("POST /api/funnel-events", () => {
       };
 
       const contactResponse = await handleFunnelEvent(
-        contactRequest("https://preview.pulpsense.com"),
+        contactRequest("https://preview.pulpsense.com", "ai-seo-dentists"),
         env,
       );
       const contact = (await contactResponse.json()) as {
@@ -514,7 +511,7 @@ describe("POST /api/funnel-events", () => {
         requestWithBody({
           schemaVersion: 1,
           eventType: "application_submitted",
-          funnelId: "ai-seo",
+          funnelId: "ai-seo-dentists",
           identity: contact.retry,
           payload,
           sourceUrl: "https://preview.pulpsense.com/ai-seo/",
@@ -623,9 +620,7 @@ describe("POST /api/funnel-events", () => {
       funnelId: "ai-seo",
       identity: contact.retry,
       payload: {
-        businessOwner: "yes",
-        marketingBudget: "$1,500+/month",
-        investmentIntent: "Yes, if the numbers make sense",
+        growthConstraint: "Not enough new-client inquiries",
       },
       sourceUrl: "https://preview.pulpsense.com/ai-seo/",
     };

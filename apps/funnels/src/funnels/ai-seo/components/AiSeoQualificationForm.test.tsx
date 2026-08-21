@@ -4,6 +4,8 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import type { AiSeoFunnelId } from "@/funnels/ai-seo/campaigns";
+
 import { AiSeoQualificationForm } from "./AiSeoQualificationForm";
 
 const submission = vi.hoisted(() => ({
@@ -62,6 +64,7 @@ const enterValue = async (selector: string, value: string) => {
 
 const renderForm = async (
   turnstileSiteKey: string | null = "test-site-key",
+  funnelId: AiSeoFunnelId = "ai-seo",
 ) => {
   const container = document.createElement("div");
   container.id = "pr-funnel";
@@ -71,7 +74,7 @@ const renderForm = async (
   await act(async () => {
     root?.render(
       <AiSeoQualificationForm
-        funnelId="ai-seo"
+        funnelId={funnelId}
         calLink="pulpsense/audit"
         turnstileSiteKey={turnstileSiteKey ?? undefined}
         qualifiedRedirect="/thank-you"
@@ -318,7 +321,7 @@ describe("AiSeoQualificationForm step order", () => {
       "Enter your details to start your free audit request",
     );
     expect(document.body.textContent).not.toContain(
-      "Are you the owner or primary decision-maker",
+      "What is currently stopping your firm from signing more matters?",
     );
 
     await act(async () => issueToken?.("verified-token"));
@@ -333,8 +336,9 @@ describe("AiSeoQualificationForm step order", () => {
     expect(submission.submitContact).toHaveBeenCalledOnce();
     expect(submission.submitApplication).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain(
-      "Are you the owner or primary decision-maker",
+      "What is currently stopping your firm from signing more matters?",
     );
+    expect(document.querySelectorAll(".pr-tf-choice")).toHaveLength(4);
     expect(document.getElementById("pr-funnel")?.classList).toContain(
       "pr-qualification-active",
     );
@@ -379,16 +383,16 @@ describe("AiSeoQualificationForm step order", () => {
     await enterValue("#ai-seo-email", "santi@example.com");
     await enterValue("#ai-seo-phone", "2125551212");
     await act(async () => getSubmitButton().click());
-    await act(async () => getButton("Yes").click());
-    await act(async () => getButton("$1,500+/month").click());
+    await act(async () =>
+      getButton("Intake isn't converting enough inquiries").click(),
+    );
 
     expect(submission.submitContact).toHaveBeenCalledOnce();
     expect(submission.submitApplication).toHaveBeenCalledOnce();
     expect(submission.submitApplication).toHaveBeenCalledWith(
       expect.objectContaining({
         data: {
-          businessOwner: "yes",
-          marketingBudget: "$1,500+/month",
+          growthConstraint: "Intake isn't converting enough inquiries",
         },
       }),
     );
@@ -396,5 +400,37 @@ describe("AiSeoQualificationForm step order", () => {
       "would you be open to investing",
     );
     expect(document.body.textContent).toContain("Book Free Audit Call");
+  });
+
+  it("keeps the existing qualification questions for other verticals", async () => {
+    let issueToken: ((token: string) => void) | undefined;
+    window.turnstile = {
+      render: vi.fn((_element, options) => {
+        issueToken = options.callback;
+        return "widget-id";
+      }),
+      remove: vi.fn(),
+      reset: vi.fn(),
+    };
+    submission.submitContact.mockResolvedValue({
+      accepted: true,
+      eventId: "contact_submitted:submission-id",
+      prospectId: "prospect-id",
+      leadJourneyId: "submission-id",
+    });
+
+    await renderForm("test-site-key", "ai-seo-dentists");
+    await act(async () => issueToken?.("verified-token"));
+    await enterValue("#ai-seo-first", "Santi");
+    await enterValue("#ai-seo-email", "santi@example.com");
+    await enterValue("#ai-seo-phone", "2125551212");
+    await act(async () => getSubmitButton().click());
+
+    expect(document.body.textContent).toContain(
+      "Are you the owner or primary decision-maker",
+    );
+    expect(document.body.textContent).not.toContain(
+      "What is currently stopping your firm from signing more matters?",
+    );
   });
 });

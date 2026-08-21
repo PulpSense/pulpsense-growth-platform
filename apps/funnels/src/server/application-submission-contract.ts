@@ -1,4 +1,7 @@
-import { aiSeoApplicationAnswersSchema } from "@pulpsense/contracts";
+import {
+  aiSeoApplicationAnswersSchema,
+  lawFirmApplicationAnswersSchema,
+} from "@pulpsense/contracts";
 import { z } from "zod";
 
 const submissionIdentitySchema = z
@@ -27,7 +30,7 @@ export const applicationSubmissionRequestSchema = z.discriminatedUnion(
   [
     applicationSubmissionRequestBase.extend({
       funnelId: z.literal("ai-seo"),
-      payload: aiSeoApplicationAnswersSchema,
+      payload: lawFirmApplicationAnswersSchema,
     }),
     applicationSubmissionRequestBase.extend({
       funnelId: z.literal("ai-seo-dentists"),
