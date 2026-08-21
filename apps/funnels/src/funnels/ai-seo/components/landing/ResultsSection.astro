@@ -1,49 +1,48 @@
+---
+import type { LandingContent } from "../../campaign-config";
+
+type Props = { content: LandingContent["results"] };
+
+const { content } = Astro.props;
+---
+
 <!-- Proof / verified results -->
 <section class="pr-section">
   <div class="pr-container pr-center">
-    <h2 class="pr-h2">Real Results from Regional Service Businesses</h2>
-    <p class="pr-sub">
-      Don&apos;t take our word for it. See what happened when service businesses
-      put our system to work.
-    </p>
+    <h2 class="pr-h2">{content.heading}</h2>
+    <p class="pr-sub">{content.intro}</p>
     <div class="pr-results">
-      <div class="pr-result-card">
-        <span class="pr-result-badge">✓ Client result</span>
-        <p class="pr-result-name">Wesley Glen Retirement Community</p>
-        <div class="pr-result-metric">
-          <span class="pr-metric-label">Google Maps &amp; AI rank</span>
-          <span class="pr-metric-val"
-            >Not ranked <span class="pr-arrow">→</span> #2</span
-          >
-        </div>
-        <div class="pr-result-metric">
-          <span class="pr-metric-label">Time to rank</span>
-          <span class="pr-metric-val">2 weeks</span>
-        </div>
-        <p class="pr-result-summary">
-          From scratch to #2 in Google &amp; AI in just 2 weeks.
-        </p>
-      </div>
-      <div class="pr-result-card">
-        <span class="pr-result-badge">✓ Client result</span>
-        <p class="pr-result-name">Twin Oaks Dental &amp; Wellness</p>
-        <div class="pr-result-metric">
-          <span class="pr-metric-label">Monthly calls</span>
-          <span class="pr-metric-val"
-            >10 <span class="pr-arrow">→</span> 48</span
-          >
-        </div>
-        <div class="pr-result-metric">
-          <span class="pr-metric-label">Increase</span>
-          <span class="pr-metric-val">+380%</span>
-        </div>
-        <p class="pr-result-summary">Nearly 5× more calls every month.</p>
-      </div>
+      {
+        content.items.map((item) => (
+          <div class="pr-result-card">
+            <span class="pr-result-badge">{item.badge}</span>
+            <p class="pr-result-name">{item.name}</p>
+            {item.metrics.map((metric) => {
+              const [beforeArrow, afterArrow] = metric.value.split("→");
+              return (
+                <div class="pr-result-metric">
+                  <span class="pr-metric-label">{metric.label}</span>
+                  <span class="pr-metric-val">
+                    {beforeArrow}
+                    {afterArrow === undefined ? null : (
+                      <>
+                        <span class="pr-arrow">→</span>
+                        {afterArrow}
+                      </>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+            <p class="pr-result-summary">{item.summary}</p>
+          </div>
+        ))
+      }
     </div>
     <div class="pr-rating-stars" aria-hidden="true">★★★★★</div>
     <p style="color: var(--pr-muted); margin: 0.25rem 0 0">
-      <strong style="color: var(--pr-text)">4.9/5</strong> from 100+ service business
-      owners
+      <strong style="color: var(--pr-text)">{content.rating}</strong>{" "}
+      {content.ratingLabel}
     </p>
   </div>
 </section>

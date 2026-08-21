@@ -1,20 +1,21 @@
 ---
 import { AiSeoQualificationForm } from "@/funnels/ai-seo/components/AiSeoQualificationForm";
 import type { AiSeoFunnelId } from "@/funnels/ai-seo/campaigns";
+import type { ApplicationPageContent } from "../../campaign-config";
 
 type Props = {
+  content: ApplicationPageContent;
   funnelId: AiSeoFunnelId;
   qualifiedRedirect: string;
-  qualificationCallout: string;
   calLink: string;
   calNamespace?: string;
   turnstileSiteKey?: string;
 };
 
 const {
+  content,
   funnelId,
   qualifiedRedirect,
-  qualificationCallout,
   calLink,
   calNamespace,
   turnstileSiteKey,
@@ -26,18 +27,15 @@ const {
     <header class="pr-application-intro">
       <div class="pr-badge">
         <span class="pr-stars" aria-hidden="true">★★★★★</span>
-        <span class="pr-badge-copy"
-          >Rated 4.9/5 by 100+ Service Business Owners</span
-        >
+        <span class="pr-badge-copy">{content.badge}</span>
       </div>
       <h1 class="pr-h2" style="font-size: clamp(1.65rem, 4vw, 2.75rem)">
-        <span style="color: var(--pr-blue)">45 New Calls</span>{" "}in{" "}
-        <span style="color: var(--pr-blue)">90 Days</span>. Or We Work Free
-        Until You Do.
+        <span style="color: var(--pr-blue)">{content.promise}</span>{" "}in{" "}
+        <span style="color: var(--pr-blue)">{content.timeframe}</span>.{" "}
+        {content.titleSuffix}
       </h1>
       <p class="pr-sub pr-form-intro">
-        Enter your details, then answer a few quick questions to see if your
-        established service business qualifies for the guarantee.
+        {content.intro}
       </p>
     </header>
     <div class="pr-funnel-layout">
@@ -50,89 +48,34 @@ const {
         qualifiedRedirect={qualifiedRedirect}
       />
       <aside class="pr-expect">
-        <h3 class="pr-expect-title">What to expect on our call</h3>
+        <h3 class="pr-expect-title">{content.expectationHeading}</h3>
         <ul class="pr-expect-list">
-          <li class="pr-expect-item">
-            <span class="pr-expect-check" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <p>
-              <strong>No pressure, ever.</strong> We run your Google &amp; AI visibility
-              audit live on the call, and you walk away with real findings whether
-              we work together or not.
-            </p>
-          </li>
-          <li class="pr-expect-item">
-            <span class="pr-expect-check" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <p>
-              We <strong>pull up your live rankings</strong> on the call and show
-              you exactly where you stand against the businesses ranking above you
-              in Google Maps, AI Overviews, and ChatGPT.
-            </p>
-          </li>
-          <li class="pr-expect-item">
-            <span class="pr-expect-check" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <p>
-              We estimate{" "}
-              <strong>how much revenue you&apos;re losing every month</strong>{
-                " "
-              }
-              to the competitors your customers are calling first.
-            </p>
-          </li>
-          <li class="pr-expect-item">
-            <span class="pr-expect-check" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="3"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <p>
-              We map the exact 3 signals (Google Business Profile, Maps &amp; AI
-              search citations) that move you into the{" "}
-              <strong>Top 3</strong>.
-            </p>
-          </li>
+          {
+            content.expectations.map((expectation) => (
+              <li class="pr-expect-item">
+                <span class="pr-expect-check" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </span>
+                <p>
+                  {expectation.before}
+                  <strong>{expectation.emphasis}</strong>
+                  {expectation.after}
+                </p>
+              </li>
+            ))
+          }
         </ul>
         <div class="pr-expect-callout">
-          {qualificationCallout}
+          {content.callout}
         </div>
         <div class="pr-expect-proof">
           <span class="pr-stars" aria-hidden="true">
@@ -162,7 +105,11 @@ const {
               ></path>
             </svg>
           </span>
-          <span><strong>4.9/5</strong> from 100+ service business owners</span>
+          <span>
+            <strong>{content.proofRating}</strong>
+            {" "}
+            {content.proofLabel}
+          </span>
         </div>
       </aside>
     </div>

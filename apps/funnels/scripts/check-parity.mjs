@@ -43,69 +43,61 @@ const isolatedFallbackBindings = [
   "MILLION_VERIFIER_API_KEY=",
   "PULPSENSE_TRIGGER_SECRET_KEY=",
 ];
-const publicRoutes = [
+const campaignRoutes = [
   {
-    path: "/visibility-audit/law-firms/",
+    slug: "visibility-audit/law-firms",
     funnelId: "ai-seo",
-    thankYouPath: "/visibility-audit/law-firms/thank-you/",
-    markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/visibility-audit/law-firms/thank-you/",
-    markers: ["ONE LAST THING", "Review this quick briefing"],
-  },
-  {
-    path: "/visibility-audit/dental-practices/",
+    slug: "visibility-audit/dental-practices",
     funnelId: "ai-seo-dentists",
-    thankYouPath: "/visibility-audit/dental-practices/thank-you/",
-    markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/visibility-audit/dental-practices/thank-you/",
-    markers: ["ONE LAST THING", "Review this quick briefing"],
-  },
-  {
-    path: "/visibility-audit/dental-implants/",
+    slug: "visibility-audit/dental-implants",
     funnelId: "ai-seo-dental-implants",
-    thankYouPath: "/visibility-audit/dental-implants/thank-you/",
-    markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/visibility-audit/dental-implants/thank-you/",
-    markers: ["ONE LAST THING", "Review this quick briefing"],
-  },
-  {
-    path: "/visibility-audit/plastic-surgery/",
+    slug: "visibility-audit/plastic-surgery",
     funnelId: "ai-seo-plastic-surgery",
-    thankYouPath: "/visibility-audit/plastic-surgery/thank-you/",
-    markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/visibility-audit/plastic-surgery/thank-you/",
-    markers: ["ONE LAST THING", "Review this quick briefing"],
-  },
-  {
-    path: "/visibility-audit/hair-restoration/",
+    slug: "visibility-audit/hair-restoration",
     funnelId: "ai-seo-hair-restoration",
-    thankYouPath: "/visibility-audit/hair-restoration/thank-you/",
-    markers: ["45 New Calls", "Get Your Visibility Audit"],
   },
   {
-    path: "/visibility-audit/hair-restoration/thank-you/",
-    markers: ["ONE LAST THING", "Review this quick briefing"],
-  },
-  {
-    path: "/visibility-audit/med-spas/",
+    slug: "visibility-audit/med-spas",
     funnelId: "ai-seo-med-spas",
-    thankYouPath: "/visibility-audit/med-spas/thank-you/",
-    markers: ["45 New Calls", "Get Your Visibility Audit"],
-  },
-  {
-    path: "/visibility-audit/med-spas/thank-you/",
-    markers: ["ONE LAST THING", "Review this quick briefing"],
   },
 ];
-const landerHtmlByFunnelId = new Map();
+
+const publicRoutes = campaignRoutes.flatMap(({ slug, funnelId }) => {
+  const landingPath = `/${slug}/`;
+  const applicationPath = `${landingPath}apply/`;
+  const thankYouPath = `${landingPath}thank-you/`;
+  return [
+    {
+      kind: "landing",
+      path: landingPath,
+      funnelId,
+      deck: "VisibilityDeckCarousel",
+      markers: ["45 New Calls", "Get Your Visibility Audit"],
+    },
+    {
+      kind: "application",
+      path: applicationPath,
+      funnelId,
+      thankYouPath,
+      markers: ["45 New Calls", "What to expect on our call"],
+    },
+    {
+      kind: "thank-you",
+      path: thankYouPath,
+      deck: "ThankYouDeckCarousel",
+      markers: ["ONE LAST THING", "Review this quick briefing"],
+    },
+  ];
+});
+const applicationHtmlByFunnelId = new Map();
 
 async function postJson(path, body) {
   return fetch(`${origin}${path}`, {
@@ -186,7 +178,9 @@ try {
   for (const route of publicRoutes) {
     const response = await fetch(`${origin}${route.path}`);
     const html = await response.text();
-    if (route.funnelId) landerHtmlByFunnelId.set(route.funnelId, html);
+    if (route.kind === "application") {
+      applicationHtmlByFunnelId.set(route.funnelId, html);
+    }
 
     assert.equal(response.status, 200, `${route.path} should return 200`);
     assert.ok(
@@ -203,13 +197,12 @@ try {
       /<meta name="robots" content="noindex, nofollow"/,
       `${route.path} should retain noindex metadata`,
     );
-    assert.match(
-      html,
-      route.funnelId
-        ? /component-export="VisibilityDeckCarousel"/
-        : /component-export="ThankYouDeckCarousel"/,
-      `${route.path} should embed its native deck carousel`,
-    );
+    if (route.deck) {
+      assert.ok(
+        html.includes(`component-export="${route.deck}"`),
+        `${route.path} should embed its native deck carousel`,
+      );
+    }
     assert.doesNotMatch(
       html,
       /media-id="8py8vigtf1"|vidalytics/iu,
@@ -228,10 +221,12 @@ try {
         html.includes(route.funnelId),
         `${route.path} should use the ${route.funnelId} identity`,
       );
-      assert.ok(
-        html.includes(route.thankYouPath),
-        `${route.path} should submit to its own thank-you route`,
-      );
+      if (route.kind === "application") {
+        assert.ok(
+          html.includes(route.thankYouPath),
+          `${route.path} should submit to its own thank-you route`,
+        );
+      }
     }
   }
 
@@ -244,20 +239,20 @@ try {
     "/robots.txt should disallow every crawler",
   );
 
-  const landerIslands = [
+  const applicationIslands = [
     "AiSeoQualificationForm",
     "FunnelAnalytics",
     "TrackingPixels",
   ];
-  for (const [funnelId, landerHtml] of landerHtmlByFunnelId) {
-    for (const island of landerIslands) {
+  for (const [funnelId, applicationHtml] of applicationHtmlByFunnelId) {
+    for (const island of applicationIslands) {
       assert.ok(
-        landerHtml.includes(`component-export="${island}"`),
-        `${funnelId} lander should hydrate the ${island} island`,
+        applicationHtml.includes(`component-export="${island}"`),
+        `${funnelId} application should hydrate the ${island} island`,
       );
     }
     assert.ok(
-      !landerHtml.includes("2262354061181522"),
+      !applicationHtml.includes("2262354061181522"),
       `${funnelId} preview output should not include the production Pixel ID`,
     );
   }
@@ -290,7 +285,7 @@ try {
   }
 
   console.log(
-    `Parity check passed for ${publicRoutes.length} public routes, ${landerIslands.length} React island exports, ${externalOrigin ? "non-mutating preview checks" : "two API fallbacks"}, and robots.txt.`,
+    `Parity check passed for ${publicRoutes.length} public routes, ${applicationIslands.length} React island exports, ${externalOrigin ? "non-mutating preview checks" : "two API fallbacks"}, and robots.txt.`,
   );
 } finally {
   server?.kill("SIGTERM");

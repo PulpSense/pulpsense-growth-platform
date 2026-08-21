@@ -3,10 +3,15 @@ import { Image } from "astro:assets";
 import reviewBarb from "../../../../assets/ai-seo/review-barb.webp";
 import reviewConnor from "../../../../assets/ai-seo/review-connor.webp";
 import reviewGeorgia from "../../../../assets/ai-seo/review-georgia.webp";
+import type { ThankYouContent } from "../../campaign-config";
+
+type Props = { content: ThankYouContent["reviews"] };
+
+const { content } = Astro.props;
 ---
 
 <section class="pr-reviews" aria-label="Trustpilot reviews">
-  <h2 class="pr-videos-head">What Local Businesses Say About Us</h2>
+  <h2 class="pr-videos-head">{content.heading}</h2>
   <div class="pr-reviews-track" id="pr-reviews-track">
     <figure class="pr-review-card">
       <Image

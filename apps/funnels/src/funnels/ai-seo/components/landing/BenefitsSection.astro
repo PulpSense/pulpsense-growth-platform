@@ -1,38 +1,30 @@
+---
+import type { LandingContent } from "../../campaign-config";
+
+type Props = { content: LandingContent["benefits"] };
+
+const { content } = Astro.props;
+---
+
 <!-- Benefit cards -->
 <section class="pr-section">
   <div class="pr-container pr-center">
     <h2 class="pr-h2">
-      Why Regional Service Businesses Are Moving Beyond Traditional Marketing
+      {content.heading}
     </h2>
     <p class="pr-sub">
-      They aren&apos;t navigating through ten search results anymore. They ask,
-      and they call the name they&apos;re given.
+      {content.intro}
     </p>
     <div class="pr-cards">
-      <div class="pr-card2">
-        <div class="pr-card2-ic">📞</div>
-        <h3>More High-Intent Calls</h3>
-        <p>
-          Appear when people in your market are actively comparing providers and
-          ready to contact someone.
-        </p>
-      </div>
-      <div class="pr-card2">
-        <div class="pr-card2-ic">🤖</div>
-        <h3>Google + AI Visibility</h3>
-        <p>
-          Build visibility across Google Maps, organic search, AI Overviews, and
-          the sources AI assistants use to make recommendations.
-        </p>
-      </div>
-      <div class="pr-card2">
-        <div class="pr-card2-ic">🎯</div>
-        <h3>Demand You Own</h3>
-        <p>
-          These are direct inquiries to your business, not shared leads sold to
-          several competitors as with traditional agencies.
-        </p>
-      </div>
+      {
+        content.cards.map((card) => (
+          <div class="pr-card2">
+            <div class="pr-card2-ic">{card.icon}</div>
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+          </div>
+        ))
+      }
     </div>
   </div>
 </section>

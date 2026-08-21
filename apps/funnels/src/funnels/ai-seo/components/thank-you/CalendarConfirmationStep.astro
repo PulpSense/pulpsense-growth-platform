@@ -1,16 +1,24 @@
+---
+import type { ThankYouContent } from "../../campaign-config";
+
+type Props = { content: ThankYouContent["calendar"] };
+
+const { content } = Astro.props;
+---
+
 <div class="pr-step-card">
-  <div class="pr-step-label">Step 1</div>
-  <h2>Confirm your calendar invite</h2>
+  <div class="pr-step-label">{content.stepLabel}</div>
+  <h2>{content.heading}</h2>
   <p>
-    Search your inbox and spam for your Regional Visibility Audit invitation.
-    Open it and click <strong>&quot;Yes&quot;</strong> so we know the time is locked
-    into your calendar.
+    {content.beforeConfirmation}<strong>{content.confirmationLabel}</strong>{
+      content.afterConfirmation
+    }
   </p>
   <figure class="pr-inbox-guide">
     <img
       class="pr-inbox-guide-img"
-      src="/ai-seo/images/calendar-confirmation.webp"
-      alt="Google Calendar invitation email: tap Yes to confirm your discovery call"
+      src={content.imageSrc}
+      alt={content.imageAlt}
       loading="lazy"
       decoding="async"
     />

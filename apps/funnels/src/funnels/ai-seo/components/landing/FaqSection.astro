@@ -1,85 +1,24 @@
+---
+import type { LandingContent } from "../../campaign-config";
+
+type Props = { content: LandingContent["faq"] };
+
+const { content } = Astro.props;
+---
+
 <!-- FAQ -->
 <section class="pr-section pr-section-gray">
   <div class="pr-container pr-center">
-    <h2 class="pr-h2">Frequently Asked Questions</h2>
+    <h2 class="pr-h2">{content.heading}</h2>
     <div class="pr-faq">
-      <details>
-        <summary>How much time does my team need to put in?</summary><p>
-          About 30 minutes during onboarding, then about 30 minutes each month
-          to review results and align on strategy. We handle implementation
-          between calls.
-        </p>
-      </details>
-      <details>
-        <summary>How do you measure Google and AI visibility?</summary><p>
-          We benchmark your presence across Google, organic search, AI
-          Overviews, ChatGPT, and the sources those systems use for
-          recommendations.
-        </p>
-      </details>
-      <details>
-        <summary
-          >How will we determine whether the 45-call target was reached?</summary
-        ><p>
-          We agree on the baseline and reporting process during onboarding, then
-          review the call count against that baseline over the 90-day period.
-        </p>
-      </details>
-      <details>
-        <summary>What if we already have an SEO agency?</summary><p>
-          We can complement existing SEO work by focusing on AI recommendations,
-          business profiles, citations, and reputation signals.
-        </p>
-      </details>
-      <details>
-        <summary>Does this work across multiple offices or locations?</summary
-        ><p>
-          Yes. The scope is built around the services, markets, locations, and
-          competition that matter to your business.
-        </p>
-      </details>
-      <details>
-        <summary
-          >How is this different from traditional paid advertising?</summary
-        ><p>
-          Paid ads stop when the budget stops. This system builds visibility
-          across Google and AI that keeps sending people directly to your
-          business.
-        </p>
-      </details>
-      <details>
-        <summary>How quickly should we expect movement?</summary><p>
-          We establish your baseline first, then prioritize the changes most
-          likely to improve visibility. Early movement can happen within weeks,
-          but stronger results depend on your starting point, market,
-          competition, and the work required. We monitor progress and adjust
-          strategy as we go.
-        </p>
-      </details>
-      <details>
-        <summary>What happens if we do not receive 45 additional calls?</summary
-        ><p>
-          We continue working at no management fee until you receive the agreed
-          result, consistent with the guarantee.
-        </p>
-      </details>
-      <details>
-        <summary
-          >Can you work with our website, CRM, and existing marketing systems?</summary
-        ><p>
-          Yes. We review your website, CRM, and existing marketing systems
-          during onboarding, then coordinate implementation around the access
-          and information available to us.
-        </p>
-      </details>
-      <details>
-        <summary
-          >Do you work with competing businesses in the same market?</summary
-        ><p>
-          No. We value our clients and work with one business per service
-          category in each market.
-        </p>
-      </details>
+      {
+        content.items.map((item) => (
+          <details>
+            <summary>{item.question}</summary>
+            <p>{item.answer}</p>
+          </details>
+        ))
+      }
     </div>
   </div>
 </section>

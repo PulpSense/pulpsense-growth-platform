@@ -41,7 +41,7 @@ const cal = resolveCalConfig({
 ---
 
 <BaseLayout
-  title={`See If You Qualify | ${campaign.landingTitle.split(" | ")[1] ?? "PulpSense"}`}
+  title={`See If You Qualify | ${campaign.metadata.landingTitle.split(" | ")[1] ?? "PulpSense"}`}
   description="Answer a few quick questions to see if your business qualifies for a free Google and AI visibility audit."
   turnstileTarget="#pr-funnel-form"
 >
@@ -50,7 +50,7 @@ const cal = resolveCalConfig({
     apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
     host={import.meta.env.PUBLIC_POSTHOG_HOST}
     environment={deploymentEnvironment}
-    funnelId={campaign.funnelId}
+    funnelId={campaign.identity.funnelId}
     page="application"
   />
   <TrackingPixels client:interaction="idle" pixels={pixels} interactionReady />
@@ -58,9 +58,9 @@ const cal = resolveCalConfig({
   <div id="pr-funnel" class="pr-application-page">
     <main class="pr-main">
       <QualificationSection
-        funnelId={campaign.funnelId}
+        content={campaign.application}
+        funnelId={campaign.identity.funnelId}
         qualifiedRedirect={campaign.thankYouPath}
-        qualificationCallout={campaign.qualificationCallout}
         calLink={cal.calLink}
         calNamespace={cal.namespace}
         turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}

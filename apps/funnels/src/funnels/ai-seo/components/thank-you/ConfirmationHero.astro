@@ -1,15 +1,18 @@
 ---
 import { ThankYouDeckCarousel } from "./ThankYouDeckCarousel";
+import type { ThankYouContent } from "../../campaign-config";
+
+type Props = { content: ThankYouContent["confirmation"] };
+
+const { content } = Astro.props;
 ---
 
 <header class="pr-confirm-hero pr-center">
   <h1 class="pr-confirm-h1">
-    ONE LAST THING: Complete these required steps ✅
+    {content.heading}
   </h1>
   <p class="pr-confirm-sub">
-    Review this quick briefing before your Regional Visibility Audit. 45 calls
-    in 90 days. No ad spend. No shared leads. Results guaranteed, or we work
-    free until you get them.
+    {content.intro}
   </p>
   <div class="video-wrap">
     <ThankYouDeckCarousel client:visible />

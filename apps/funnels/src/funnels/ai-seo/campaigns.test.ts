@@ -10,9 +10,11 @@ import {
 describe("AI SEO campaigns", () => {
   it("gives every campaign distinct landing, application, and thank-you routes", () => {
     expect(AI_SEO_CAMPAIGNS).toHaveLength(6);
-    expect(new Set(AI_SEO_CAMPAIGNS.map(({ slug }) => slug))).toHaveLength(6);
+    expect(
+      new Set(AI_SEO_CAMPAIGNS.map(({ identity }) => identity.slug)),
+    ).toHaveLength(6);
 
-    expect(AI_SEO_CAMPAIGNS.map(({ slug }) => slug)).toEqual([
+    expect(AI_SEO_CAMPAIGNS.map(({ identity }) => identity.slug)).toEqual([
       "visibility-audit/law-firms",
       "visibility-audit/dental-practices",
       "visibility-audit/dental-implants",
@@ -22,15 +24,19 @@ describe("AI SEO campaigns", () => {
     ]);
 
     for (const campaign of AI_SEO_CAMPAIGNS) {
-      expect(campaign.landingPath).toBe(`/${campaign.slug}/`);
-      expect(campaign.qualificationPath).toBe(`/${campaign.slug}/apply/`);
-      expect(campaign.thankYouPath).toBe(`/${campaign.slug}/thank-you/`);
+      expect(campaign.landingPath).toBe(`/${campaign.identity.slug}/`);
+      expect(campaign.qualificationPath).toBe(
+        `/${campaign.identity.slug}/apply/`,
+      );
+      expect(campaign.thankYouPath).toBe(
+        `/${campaign.identity.slug}/thank-you/`,
+      );
     }
   });
 
   it("assigns a distinct internal identity to each campaign", () => {
     expect(
-      AI_SEO_CAMPAIGNS.map(({ key, funnelId }) => [key, funnelId]),
+      AI_SEO_CAMPAIGNS.map(({ identity }) => [identity.key, identity.funnelId]),
     ).toEqual([
       ["lawyers", "ai-seo"],
       ["dentists", "ai-seo-dentists"],
@@ -40,19 +46,17 @@ describe("AI SEO campaigns", () => {
       ["med-spas", "ai-seo-med-spas"],
     ]);
     expect(
-      new Set(AI_SEO_CAMPAIGNS.map(({ funnelId }) => funnelId)),
+      new Set(AI_SEO_CAMPAIGNS.map(({ identity }) => identity.funnelId)),
     ).toHaveLength(AI_SEO_CAMPAIGNS.length);
   });
 
   it("keeps browser and server Meta destinations in the campaign registry", () => {
     expect(
-      AI_SEO_CAMPAIGNS.map(
-        ({ key, browserPixelEnvKey, serverMetaDestination }) => [
-          key,
-          browserPixelEnvKey,
-          serverMetaDestination,
-        ],
-      ),
+      AI_SEO_CAMPAIGNS.map(({ identity }) => [
+        identity.key,
+        identity.browserPixelEnvKey,
+        identity.serverMetaDestination,
+      ]),
     ).toEqual([
       ["lawyers", "PUBLIC_META_PIXEL_ID_AI_SEO_L", "AI_SEO_L"],
       ["dentists", "PUBLIC_META_PIXEL_ID_AI_SEO_D", "AI_SEO_D"],
@@ -115,10 +119,10 @@ describe("AI SEO campaigns", () => {
 
   it("provides niche-specific PulpSense page metadata", () => {
     expect(
-      AI_SEO_CAMPAIGNS.map(({ key, landingTitle, thankYouTitle }) => [
-        key,
-        landingTitle,
-        thankYouTitle,
+      AI_SEO_CAMPAIGNS.map(({ identity, metadata }) => [
+        identity.key,
+        metadata.landingTitle,
+        metadata.thankYouTitle,
       ]),
     ).toEqual([
       [
@@ -154,32 +158,44 @@ describe("AI SEO campaigns", () => {
     ]);
 
     for (const campaign of AI_SEO_CAMPAIGNS) {
-      expect(campaign.landingDescription).toContain("Google and AI");
-      expect(campaign.thankYouDescription).toContain("PulpSense");
+      expect(campaign.metadata.landingDescription).toContain("Google and AI");
+      expect(campaign.metadata.thankYouDescription).toContain("PulpSense");
       expect(JSON.stringify(campaign)).not.toContain("Lead Oracle");
     }
   });
 
   it("provides a relevant nationwide service callout for every niche", () => {
-    expect(AI_SEO_CAMPAIGNS.map(({ heroCallout }) => heroCallout)).toEqual([
-      "⚖️ Proudly serving law firms nationwide",
-      "🦷 Proudly serving dental practices nationwide",
-      "🦷 Proudly serving dental implant practices nationwide",
-      "✨ Proudly serving plastic surgery practices nationwide",
-      "💇 Proudly serving hair restoration practices nationwide",
-      "💉 Proudly serving med spas nationwide",
-    ]);
+    expect(AI_SEO_CAMPAIGNS.map(({ landing }) => landing.hero.callout)).toEqual(
+      [
+        "⚖️ Proudly serving law firms nationwide",
+        "🦷 Proudly serving dental practices nationwide",
+        "🦷 Proudly serving dental implant practices nationwide",
+        "✨ Proudly serving plastic surgery practices nationwide",
+        "💇 Proudly serving hair restoration practices nationwide",
+        "💉 Proudly serving med spas nationwide",
+      ],
+    );
   });
 
   it("allows a niche to override only the qualification callout", () => {
-    expect(AI_SEO_CAMPAIGNS[0].qualificationCallout).toContain(
+    expect(AI_SEO_CAMPAIGNS[0].application.callout).toContain(
       "established businesses",
     );
-    expect(AI_SEO_CAMPAIGNS[1].qualificationCallout).toContain(
+    expect(AI_SEO_CAMPAIGNS[1].application.callout).toContain(
       "dental practices",
     );
-    expect(AI_SEO_CAMPAIGNS[2].qualificationCallout).toContain(
+    expect(AI_SEO_CAMPAIGNS[2].application.callout).toContain(
       "implant practices",
     );
+  });
+
+  it("provides complete presentation content for every route shell", () => {
+    for (const campaign of AI_SEO_CAMPAIGNS) {
+      expect(campaign.landing.hero.ctaLabel).toBe("Get Your Visibility Audit");
+      expect(campaign.landing.benefits.cards).toHaveLength(3);
+      expect(campaign.landing.faq.items).toHaveLength(10);
+      expect(campaign.application.expectations).toHaveLength(4);
+      expect(campaign.thankYou.videos.items).toHaveLength(5);
+    }
   });
 });

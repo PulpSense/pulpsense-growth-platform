@@ -1,25 +1,28 @@
+---
+import type { LandingContent } from "../../campaign-config";
+
+type Props = { content: LandingContent["guarantee"] };
+
+const { content } = Astro.props;
+---
+
 <!-- Guarantee -->
 <section class="pr-section">
   <div class="pr-container">
     <div class="pr-guarantee">
       <h2>
-        <strong>45 New Calls</strong>
-        <strong>in 90 Days</strong>. Or We Work Free Until You Do.
+        <strong>{content.promise}</strong>
+        <strong>{content.timeframe}</strong>. {content.titleSuffix}
       </h2>
       <p>
-        We build the system that gets your business recommended across Google
-        Maps, organic search, AI Overviews, and ChatGPT. If you do not receive
-        45 additional calls in 90 days, we work free until you do.
+        {content.body}
       </p>
       <div class="pr-guarantee-pills">
-        <span class="pr-guarantee-pill">✅ 45 additional calls in 90 days</span>
-        <span class="pr-guarantee-pill"
-          >✅ We continue free if we miss the target</span
-        >
-        <span class="pr-guarantee-pill">✅ No paid advertising required</span>
-        <span class="pr-guarantee-pill"
-          >✅ Baseline agreed during onboarding</span
-        >
+        {
+          content.pills.map((pill) => (
+            <span class="pr-guarantee-pill">{pill}</span>
+          ))
+        }
       </div>
     </div>
   </div>

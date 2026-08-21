@@ -1,35 +1,28 @@
+---
+import type { LandingContent } from "../../campaign-config";
+
+type Props = { content: LandingContent["marketShift"] };
+
+const { content } = Astro.props;
+---
+
 <!-- Problem + stats -->
 <section class="pr-section pr-section-gray">
   <div class="pr-container pr-center">
-    <h2 class="pr-h2">
-      Your Next Customer Is Asking Google and AI Who They Should Trust
-    </h2>
-    <p class="pr-sub">
-      They search, compare a short list, and contact the most credible provider.
-      If you&apos;re missing from that list, they call someone else.
-    </p>
+    <h2 class="pr-h2">{content.heading}</h2>
+    <p class="pr-sub">{content.intro}</p>
     <div class="pr-stats">
-      <div>
-        <div class="pr-stat-num">200M+</div>
-        <div class="pr-stat-lbl">
-          People use ChatGPT every week to decide which service company to trust
-        </div>
-      </div>
-      <div>
-        <div class="pr-stat-num">Top 3</div>
-        <div class="pr-stat-lbl">
-          The positions that receive most Google &amp; AI calls
-        </div>
-      </div>
-      <div>
-        <div class="pr-stat-num">14 Days</div>
-        <div class="pr-stat-lbl">
-          To start climbing in Google &amp; AI search
-        </div>
-      </div>
+      {
+        content.stats.map((stat) => (
+          <div>
+            <div class="pr-stat-num">{stat.value}</div>
+            <div class="pr-stat-lbl">{stat.label}</div>
+          </div>
+        ))
+      }
     </div>
     <p class="pr-note" style="margin-top: 1.5rem">
-      Establish authority early before AI recommendations get more competitive.
+      {content.note}
     </p>
   </div>
 </section>
