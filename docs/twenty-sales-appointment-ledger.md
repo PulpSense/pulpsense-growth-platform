@@ -2,6 +2,10 @@
 
 Twenty must expose the following custom objects before the lifecycle processor or Meta Ads daily brief is deployed. API names are part of the automation contract.
 
+The standard Opportunity object must also expose the nullable boolean `isTest`
+field owned by the Twenty extensions repository. Explicit internal canaries set
+it to `true`; production pipeline reporting must exclude those Opportunities.
+
 ## `salesAppointment` / `salesAppointments`
 
 | API field                  | Type                       | Constraint                                       |

@@ -14,6 +14,7 @@ import {
   formatBrevoFailureAlert,
   formatTwentyFailureAlert,
   normalizeMetaName,
+  parseInternalCanaryConfiguration,
   processFunnelEvent,
   shouldAdvanceOpportunityToCallBooked,
 } from "./process-funnel-event.js";
@@ -296,6 +297,136 @@ describe("process-funnel-event", () => {
       }
     },
   );
+
+  it("requires an exact submission and attendee for internal canary processing", () => {
+    expect(
+      parseInternalCanaryConfiguration({
+        PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS:
+          "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+        GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL:
+          "SANTI@PULPSENSE.COM",
+      }),
+    ).toEqual({
+      submissionIds: new Set([
+        "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+      ]),
+      attendeeEmail: "santi@pulpsense.com",
+    });
+    expect(
+      parseInternalCanaryConfiguration({
+        PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS:
+          "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
+      }),
+    ).toBeUndefined();
+  });
+
+  it("creates canonical internal canary state without emitting commercial measurement", async () => {
+    const canary = {
+      submissionIds: new Set([bookingEvent.submissionId]),
+      attendeeEmail: "santi@pulpsense.com",
+    };
+    const internalContact = {
+      ...event,
+      payload: { ...event.payload, email: canary.attendeeEmail },
+      environment: "production",
+    } as ContactSubmittedEvent;
+    const internalApplication = {
+      ...qualifiedApplicationEvent,
+      payload: {
+        ...qualifiedApplicationEvent.payload,
+        email: canary.attendeeEmail,
+      },
+      environment: "production",
+    } as ApplicationSubmittedEvent;
+    const internalBooking = {
+      ...bookingEvent,
+      payload: { ...bookingEvent.payload, email: canary.attendeeEmail },
+      environment: "production",
+    } as BookingCompletedEvent;
+    const upsertTwentyPerson = vi
+      .fn()
+      .mockResolvedValue({ personId: "person_canary" });
+    const recordTwentyApplication = vi.fn().mockResolvedValue({
+      activityId: internalApplication.submissionId,
+      opportunityId: "opportunity_canary",
+    });
+    const recordTwentyBooking = vi.fn().mockResolvedValue({
+      salesAppointmentId: "appointment_canary",
+      opportunityId: "opportunity_canary",
+    });
+    const sendMetaLead = vi.fn();
+    const sendMetaApplication = vi.fn();
+    const sendMetaSchedule = vi.fn();
+    const postSlackLead = vi.fn();
+    const postSlackBooking = vi.fn();
+    const capturePostHogLifecycle = vi.fn();
+    const capturePostHogPersonLink = vi.fn();
+    const scheduleMeetingReminders = vi.fn().mockResolvedValue({});
+    const schedulePrecallSequence = vi.fn().mockResolvedValue({});
+    const publishBrevoLifecycle = vi.fn().mockResolvedValue({});
+    const dependencies = {
+      internalCanary: canary,
+      upsertTwentyPerson,
+      recordTwentyApplication,
+      recordTwentyBooking,
+      sendMetaLead,
+      sendMetaApplication,
+      sendMetaSchedule,
+      postSlackLead,
+      postSlackBooking,
+      capturePostHogLifecycle,
+      capturePostHogPersonLink,
+      scheduleMeetingReminders,
+      schedulePrecallSequence,
+      publishBrevoLifecycle,
+      log: { info: vi.fn() },
+    };
+
+    await expect(processFunnelEvent(internalContact, dependencies)).resolves.toMatchObject({
+      ok: true,
+      internalCanary: true,
+      personId: "person_canary",
+    });
+    await expect(
+      processFunnelEvent(internalApplication, dependencies),
+    ).resolves.toMatchObject({
+      ok: true,
+      internalCanary: true,
+      opportunityId: "opportunity_canary",
+    });
+    await expect(processFunnelEvent(internalBooking, dependencies)).resolves.toMatchObject({
+      ok: true,
+      internalCanary: true,
+      salesAppointmentId: "appointment_canary",
+    });
+
+    expect(recordTwentyApplication).toHaveBeenCalledWith(
+      internalApplication,
+      "person_canary",
+      { internalCanary: true },
+    );
+    expect(recordTwentyBooking).toHaveBeenCalledWith(
+      internalBooking,
+      "person_canary",
+      { internalCanary: true },
+    );
+    expect(scheduleMeetingReminders).toHaveBeenCalledWith(internalBooking, {
+      channel: "gmail",
+    });
+    expect(schedulePrecallSequence).toHaveBeenCalledWith(internalBooking);
+    expect(publishBrevoLifecycle).toHaveBeenCalledWith(internalBooking);
+    for (const destination of [
+      sendMetaLead,
+      sendMetaApplication,
+      sendMetaSchedule,
+      postSlackLead,
+      postSlackBooking,
+      capturePostHogLifecycle,
+      capturePostHogPersonLink,
+    ]) {
+      expect(destination).not.toHaveBeenCalled();
+    }
+  });
 
   it("links to the canonical Trigger dashboard run page", () => {
     expect(triggerRunUrl("prod", "run_123")).toBe(
@@ -642,8 +773,8 @@ describe("process-funnel-event", () => {
     const first = await processFunnelEvent(event, dependencies);
     const replay = await processFunnelEvent(event, dependencies);
 
-    expect(first.personId).toBe("person_replay_safe");
-    expect(replay.personId).toBe("person_replay_safe");
+    expect(first).toMatchObject({ personId: "person_replay_safe" });
+    expect(replay).toMatchObject({ personId: "person_replay_safe" });
     expect(personCreates).toBe(1);
     expect(personWrites[0]).toMatchObject(expectedTwentyAttribution);
     expect(personWrites[1]).toMatchObject(expectedTwentyLastTouchAttribution);
@@ -1228,6 +1359,80 @@ describe("process-funnel-event", () => {
     ).toMatchObject({ id: "400953f0-8304-58d1-a36e-afe0e2282e9d" });
   });
 
+  it("creates a dedicated test Opportunity for an allowlisted internal canary", async () => {
+    const internalApplication = {
+      ...qualifiedApplicationEvent,
+      companyDomain: "pulpsense.com",
+      payload: {
+        ...qualifiedApplicationEvent.payload,
+        email: "santi@pulpsense.com",
+      },
+      environment: "production",
+    } as ApplicationSubmittedEvent;
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            people: { edges: [{ node: { id: "person_canary" } }] },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ data: { updatePerson: { id: "person_canary" } } }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ data: { companies: { edges: [] } } }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: { createNote: {} } }))
+      .mockResolvedValueOnce(Response.json({ data: { createNoteTarget: {} } }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: { createOpportunity: { id: "opportunity_canary" } },
+        }),
+      );
+    const dependencies = createProcessorDependencies(
+      {
+        TWENTY_API_KEY: "twenty-sandbox-key",
+        TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_QUALIFIED_STAGE_VALUE: "QUALIFIED_AWAITING_BOOKING",
+        META_PIXEL_ID: "pixel_123",
+        META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
+        META_GRAPH_API_VERSION: "v26.0",
+        SLACK_FAILURE_WEBHOOK_URL: "https://hooks.slack.test/twenty-failures",
+        PULPSENSE_AUTOMATION_ENVIRONMENT: "production",
+        PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS:
+          internalApplication.submissionId,
+        GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL:
+          internalApplication.payload.email,
+      },
+      { fetch: fetchMock, log: { info: vi.fn() } },
+    );
+
+    await expect(
+      processFunnelEvent(internalApplication, dependencies),
+    ).resolves.toMatchObject({
+      internalCanary: true,
+      opportunityId: "opportunity_canary",
+    });
+
+    const opportunityCreate = fetchMock.mock.calls.find(([input]) =>
+      String(input).endsWith("/rest/opportunities"),
+    );
+    expect(opportunityCreate).toBeDefined();
+    expect(JSON.parse(String(opportunityCreate?.[1]?.body))).toMatchObject({
+      id: "400953f0-8304-58d1-a36e-afe0e2282e9d",
+      isTest: true,
+      pointOfContactId: "person_canary",
+      originatingLeadJourneyId: internalApplication.submissionId,
+    });
+    expect(
+      fetchMock.mock.calls.some(([input]) =>
+        String(input).includes("graph.facebook.com"),
+      ),
+    ).toBe(false);
+  });
+
   it("updates the existing open Opportunity for a repeat qualified application", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
@@ -1505,7 +1710,7 @@ describe("process-funnel-event", () => {
 
     const result = await processFunnelEvent(event, dependencies);
 
-    expect(result.personId).toBe("person_concurrent");
+    expect(result).toMatchObject({ personId: "person_concurrent" });
     expect(fetchMock).toHaveBeenCalledTimes(5);
     expect(fetchMock.mock.calls[1]?.[1]?.method).toBe("POST");
     expect(fetchMock.mock.calls[3]?.[1]?.method).toBe("PATCH");
@@ -1549,7 +1754,7 @@ describe("process-funnel-event", () => {
 
     const result = await processFunnelEvent(event, dependencies);
 
-    expect(result.personId).toBe("person_deleted");
+    expect(result).toMatchObject({ personId: "person_deleted" });
     expect(fetchMock).toHaveBeenCalledTimes(7);
     expect(fetchMock.mock.calls[1]?.[1]?.method).toBe("POST");
     expect(fetchMock.mock.calls[5]?.[1]?.method).toBe("PATCH");

@@ -100,6 +100,10 @@ export type SalesAppointmentLedgerAdapter = {
 export type SalesAppointmentProjectionContext = {
   personId?: string;
   opportunityId?: string;
+  classification?: Pick<
+    NewSalesAppointment,
+    "classification" | "isTest" | "isCommercial"
+  >;
   /** Read-only selection; the projector persists these references before callers mutate them. */
   resolveCreationContext?: () => Promise<{
     personId: string;
@@ -192,12 +196,14 @@ const projectCompleted = async (
       status: "SCHEDULED",
       funnelId: event.funnelId,
       environment: event.environment,
-      classification:
-        event.environment === "production"
-          ? "PRODUCTION_COMMERCIAL"
-          : "NON_PRODUCTION",
-      isTest: event.environment !== "production",
-      isCommercial: true,
+      ...(context.classification ?? {
+        classification:
+          event.environment === "production"
+            ? "PRODUCTION_COMMERCIAL"
+            : "NON_PRODUCTION",
+        isTest: event.environment !== "production",
+        isCommercial: true,
+      }),
       synchronizationStatus: "MAPPING_PENDING",
       automationGeneration: 1,
       ...(event.prospectId ? { prospectId: event.prospectId } : {}),

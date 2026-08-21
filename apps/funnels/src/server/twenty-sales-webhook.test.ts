@@ -88,6 +88,34 @@ describe("POST /api/webhooks/twenty", () => {
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
       "https://trigger.test/api/v1/tasks/process-twenty-sales-outcome/trigger",
     );
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)),
+    ).toMatchObject({
+      payload: { isTest: false },
+    });
+  });
+
+  it("preserves the test marker for downstream measurement suppression", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json({ id: "run-test" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const value = payload();
+
+    const response = await handleTwentySalesWebhook(
+      await requestFor({
+        ...value,
+        record: { ...value.record, isTest: true },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(202);
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)),
+    ).toMatchObject({
+      payload: { isTest: true },
+    });
   });
 
   it("reuses the Trigger idempotency key for a duplicate signed delivery", async () => {
