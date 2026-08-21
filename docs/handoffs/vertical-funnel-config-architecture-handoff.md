@@ -13,10 +13,6 @@ Approve a **shared funnel shell + typed campaign configuration** architecture fo
 
 This handoff is about project structure and module seams only. It does **not** approve final copy, proof claims, guarantees, qualification thresholds, or implementation.
 
-### Relationship to the earlier copy handoff
-
-`ai-seo-regional-service-business-copy-handoff.md` reflects the previous shared-copy direction, including preserving the universal 45-call promise. This document supersedes that handoff **only for project structure**. The newer six-vertical research recommends revisiting the universal promise, but copy and claim approval remain a separate commercial decision.
-
 ## Why this change
 
 The current routes are technically separate, but most of the sales argument is hard-coded in shared Astro modules. `campaigns.ts` currently changes route identity, metadata, pixel destination, a hero callout, and one qualification callout. The hero, benefits, comparison, proof, process, offer, guarantee, FAQ, reviews, form, thank-you copy, and pre-call emails remain substantially universal.
@@ -142,9 +138,10 @@ type AiSeoCampaignConfig = {
     riskReversal: RiskReversalContent;
     faq: FaqContent;
     reviews: ReviewsContent;
-    qualification: QualificationContent;
     stickyCta: CtaContent;
   };
+
+  application: ApplicationPageContent;
 
   qualification: {
     profileId: QualificationProfileId;
@@ -162,6 +159,11 @@ Names can change during implementation. The important design constraints are:
 - Configuration must not contain HTML strings, JSX, CSS classes, callbacks, or arbitrary executable logic.
 - Every campaign must satisfy the same top-level interface.
 
+This is the target interface after Phase 2. Phase 1A introduces only identity,
+metadata, presentation content, and the existing derived paths. The
+`qualification` behavioral selection is added when the profile registry exists
+in Phase 2; do not add an unused profile field to the Phase 1A interface.
+
 ### 2. Individual vertical files
 
 Each vertical file exports one complete immutable campaign definition:
@@ -175,24 +177,27 @@ export const lawFirmsCampaign = defineAiSeoCampaign({
     browserPixelEnvKey: "PUBLIC_META_PIXEL_ID_AI_SEO_L",
     serverMetaDestination: "AI_SEO_L",
   },
-  metadata: { /* ... */ },
+  metadata: {
+    /* ... */
+  },
   measurement: {
     economicUnit: "signed_matter",
-    leakStages: [
-      "visibility",
-      "inquiry",
-      "intake",
-      "consultation",
-      "signed",
-    ],
+    leakStages: ["visibility", "inquiry", "intake", "consultation", "signed"],
     primaryExperimentId: "law-firms-demand-leak-v1",
   },
-  landing: { /* ... */ },
+  landing: {
+    /* ... */
+  },
+  application: {
+    /* ... */
+  },
   qualification: {
     profileId: "law-firms-v1",
     version: "2026-08-21",
   },
-  thankYou: { /* ... */ },
+  thankYou: {
+    /* ... */
+  },
 });
 ```
 
@@ -233,14 +238,19 @@ Use one invariant validator during tests/build to catch configuration drift:
 - No empty hero/CTA content
 - Proof cards require provenance and an applicability label
 - Experiment IDs are present and unique where required
-- Qualification profile exists in the flow registry
+- Qualification profile exists in the flow registry once Phase 2 introduces it
 - No forbidden/retired claims such as the unsupported universal call guarantee
 
 This is a deep module: routes learn one lookup interface while validation and campaign assembly remain internal.
 
 ## Shared rendering flow
 
-The route remains a single shared shell:
+The existing route topology remains unchanged: one shared landing shell, one
+shared application shell at `/apply/`, and one shared thank-you shell at
+`/thank-you/`. Campaign configuration changes what those shells render; it does
+not move the form onto the landing page or remove a route.
+
+The landing route remains a shared shell:
 
 ```astro
 ---
@@ -258,15 +268,25 @@ const { campaign } = Astro.props;
 <RiskReversalSection content={campaign.landing.riskReversal} />
 <FaqSection content={campaign.landing.faq} />
 <ReviewsSection content={campaign.landing.reviews} />
+<StickyCta
+  content={campaign.landing.stickyCta}
+  ctaPath={campaign.qualificationPath}
+/>
+```
+
+The application route remains a separate shared shell:
+
+```astro
 <QualificationSection
-  content={campaign.landing.qualification}
-  profileId={campaign.qualification.profileId}
+  content={campaign.application}
   funnelId={campaign.identity.funnelId}
   qualifiedRedirect={campaign.thankYouPath}
   {...runtimeProps}
 />
-<StickyCta content={campaign.landing.stickyCta} />
 ```
+
+Phase 2 adds `profileId={campaign.qualification.profileId}` to the application
+shell when the profile registry and versioned contracts are implemented.
 
 The exact prop names can change. The desired seam is one typed content object per shared section—not dozens of unrelated string props and not direct imports of campaign files inside section modules.
 
@@ -285,7 +305,9 @@ If that happens, select from a closed typed variant:
 ```ts
 calculator: {
   variant: "matter-leak";
-  inputs: [/* typed copy and ranges */];
+  inputs: [
+    /* typed copy and ranges */
+  ];
 }
 ```
 
@@ -338,9 +360,9 @@ Do not collect patient health details, legal matter details, names of patients/c
 
 Recommended migration:
 
-1. Preserve schema version 1 parsing for already-enqueued and replayed events.
-2. Add a version 2 application schema with a discriminated union keyed by `funnelId`.
-3. Give every answer payload a `profileVersion`.
+1. Preserve the complete schema-version-1 event union for already-enqueued and replayed events.
+2. Add an application-submitted event with top-level `schemaVersion: 2` and a discriminated union keyed by `funnelId`.
+3. Put `profileVersion` inside every v2 `payload.application` object.
 4. Keep contact and booking lifecycle schemas backward compatible.
 5. Update Trigger.dev and CRM adapters to accept v1 and v2 during the migration window.
 6. Remove v1 production emission only after deployed consumers accept v2.
@@ -351,19 +373,37 @@ Illustrative shape:
 type VerticalApplication =
   | {
       funnelId: "ai-seo";
-      application: LawFirmAnswersV1;
+      schemaVersion: 2;
+      payload: {
+        application: LawFirmAnswersV2 & {
+          profileVersion: "law-firms-v1";
+        };
+      };
     }
   | {
       funnelId: "ai-seo-dentists";
-      application: DentalPracticeAnswersV1;
+      schemaVersion: 2;
+      payload: {
+        application: DentalPracticeAnswersV2 & {
+          profileVersion: "dental-practices-v1";
+        };
+      };
     }
   | {
       funnelId: "ai-seo-dental-implants";
-      application: DentalImplantAnswersV1;
+      schemaVersion: 2;
+      payload: {
+        application: DentalImplantAnswersV2 & {
+          profileVersion: "dental-implants-v1";
+        };
+      };
     };
 ```
 
-Do not silently change the existing v1 payload under the same schema version.
+The exported application-event parser should explicitly accept the legacy v1
+shape or the new v2 shape. Do not silently change the existing v1 payload under
+the same schema version, and do not reuse `profileVersion` as the event schema
+discriminator.
 
 ## Automation and pre-call copy
 
@@ -430,18 +470,35 @@ Whether approval metadata belongs in source code or a future CMS can be revisite
 
 ## Proposed implementation phases
 
-### Phase 1 — Presentation configuration only
+### Phase 1A — Behavior-preserving presentation extraction
 
 Lowest-risk structural change.
 
 1. Add `campaign-config/types.ts` and six vertical files.
 2. Move existing campaign identity/metadata into those files without changing behavior.
-3. Convert shared Astro sections to typed `content` props.
-4. Move current hard-coded copy into the six configs, then replace it with approved vertical copy.
+3. Convert the landing, application, and thank-you Astro sections to typed `content` props.
+4. Move the current hard-coded copy into all six configs exactly as it exists today.
 5. Add configuration invariant tests and per-route rendering tests.
 6. Preserve the existing form payload and automation behavior.
 
-**Deployment risk:** Low to medium. Mostly static rendering and copy.
+This phase must produce no intentional copy, claim, qualification, analytics,
+contract, or automation behavior change. Its purpose is to establish and verify
+the configuration seam.
+
+**Deployment risk:** Low to medium. Static rendering and structural movement only.
+
+### Phase 1B — Approved vertical presentation rollout
+
+1. Obtain commercial approval for each vertical's promise, proof, guarantee,
+   objections, qualification-page copy, and CTA language.
+2. Replace only approved presentation fields in the per-vertical configs.
+3. Use semantic route tests to prevent cross-vertical content leakage.
+4. Keep qualification answers, contracts, and automation behavior unchanged.
+
+Phase 1B may ship vertical-by-vertical. Research findings are inputs to approval;
+they are not themselves approval to publish a claim.
+
+**Deployment risk:** Medium. Customer-facing copy and claims change.
 
 ### Phase 2 — Vertical qualification
 
@@ -472,7 +529,7 @@ Separating these phases allows the team to improve message match without couplin
 - Keys, slugs, funnel IDs, pixel keys, and server destinations are unique.
 - Every campaign resolves from its generated route.
 - Every campaign has complete required section content.
-- Qualification profile IDs resolve.
+- Qualification profile IDs resolve once Phase 2 introduces them.
 - Proof approval/applicability rules pass.
 - Retired claims fail validation.
 
@@ -506,20 +563,23 @@ pnpm build
 
 Run focused unit/integration tests for campaign registry, section rendering, qualification flows, contracts, funnel server handling, and automations before the full gates.
 
-## Files expected to change in Phase 1
+## Files expected to change in Phase 1A
 
 ```text
 apps/funnels/src/pages/[...campaign]/index.astro
+apps/funnels/src/pages/[...campaign]/apply/index.astro
 apps/funnels/src/pages/[...campaign]/thank-you/index.astro
 apps/funnels/src/funnels/ai-seo/campaigns.ts
 apps/funnels/src/funnels/ai-seo/campaign-config/**
+apps/funnels/src/funnels/ai-seo/components/application/*.astro
 apps/funnels/src/funnels/ai-seo/components/landing/*.astro
 apps/funnels/src/funnels/ai-seo/components/thank-you/*.astro
-apps/funnels/src/funnels/ai-seo/components/AiSeoQualificationForm.tsx
 apps/funnels/src/funnels/ai-seo/campaigns.test.ts
 ```
 
-`AiSeoQualificationForm.tsx` should only receive the profile ID during Phase 1 if qualification behavior remains unchanged. The vertical flow and contract work belong in Phase 2.
+`AiSeoQualificationForm.tsx` does not change in Phase 1A. It receives a profile
+ID only when Phase 2 adds the profile registry, vertical flows, versioned
+contracts, and their tests.
 
 ## Explicit non-goals
 
@@ -529,7 +589,7 @@ apps/funnels/src/funnels/ai-seo/campaigns.test.ts
 - A new frontend framework or runtime
 - Moving Trigger.dev responsibilities into the funnel app
 - Sending private legal/health data to analytics
-- Reworking booking, Turnstile, attribution, or email verification in Phase 1
+- Reworking booking, Turnstile, attribution, or email verification in Phase 1A
 - Implementing unapproved copy or guarantees
 - Creating a shared content package before there is a second real presentation consumer
 
@@ -563,12 +623,14 @@ Please approve or comment on these decisions:
 - [ ] Use a profile registry for vertical qualification rather than a generic form builder.
 - [ ] Version the application-event contract instead of mutating v1.
 - [ ] Keep automation-owned email copy inside `apps/automations`.
-- [ ] Deliver presentation configuration before qualification/contracts and downstream measurement.
+- [ ] Deliver behavior-preserving presentation extraction before approved vertical copy, qualification/contracts, and downstream measurement.
 - [ ] Enforce campaign completeness and forbidden-claim rules in tests.
 
 ## Recommended approval outcome
 
-Approve **Phase 1** as proposed. It creates the correct seam with limited operational risk and lets the team deploy vertical message-match improvements quickly.
+Approve **Phase 1A** as proposed. It creates the correct seam with limited
+operational risk. Treat **Phase 1B** as a separate customer-facing rollout gated
+on commercial approval of each vertical's copy and claims.
 
 Require a separate technical review for **Phase 2** because it changes cross-app contracts and qualification behavior. Require an instrumentation/data review for **Phase 3** because attribution to collected revenue depends on systems of record and privacy controls.
 
