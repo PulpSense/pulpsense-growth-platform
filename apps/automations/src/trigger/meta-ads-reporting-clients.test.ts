@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
-  countTwentyBookingNotes,
+  countTwentySalesAppointments,
   fetchMetaInsights,
   postSlackAdsBrief,
 } from "./meta-ads-reporting-clients.js";
@@ -190,17 +190,34 @@ describe("fetchMetaInsights", () => {
   });
 });
 
-describe("countTwentyBookingNotes", () => {
-  it("queries booking-note titles, filters createdAt bounds, and follows pagination", async () => {
+describe("countTwentySalesAppointments", () => {
+  it("counts distinct eligible Sales Appointments by initial confirmation time and follows pagination", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
         Response.json({
           data: {
-            notes: {
+            salesAppointments: {
               edges: [
                 {
-                  node: { id: "1", createdAt: "2026-08-09T12:00:00.000Z" },
+                  node: {
+                    id: "1",
+                    initialConfirmedAt: "2026-08-09T12:00:00.000Z",
+                    environment: "production",
+                    classification: "PRODUCTION_COMMERCIAL",
+                    isCommercial: true,
+                    isTest: false,
+                  },
+                },
+                {
+                  node: {
+                    id: "preview",
+                    initialConfirmedAt: "2026-08-10T12:00:00.000Z",
+                    environment: "preview",
+                    classification: "NON_PRODUCTION",
+                    isCommercial: true,
+                    isTest: true,
+                  },
                 },
               ],
               pageInfo: { hasNextPage: true, endCursor: "next" },
@@ -211,15 +228,36 @@ describe("countTwentyBookingNotes", () => {
       .mockResolvedValueOnce(
         Response.json({
           data: {
-            notes: {
+            salesAppointments: {
               edges: [
                 {
-                  node: { id: "2", createdAt: "2026-08-14T12:00:00.000Z" },
+                  node: {
+                    id: "1",
+                    initialConfirmedAt: "2026-08-09T12:00:00.000Z",
+                    environment: "production",
+                    classification: "PRODUCTION_COMMERCIAL",
+                    isCommercial: true,
+                    isTest: false,
+                  },
+                },
+                {
+                  node: {
+                    id: "2",
+                    initialConfirmedAt: "2026-08-14T12:00:00.000Z",
+                    environment: "production",
+                    classification: "PRODUCTION_COMMERCIAL",
+                    isCommercial: true,
+                    isTest: false,
+                  },
                 },
                 {
                   node: {
                     id: "outside",
-                    createdAt: "2026-08-15T12:00:00.000Z",
+                    initialConfirmedAt: "2026-08-15T12:00:00.000Z",
+                    environment: "production",
+                    classification: "PRODUCTION_COMMERCIAL",
+                    isCommercial: true,
+                    isTest: false,
                   },
                 },
               ],
@@ -229,7 +267,7 @@ describe("countTwentyBookingNotes", () => {
         }),
       );
     await expect(
-      countTwentyBookingNotes(
+      countTwentySalesAppointments(
         { origin: "https://api.twenty.com/", apiKey: "twenty-key" },
         {
           since: "2026-08-08T04:00:00.000Z",
@@ -239,13 +277,48 @@ describe("countTwentyBookingNotes", () => {
       ),
     ).resolves.toBe(2);
     const firstBody = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body));
-    expect(firstBody.variables).toEqual({
-      titlePrefix: "Booking ",
-    });
-    expect(firstBody.query).toContain("edges { node { id createdAt } }");
-    expect(firstBody.query).not.toContain("createdAt: { gte:");
+    expect(firstBody.variables).toEqual({});
+    expect(firstBody.query).toContain("salesAppointments(");
+    expect(firstBody.query).toContain("classification");
+    expect(firstBody.query).toContain("environment");
+    expect(firstBody.query).not.toContain("notes(");
     const secondBody = JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body));
     expect(secondBody.variables.after).toBe("next");
+  });
+
+  it("excludes preview appointments even when their other eligibility flags are inconsistent", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({
+        data: {
+          salesAppointments: {
+            edges: [
+              {
+                node: {
+                  id: "preview-misclassified",
+                  initialConfirmedAt: "2026-08-10T12:00:00.000Z",
+                  environment: "preview",
+                  classification: "PRODUCTION_COMMERCIAL",
+                  isCommercial: true,
+                  isTest: false,
+                },
+              },
+            ],
+            pageInfo: { hasNextPage: false },
+          },
+        },
+      }),
+    );
+
+    await expect(
+      countTwentySalesAppointments(
+        { origin: "https://api.twenty.com", apiKey: "key" },
+        {
+          since: "2026-08-08T04:00:00.000Z",
+          untilExclusive: "2026-08-15T04:00:00.000Z",
+        },
+        fetcher,
+      ),
+    ).resolves.toBe(0);
   });
 
   it("rejects GraphQL errors", async () => {
@@ -255,19 +328,19 @@ describe("countTwentyBookingNotes", () => {
         Response.json({ errors: [{ message: "invalid filter" }] }),
       );
     await expect(
-      countTwentyBookingNotes(
+      countTwentySalesAppointments(
         { origin: "https://api.twenty.com", apiKey: "key" },
         { since: "a", untilExclusive: "b" },
         fetcher,
       ),
-    ).rejects.toThrow("Twenty booking audit failed");
+    ).rejects.toThrow("Twenty Sales Appointment audit failed");
   });
 
   it("rejects incomplete Twenty pagination instead of returning a partial count", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       Response.json({
         data: {
-          notes: {
+          salesAppointments: {
             edges: [],
             pageInfo: { hasNextPage: true },
           },
@@ -275,7 +348,7 @@ describe("countTwentyBookingNotes", () => {
       }),
     );
     await expect(
-      countTwentyBookingNotes(
+      countTwentySalesAppointments(
         {
           origin: "https://api.twenty.com",
           apiKey: ["twenty", "key"].join("-"),
@@ -286,15 +359,19 @@ describe("countTwentyBookingNotes", () => {
         },
         fetcher,
       ),
-    ).rejects.toThrow("Twenty booking audit pagination omitted cursor");
+    ).rejects.toThrow(
+      "Twenty Sales Appointment audit pagination omitted cursor",
+    );
   });
 
   it("requires Twenty pageInfo and rejects repeated cursors", async () => {
     const missingPageInfo = vi
       .fn<typeof fetch>()
-      .mockResolvedValue(Response.json({ data: { notes: { edges: [] } } }));
+      .mockResolvedValue(
+        Response.json({ data: { salesAppointments: { edges: [] } } }),
+      );
     await expect(
-      countTwentyBookingNotes(
+      countTwentySalesAppointments(
         {
           origin: "https://api.twenty.com",
           apiKey: ["twenty", "key"].join("-"),
@@ -305,12 +382,12 @@ describe("countTwentyBookingNotes", () => {
         },
         missingPageInfo,
       ),
-    ).rejects.toThrow("Twenty booking audit omitted pageInfo");
+    ).rejects.toThrow("Twenty Sales Appointment audit omitted pageInfo");
 
     const repeated = vi.fn<typeof fetch>().mockImplementation(async () =>
       Response.json({
         data: {
-          notes: {
+          salesAppointments: {
             edges: [],
             pageInfo: { hasNextPage: true, endCursor: "same-cursor" },
           },
@@ -318,7 +395,7 @@ describe("countTwentyBookingNotes", () => {
       }),
     );
     await expect(
-      countTwentyBookingNotes(
+      countTwentySalesAppointments(
         {
           origin: "https://api.twenty.com",
           apiKey: ["twenty", "key"].join("-"),
@@ -329,7 +406,9 @@ describe("countTwentyBookingNotes", () => {
         },
         repeated,
       ),
-    ).rejects.toThrow("Twenty booking audit pagination did not advance");
+    ).rejects.toThrow(
+      "Twenty Sales Appointment audit pagination did not advance",
+    );
   });
 
   it("accepts 1,000 Twenty pages and rejects before fetching page 1,001", async () => {
@@ -339,7 +418,7 @@ describe("countTwentyBookingNotes", () => {
         page += 1;
         return Response.json({
           data: {
-            notes: {
+            salesAppointments: {
               edges: [],
               pageInfo: {
                 hasNextPage: page < totalPages,
@@ -360,15 +439,15 @@ describe("countTwentyBookingNotes", () => {
     };
     const accepted = makeFetcher(1_000);
     await expect(
-      countTwentyBookingNotes(config, dateWindow, accepted),
+      countTwentySalesAppointments(config, dateWindow, accepted),
     ).resolves.toBe(0);
     expect(accepted).toHaveBeenCalledTimes(1_000);
 
     const rejected = makeFetcher(1_001);
     await expect(
-      countTwentyBookingNotes(config, dateWindow, rejected),
+      countTwentySalesAppointments(config, dateWindow, rejected),
     ).rejects.toThrow(
-      "Twenty booking audit pagination exceeded safe page limit",
+      "Twenty Sales Appointment audit pagination exceeded safe page limit",
     );
     expect(rejected).toHaveBeenCalledTimes(1_000);
   });

@@ -3,7 +3,7 @@ import { logger, schedules } from "@trigger.dev/sdk";
 import { parseMetaInsight } from "./meta-ads-daily-brief.js";
 import { runMetaAdsDailyBrief } from "./meta-ads-daily-report.js";
 import {
-  countTwentyBookingNotes,
+  countTwentySalesAppointments,
   fetchMetaInsights,
   postSlackAdsBrief,
   type MetaReportingConfig,
@@ -87,7 +87,7 @@ export const metaAdsDailyBriefTask = schedules.task({
           parseMetaInsight,
         ),
       countVerifiedBookings: (window) =>
-        countTwentyBookingNotes(config.twenty, window, fetch),
+        countTwentySalesAppointments(config.twenty, window, fetch),
       postSlack: (text, reportDate, blocks) =>
         postSlackAdsBrief(config.slack, text, reportDate, fetch, blocks),
     });
