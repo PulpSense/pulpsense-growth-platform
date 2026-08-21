@@ -64,8 +64,16 @@ const pixels = createBrowserTrackingConfig({
       <ConfirmationHero content={campaign.thankYou.confirmation} />
       <div class="pr-container pr-container-md">
         <CalendarConfirmationStep content={campaign.thankYou.calendar} />
-        <TestimonialVideosSection content={campaign.thankYou.videos} />
-        <ReviewsSection content={campaign.thankYou.reviews} />
+        {
+          campaign.thankYou.videos && (
+            <TestimonialVideosSection content={campaign.thankYou.videos} />
+          )
+        }
+        {
+          campaign.thankYou.reviews && (
+            <ReviewsSection content={campaign.thankYou.reviews} />
+          )
+        }
       </div>
     </main>
 

@@ -40,18 +40,25 @@ export type RichLineContent = {
   after?: string;
 };
 
+export type GuaranteeTermsContent = {
+  heading: string;
+  items: readonly string[];
+};
+
 export type LandingContent = {
   hero: {
     callout: string;
-    badge: string;
+    badge: string | null;
     promise: string;
     timeframePrefix: string;
     timeframe: string;
+    titleSeparator: string;
     titleSuffix: string;
     lead: string;
     ctaLabel: string;
     note: RichLineContent;
-    logoLabel: string;
+    showDeck: boolean;
+    logoLabel: string | null;
   };
   benefits: {
     heading: string;
@@ -90,7 +97,7 @@ export type LandingContent = {
     }[];
     rating: string;
     ratingLabel: string;
-  };
+  } | null;
   process: {
     heading: string;
     intro: string;
@@ -105,10 +112,13 @@ export type LandingContent = {
   };
   guarantee: {
     promise: string;
+    promiseSeparator: string;
     timeframe: string;
+    titleSeparator: string;
     titleSuffix: string;
     body: string;
     pills: readonly string[];
+    terms: GuaranteeTermsContent | null;
   };
   faq: {
     heading: string;
@@ -116,27 +126,32 @@ export type LandingContent = {
   };
   reviews: {
     heading: string;
-  };
+  } | null;
   stickyCta: { label: string };
 };
 
 export type ApplicationPageContent = {
-  badge: string;
+  pageTitle: string | null;
+  pageDescription: string | null;
+  badge: string | null;
   promise: string;
   timeframe: string;
+  titleSeparator: string;
   titleSuffix: string;
   intro: string;
   expectationHeading: string;
   expectations: readonly RichLineContent[];
   callout: string;
-  proofRating: string;
-  proofLabel: string;
+  guaranteeTerms: GuaranteeTermsContent | null;
+  proofRating: string | null;
+  proofLabel: string | null;
 };
 
 export type ThankYouContent = {
   confirmation: {
     heading: string;
     intro: string;
+    showDeck: boolean;
   };
   calendar: {
     stepLabel: string;
@@ -150,10 +165,10 @@ export type ThankYouContent = {
   videos: {
     heading: string;
     items: readonly { title: string; mediaId: string; label: string }[];
-  };
+  } | null;
   reviews: {
     heading: string;
-  };
+  } | null;
 };
 
 type DeepReadonly<Value> = Value extends object

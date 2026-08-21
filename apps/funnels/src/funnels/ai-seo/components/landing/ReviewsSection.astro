@@ -5,7 +5,7 @@ import reviewConnor from "../../../../assets/ai-seo/review-connor.webp";
 import reviewGeorgia from "../../../../assets/ai-seo/review-georgia.webp";
 import type { LandingContent } from "../../campaign-config";
 
-type Props = { content: LandingContent["reviews"] };
+type Props = { content: NonNullable<LandingContent["reviews"]> };
 
 const { content } = Astro.props;
 ---

@@ -113,6 +113,22 @@ export const aiSeoApplicationAnswersSchema = z
   })
   .strict();
 
+export const lawFirmGrowthConstraintAnswersSchema = z
+  .object({
+    growthConstraint: z.enum([
+      "Not enough new-client inquiries",
+      "Too many low-quality inquiries",
+      "Intake isn't converting enough inquiries",
+      "We can't tell which marketing produces signed matters",
+    ]),
+  })
+  .strict();
+
+export const lawFirmApplicationAnswersSchema = z.union([
+  lawFirmGrowthConstraintAnswersSchema,
+  aiSeoApplicationAnswersSchema,
+]);
+
 const applicationSubmittedEventBase = z
   .object({
     schemaVersion: z.literal(FUNNEL_EVENT_SCHEMA_VERSION),
@@ -171,7 +187,7 @@ export const applicationSubmittedEventSchema = z.discriminatedUnion(
     applicationSubmittedEventBase.extend({
       funnelId: z.literal("ai-seo"),
       payload: verifiedContactPayloadSchema.extend({
-        application: aiSeoApplicationAnswersSchema,
+        application: lawFirmApplicationAnswersSchema,
       }),
       qualificationStatus: z.enum(["qualified", "unqualified"]),
     }),

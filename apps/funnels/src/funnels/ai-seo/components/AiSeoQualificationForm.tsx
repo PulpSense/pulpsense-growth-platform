@@ -46,6 +46,7 @@ declare global {
 type Step =
   | "owner"
   | "marketing-budget"
+  | "growth-constraint"
   | "contact"
   | "calendar"
   | "not-qualified";
@@ -100,15 +101,31 @@ const qualificationQuestions = {
     "What monthly marketing budget have you set aside to generate more leads?",
 } as const;
 
+const lawFirmQualificationQuestions = {
+  growth_constraint:
+    "What is currently stopping your firm from signing more matters?",
+} as const;
+
+const lawFirmGrowthConstraints = [
+  "Not enough new-client inquiries",
+  "Too many low-quality inquiries",
+  "Intake isn't converting enough inquiries",
+  "We can't tell which marketing produces signed matters",
+] as const;
+
+type LawFirmGrowthConstraint = (typeof lawFirmGrowthConstraints)[number];
+
 const recordQualificationSnapshot = (
   status: "qualified" | "unqualified",
   answers: Record<string, unknown>,
+  questions: Readonly<Record<string, string>> = qualificationQuestions,
+  formVersion = "2026-08-20",
 ) =>
   trackFunnelEvent("funnel_qualification_submitted", {
     qualification_status: status,
     qualification_form_id: "ai-seo",
-    qualification_form_version: "2026-08-20",
-    qualification_questions: qualificationQuestions,
+    qualification_form_version: formVersion,
+    qualification_questions: questions,
     qualification_answers: answers,
   });
 
@@ -119,6 +136,7 @@ export function AiSeoQualificationForm({
   turnstileSiteKey: configuredTurnstileSiteKey,
   qualifiedRedirect,
 }: Props) {
+  const isLawFirmFunnel = funnelId === "ai-seo";
   const turnstileSiteKey =
     configuredTurnstileSiteKey ??
     (import.meta.env.DEV ? TURNSTILE_ALWAYS_PASS_SITE_KEY : undefined);
@@ -373,18 +391,14 @@ export function AiSeoQualificationForm({
     }
   };
 
-  const chooseMarketingBudget = async (
-    budget: MarketingBudget | "under-500-per-month",
+  const submitQualifiedApplication = async (
+    data: Readonly<Record<string, string>>,
+    snapshot: {
+      answers: Record<string, unknown>;
+      questions?: Readonly<Record<string, string>>;
+      formVersion?: string;
+    },
   ) => {
-    if (budget === "under-500-per-month") {
-      trackFunnelEvent("qualification_outcome", { status: "unqualified" });
-      recordQualificationSnapshot("unqualified", {
-        business_owner: "yes",
-        marketing_budget: "Under $500/month or not set yet",
-      });
-      setStep("not-qualified");
-      return;
-    }
     trackFunnelEvent("qualification_outcome", { status: "qualified" });
     setSubmitting(true);
     setSubmissionError("");
@@ -396,10 +410,7 @@ export function AiSeoQualificationForm({
 
     try {
       const applicationResult = await submitApplication({
-        data: {
-          businessOwner: "yes",
-          marketingBudget: budget,
-        },
+        data,
         sourceUrl,
         ...(referrer ? { referrer } : {}),
         ...(fbp ? { fbp } : {}),
@@ -417,10 +428,12 @@ export function AiSeoQualificationForm({
       }
 
       trackFunnelEvent("funnel_step_completed", { step: "qualification" });
-      recordQualificationSnapshot("qualified", {
-        business_owner: "yes",
-        marketing_budget: budget,
-      });
+      recordQualificationSnapshot(
+        "qualified",
+        snapshot.answers,
+        snapshot.questions,
+        snapshot.formVersion,
+      );
       trackMetaEvent(
         "SubmitApplication",
         { qualification_status: "qualified" },
@@ -440,6 +453,42 @@ export function AiSeoQualificationForm({
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const chooseMarketingBudget = async (
+    budget: MarketingBudget | "under-500-per-month",
+  ) => {
+    if (budget === "under-500-per-month") {
+      trackFunnelEvent("qualification_outcome", { status: "unqualified" });
+      recordQualificationSnapshot("unqualified", {
+        business_owner: "yes",
+        marketing_budget: "Under $500/month or not set yet",
+      });
+      setStep("not-qualified");
+      return;
+    }
+    await submitQualifiedApplication(
+      { businessOwner: "yes", marketingBudget: budget },
+      {
+        answers: {
+          business_owner: "yes",
+          marketing_budget: budget,
+        },
+      },
+    );
+  };
+
+  const chooseGrowthConstraint = async (
+    growthConstraint: LawFirmGrowthConstraint,
+  ) => {
+    await submitQualifiedApplication(
+      { growthConstraint },
+      {
+        answers: { growth_constraint: growthConstraint },
+        questions: lawFirmQualificationQuestions,
+        formVersion: "2026-08-22",
+      },
+    );
   };
 
   const validateContact = () => {
@@ -524,7 +573,7 @@ export function AiSeoQualificationForm({
         },
         { eventId: contactResult.eventId, serverHandled: true },
       );
-      setStep("owner");
+      setStep(isLawFirmFunnel ? "growth-constraint" : "owner");
       trackFunnelEvent("funnel_step_viewed", { step: "qualification" });
     } catch {
       setSubmissionError(
@@ -538,11 +587,14 @@ export function AiSeoQualificationForm({
   const currentStep =
     step === "contact"
       ? 1
-      : step === "owner"
+      : step === "owner" || step === "growth-constraint"
         ? 2
         : step === "marketing-budget"
           ? 3
-          : 4;
+          : isLawFirmFunnel
+            ? 3
+            : 4;
+  const totalSteps = isLawFirmFunnel ? 3 : 4;
 
   const handleBookingSuccessful = useCallback(() => {
     trackFunnelEvent("booking_interaction", {
@@ -554,11 +606,13 @@ export function AiSeoQualificationForm({
   return (
     <div className="pr-tf">
       <div className="pr-tf-progress" aria-live="polite">
-        <span>Step {currentStep} of 4</span>
+        <span>
+          Step {currentStep} of {totalSteps}
+        </span>
         <div className="pr-tf-progress-bar">
           <div
             className="pr-tf-progress-fill"
-            style={{ width: `${(currentStep / 4) * 100}%` }}
+            style={{ width: `${(currentStep / totalSteps) * 100}%` }}
           />
         </div>
       </div>
@@ -584,6 +638,41 @@ export function AiSeoQualificationForm({
                 No
               </button>
             </div>
+            <div className="pr-tf-actions">
+              <button
+                type="button"
+                className="pr-tf-back"
+                onClick={() => setStep("contact")}
+              >
+                ← Back
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === "growth-constraint" && (
+          <div className="pr-tf-step is-active">
+            <p className="pr-tf-q">
+              What is currently stopping your firm from signing more matters?
+            </p>
+            <div className="pr-tf-choices">
+              {lawFirmGrowthConstraints.map((growthConstraint) => (
+                <button
+                  key={growthConstraint}
+                  type="button"
+                  className="pr-tf-choice"
+                  disabled={submitting}
+                  onClick={() => void chooseGrowthConstraint(growthConstraint)}
+                >
+                  {growthConstraint}
+                </button>
+              ))}
+            </div>
+            {submissionError && (
+              <p className="pr-tf-error" role="alert">
+                {submissionError}
+              </p>
+            )}
             <div className="pr-tf-actions">
               <button
                 type="button"
@@ -858,7 +947,11 @@ export function AiSeoQualificationForm({
               <button
                 type="button"
                 className="pr-tf-back"
-                onClick={() => setStep("marketing-budget")}
+                onClick={() =>
+                  setStep(
+                    isLawFirmFunnel ? "growth-constraint" : "marketing-budget",
+                  )
+                }
               >
                 ← Back
               </button>

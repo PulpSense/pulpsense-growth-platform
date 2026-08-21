@@ -14,7 +14,11 @@ const { content } = Astro.props;
   <p class="pr-confirm-sub">
     {content.intro}
   </p>
-  <div class="video-wrap">
-    <ThankYouDeckCarousel client:visible />
-  </div>
+  {
+    content.showDeck && (
+      <div class="video-wrap">
+        <ThankYouDeckCarousel client:visible />
+      </div>
+    )
+  }
 </header>

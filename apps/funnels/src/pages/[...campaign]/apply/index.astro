@@ -41,8 +41,10 @@ const cal = resolveCalConfig({
 ---
 
 <BaseLayout
-  title={`See If You Qualify | ${campaign.metadata.landingTitle.split(" | ")[1] ?? "PulpSense"}`}
-  description="Answer a few quick questions to see if your business qualifies for a free Google and AI visibility audit."
+  title={campaign.application.pageTitle ??
+    `See If You Qualify | ${campaign.metadata.landingTitle.split(" | ")[1] ?? "PulpSense"}`}
+  description={campaign.application.pageDescription ??
+    "Answer a few quick questions to see if your business qualifies for a free Google and AI visibility audit."}
   turnstileTarget="#pr-funnel-form"
 >
   <FunnelAnalytics

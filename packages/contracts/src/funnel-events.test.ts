@@ -39,7 +39,7 @@ describe("funnel event contract", () => {
     );
   });
 
-  it("normalizes an omitted AI SEO last name and accepts its owner qualification", () => {
+  it("normalizes an omitted law-firm last name and accepts its growth constraint", () => {
     const aiSeoContact = contactSubmittedEventSchema.parse({
       ...acceptedEvent,
       funnelId: "ai-seo",
@@ -64,9 +64,7 @@ describe("funnel event contract", () => {
         payload: {
           ...aiSeoContact.payload,
           application: {
-            businessOwner: "yes",
-            marketingBudget: "$1,500+/month",
-            investmentIntent: "Yes, if the numbers make sense",
+            growthConstraint: "Not enough new-client inquiries",
           },
         },
         qualificationStatus: "qualified",
@@ -76,9 +74,7 @@ describe("funnel event contract", () => {
       funnelId: "ai-seo",
       payload: {
         application: {
-          businessOwner: "yes",
-          marketingBudget: "$1,500+/month",
-          investmentIntent: "Yes, if the numbers make sense",
+          growthConstraint: "Not enough new-client inquiries",
         },
       },
     });
@@ -139,9 +135,7 @@ describe("funnel event contract", () => {
       payload: {
         ...acceptedEvent.payload,
         application: {
-          businessOwner: "yes",
-          marketingBudget: "$1,500+/month",
-          investmentIntent: "Yes, if the numbers make sense",
+          growthConstraint: "Not enough new-client inquiries",
         },
       },
       qualificationStatus: "qualified",
