@@ -9,6 +9,39 @@ const client = (fetcher: typeof fetch) => ({
 });
 
 describe("Twenty Sales Appointment adapter", () => {
+  it("paginates the canonical records used by the five-minute selector", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            salesAppointments: {
+              edges: [{ node: { id: "appointment-1" } }],
+              pageInfo: { hasNextPage: true, endCursor: "cursor-1" },
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            salesAppointments: {
+              edges: [{ node: { id: "appointment-2" } }],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          },
+        }),
+      );
+    await expect(
+      createTwentySalesAppointmentAdapter(
+        client(fetcher),
+      ).listSalesAppointments(),
+    ).resolves.toEqual([{ id: "appointment-1" }, { id: "appointment-2" }]);
+    expect(
+      JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body)).variables,
+    ).toEqual({ after: "cursor-1" });
+  });
+
   it("resolves a Cal UID through the generated custom-object GraphQL API", async () => {
     const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
       Response.json({

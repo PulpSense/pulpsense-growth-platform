@@ -15,9 +15,17 @@ export type SalesAppointmentStatus =
   | "COMPLETED"
   | "CANCELLED";
 export type BookingVersionState = "ACTIVE" | "SUPERSEDED" | "CANCELLED";
+export type SalesAppointmentSynchronizationStatus =
+  | "MAPPING_PENDING"
+  | "OBSERVED_DIFFERENCE"
+  | "SYNCHRONIZED"
+  | "RECONCILIATION_PENDING"
+  | "RECONCILING"
+  | "NEEDS_ATTENTION";
 
 export type SalesAppointmentRecord = {
   id: string;
+  name?: string;
   rootCalBookingUid: string;
   currentCalBookingUid: string;
   currentBookingVersionId?: string;
@@ -26,7 +34,23 @@ export type SalesAppointmentRecord = {
   scheduledStartAt: string;
   scheduledEndAt: string;
   status: SalesAppointmentStatus;
+  funnelId?: BookingLifecycleEvent["funnelId"];
+  environment?: BookingLifecycleEvent["environment"];
+  prospectId?: string;
+  personId?: string;
   opportunityId: string;
+  googleCalendarId?: string | null;
+  googleEventId?: string | null;
+  googleICalUid?: string | null;
+  googleEventEtag?: string | null;
+  googleEventSequence?: number | null;
+  googleObservedStartAt?: string | null;
+  synchronizationStatus?: SalesAppointmentSynchronizationStatus;
+  acceptedGoogleRevision?: string | null;
+  intendedStartAt?: string | null;
+  automationGeneration?: number;
+  reconciliationAlertRevision?: string | null;
+  reconciliationAlertThreadTs?: string | null;
 };
 
 export type BookingVersionRecord = {
@@ -107,7 +131,7 @@ const deterministicUuid = async (identity: string) => {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 };
 
-const appointmentIdFor = (rootUid: string) =>
+export const salesAppointmentIdFor = (rootUid: string) =>
   deterministicUuid(`sales-appointment:${rootUid}`);
 const bookingVersionIdFor = (uid: string) =>
   deterministicUuid(`booking-version:${uid}`);
@@ -133,7 +157,7 @@ const projectCompleted = async (
   const uid = event.payload.booking.uid;
   const existingVersion = await adapter.findBookingVersion(uid);
   const appointmentId =
-    existingVersion?.salesAppointmentId ?? (await appointmentIdFor(uid));
+    existingVersion?.salesAppointmentId ?? (await salesAppointmentIdFor(uid));
   const bookingVersionId =
     existingVersion?.id ?? (await bookingVersionIdFor(uid));
   let appointment = await adapter.getSalesAppointment(appointmentId);
@@ -174,6 +198,8 @@ const projectCompleted = async (
           : "NON_PRODUCTION",
       isTest: event.environment !== "production",
       isCommercial: true,
+      synchronizationStatus: "MAPPING_PENDING",
+      automationGeneration: 1,
       ...(event.prospectId ? { prospectId: event.prospectId } : {}),
       personId: creationContext.personId,
       opportunityId: creationContext.opportunityId,
@@ -288,11 +314,20 @@ const projectRescheduled = async (
     });
   }
   if (appointment.currentBookingVersionId !== replacementId) {
+    const alreadyAcceptedGoogleMove =
+      appointment.intendedStartAt === booking.startTime;
     await adapter.updateSalesAppointment(appointment.id, {
       currentBookingVersionId: replacementId,
       currentCalBookingUid: booking.uid,
       scheduledStartAt: booking.startTime,
       scheduledEndAt: booking.endTime,
+      synchronizationStatus: appointment.googleEventId
+        ? "SYNCHRONIZED"
+        : "MAPPING_PENDING",
+      intendedStartAt: null,
+      automationGeneration: alreadyAcceptedGoogleMove
+        ? (appointment.automationGeneration ?? 1)
+        : (appointment.automationGeneration ?? 1) + 1,
       ...(appointment.status === "NO_SHOW" &&
       Date.parse(booking.startTime) > Date.parse(event.occurredAt)
         ? { status: "SCHEDULED" }

@@ -10,6 +10,11 @@ export type TwentySalesAppointmentClient = {
   apiKey: string;
 };
 
+export type TwentySalesAppointmentCalendarAdapter =
+  SalesAppointmentLedgerAdapter & {
+    listSalesAppointments(): Promise<SalesAppointmentRecord[]>;
+  };
+
 const headers = (apiKey: string) => ({
   Authorization: `Bearer ${apiKey}`,
   "Content-Type": "application/json",
@@ -47,7 +52,57 @@ const request = async (
 
 export const createTwentySalesAppointmentAdapter = (
   client: TwentySalesAppointmentClient,
-): SalesAppointmentLedgerAdapter => ({
+): TwentySalesAppointmentCalendarAdapter => ({
+  async listSalesAppointments() {
+    const appointments: SalesAppointmentRecord[] = [];
+    let after: string | undefined;
+    do {
+      const result = await request(client, "/graphql", {
+        method: "POST",
+        body: JSON.stringify({
+          query: `query ListSalesAppointments($after: String) {
+            salesAppointments(first: 100, after: $after) {
+              edges { node {
+                id name rootCalBookingUid currentCalBookingUid
+                currentBookingVersionId originatingLeadJourneyId
+                initialConfirmedAt scheduledStartAt scheduledEndAt status
+                funnelId environment prospectId personId opportunityId
+                googleCalendarId googleEventId googleICalUid googleEventEtag
+                googleEventSequence googleObservedStartAt synchronizationStatus
+                acceptedGoogleRevision intendedStartAt automationGeneration
+                reconciliationAlertRevision reconciliationAlertThreadTs
+              } }
+              pageInfo { hasNextPage endCursor }
+            }
+          }`,
+          variables: { after },
+        }),
+      });
+      const page = result as {
+        data?: {
+          salesAppointments?: {
+            edges?: Array<{ node?: SalesAppointmentRecord }>;
+            pageInfo?: { hasNextPage?: boolean; endCursor?: string };
+          };
+        };
+        errors?: unknown[];
+      };
+      if (page.errors?.length) {
+        throw new Error("Twenty Sales Appointment list failed");
+      }
+      appointments.push(
+        ...(page.data?.salesAppointments?.edges?.flatMap(({ node }) =>
+          node ? [node] : [],
+        ) ?? []),
+      );
+      const pageInfo = page.data?.salesAppointments?.pageInfo;
+      after = pageInfo?.hasNextPage ? pageInfo.endCursor : undefined;
+      if (pageInfo?.hasNextPage && !after) {
+        throw new Error("Twenty Sales Appointment pagination omitted cursor");
+      }
+    } while (after);
+    return appointments;
+  },
   async findBookingVersion(calBookingUid) {
     const result = await request(client, "/graphql", {
       method: "POST",

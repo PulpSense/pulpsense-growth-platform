@@ -6,6 +6,11 @@ import { idempotencyKeys, logger, retry, schemaTask } from "@trigger.dev/sdk";
 import { z } from "zod";
 
 import { triggerRunUrl } from "./trigger-dashboard.js";
+import {
+  salesAppointmentAutomationGuardShape,
+  type SalesAppointmentAutomationGuard,
+  verifySalesAppointmentAutomationGuard,
+} from "./sales-appointment-automation-guard.js";
 
 export const reminderThresholdSchema = z.enum([
   "24h",
@@ -29,6 +34,7 @@ export const meetingReminderPayloadSchema = z
     phone: z.string().trim().min(7).max(40).optional(),
     channel: reminderChannelSchema.default("gmail"),
     bookingUid: z.string().trim().min(1).max(200),
+    ...salesAppointmentAutomationGuardShape,
     expectedStartTime: z.string().datetime({ offset: true }),
     threshold: reminderThresholdSchema,
     expiresAt: z.string().datetime({ offset: true }),
@@ -101,6 +107,7 @@ export const scheduleMeetingReminders = async (
   now = new Date(),
   createIdempotencyKey: (key: string) => Promise<string> = (key) =>
     idempotencyKeys.create(key),
+  guard?: SalesAppointmentAutomationGuard,
 ) => {
   const startMs = new Date(event.payload.booking.startTime).getTime();
   const scheduled: ScheduledReminder[] = [];
@@ -114,6 +121,7 @@ export const scheduleMeetingReminders = async (
       firstName: event.payload.firstName,
       channel: definition.channel,
       bookingUid: event.payload.booking.uid,
+      ...(guard ?? {}),
       expectedStartTime: event.payload.booking.startTime,
       threshold: definition.threshold,
       expiresAt: new Date(startMs - definition.expiresBeforeMs).toISOString(),
@@ -475,8 +483,20 @@ export const deliverMeetingReminder = async (
   if (payload.channel === "sms" && !payload.personId) {
     throw new Error("Twenty Person ID is required for an SMS reminder");
   }
-  const smsPersonId = payload.channel === "sms" ? payload.personId : undefined;
   const attempt = runtime.attempt ?? (async (operation) => operation());
+  if (
+    !(await attempt(() =>
+      verifySalesAppointmentAutomationGuard(
+        payload,
+        environment,
+        runtime.fetch,
+        "reminder",
+      ),
+    ))
+  ) {
+    return { skipped: "sales_appointment_guard_failed" as const };
+  }
+  const smsPersonId = payload.channel === "sms" ? payload.personId : undefined;
   const booking = await attempt(() =>
     fetchCurrentBooking(
       payload.bookingUid,

@@ -23,6 +23,18 @@ Twenty must expose the following custom objects before the lifecycle processor o
 | `person`                   | relation to Person         | required                                         |
 | `opportunity`              | relation to Opportunity    | required                                         |
 | `currentBookingVersion`    | relation to BookingVersion | required after initial projection                |
+| `googleCalendarId`         | text                       | optional; designated direct calendar mapping     |
+| `googleEventId`            | text                       | optional; Google event `id`, never `iCalUID`      |
+| `googleICalUid`            | text                       | optional; corroborating lineage only              |
+| `googleEventEtag`          | text                       | optional; last observed revision                  |
+| `googleEventSequence`      | number                     | optional; last observed sequence                  |
+| `googleObservedStartAt`    | date-time                  | optional; last observed Google start              |
+| `synchronizationStatus`    | select                     | `MAPPING_PENDING`, `OBSERVED_DIFFERENCE`, `SYNCHRONIZED`, `RECONCILIATION_PENDING`, `RECONCILING`, `NEEDS_ATTENTION` |
+| `acceptedGoogleRevision`   | text                       | optional; accepted id/etag/sequence/start tuple   |
+| `intendedStartAt`          | date-time                  | optional; Google-authoritative pending start      |
+| `automationGeneration`     | number                     | required; starts at 1 and increases before stale work is suppressed |
+| `reconciliationAlertRevision` | text                    | optional; deduplicates Slack alerts               |
+| `reconciliationAlertThreadTs` | text                    | optional; Slack recovery thread                   |
 
 `rootCalBookingUid` and `initialConfirmedAt` are immutable. Reporting counts distinct records classified as production-commercial by `initialConfirmedAt`; status changes never remove the original conversion.
 
@@ -41,6 +53,12 @@ Twenty must expose the following custom objects before the lifecycle processor o
 | `replacementBookingVersion` | self relation                 | optional                            |
 
 The automation writes relation IDs using Twenty's generated `<relationName>Id` fields. Custom-object permissions must allow the Trigger.dev API key to read and write both objects; the reporting key needs read-only access to Sales Appointments.
+
+The Calendar reconciliation fields are technical state and should be hidden
+from normal Twenty views. They deliberately extend this canonical object rather
+than creating an integration database. Existing rows must be initialized with
+`synchronizationStatus = MAPPING_PENDING` and `automationGeneration = 1` before
+observe mode is enabled.
 
 ## Historical backfill
 
