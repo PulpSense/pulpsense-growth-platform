@@ -434,8 +434,16 @@ export const publishBrevoLifecycle = async (
   const existingTimestamp =
     typeof existingAt === "string" ? Date.parse(existingAt) : Number.NaN;
   const incomingTimestamp = Date.parse(event.occurredAt);
+  const wouldRegressToUnbooked =
+    projection.state === "qualified_unbooked" &&
+    stateRank(existingState) > stateRank(projection.state);
+  const equallyTimedRegression =
+    Number.isFinite(existingTimestamp) &&
+    existingTimestamp === incomingTimestamp &&
+    stateRank(existingState) > stateRank(projection.state);
   if (
-    stateRank(existingState) > stateRank(projection.state) ||
+    wouldRegressToUnbooked ||
+    equallyTimedRegression ||
     (Number.isFinite(existingTimestamp) &&
       existingTimestamp > incomingTimestamp) ||
     (projection.state === "qualified_unbooked" &&
