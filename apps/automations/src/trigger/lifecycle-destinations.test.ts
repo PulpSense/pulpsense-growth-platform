@@ -322,4 +322,59 @@ describe("Brevo lifecycle delivery", () => {
     ).resolves.toEqual({ skipped: "stale_or_already_active" });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+
+  it("activates a later booking after an earlier booking was cancelled", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({
+          attributes: {
+            PULPSENSE_LIFECYCLE_STATE: "cancelled",
+            PULPSENSE_LIFECYCLE_AT: "2026-08-10T09:00:00.000Z",
+            PULPSENSE_CAL_UID: "cal_uid_cancelled",
+          },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await expect(
+      publishBrevoLifecycle(
+        bookingEvent,
+        { apiKey: "brevo-test", adsListId: 7 },
+        fetcher,
+      ),
+    ).resolves.toEqual({
+      published: true,
+      eventName: "pulpsense_booking_created",
+    });
+    const contactBody = JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body));
+    expect(contactBody.attributes).toMatchObject({
+      PULPSENSE_LIFECYCLE_STATE: "booked",
+      PULPSENSE_CAL_UID: bookingEvent.payload.booking.uid,
+      PULPSENSE_PRECALL_SEQUENCE_ID:
+        "precall:cal_uid_123:2026-08-12T14:00:00.000Z:precall-v1",
+    });
+  });
+
+  it("does not revive a cancellation with an older booking event", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
+      Response.json({
+        attributes: {
+          PULPSENSE_LIFECYCLE_STATE: "cancelled",
+          PULPSENSE_LIFECYCLE_AT: "2026-08-10T11:00:00.000Z",
+          PULPSENSE_CAL_UID: bookingEvent.payload.booking.uid,
+        },
+      }),
+    );
+
+    await expect(
+      publishBrevoLifecycle(
+        bookingEvent,
+        { apiKey: "brevo-test", adsListId: 7 },
+        fetcher,
+      ),
+    ).resolves.toEqual({ skipped: "stale_or_already_active" });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
 });
