@@ -1,0 +1,71 @@
+---
+import { FunnelAnalytics, TrackingPixels } from "@/components/ui";
+import {
+  getAiSeoCampaignStaticPaths,
+  resolveAiSeoBrowserPixelId,
+  type AiSeoCampaign,
+} from "@/funnels/ai-seo/campaigns";
+import QualificationSection from "@/funnels/ai-seo/components/application/QualificationSection.astro";
+import DisclosureFooter from "@/funnels/ai-seo/components/DisclosureFooter.astro";
+import "@/funnels/ai-seo/styles/funnel.css";
+import "@/funnels/ai-seo/styles/application.css";
+import {
+  createBrowserTrackingConfig,
+  parseDeploymentEnvironment,
+  resolveCalConfig,
+} from "@/lib/funnel/runtime-config";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+export function getStaticPaths() {
+  return getAiSeoCampaignStaticPaths();
+}
+
+type Props = { campaign: AiSeoCampaign };
+
+const { campaign } = Astro.props;
+const deploymentEnvironment = parseDeploymentEnvironment(
+  import.meta.env.PUBLIC_PULPSENSE_ENVIRONMENT,
+);
+const metaPixelId = resolveAiSeoBrowserPixelId(campaign, import.meta.env);
+const pixels = createBrowserTrackingConfig({
+  environment: deploymentEnvironment,
+  metaPixelId,
+  allowPreview: import.meta.env.PUBLIC_ENABLE_META_PIXEL_IN_PREVIEW === "true",
+});
+const cal = resolveCalConfig({
+  environment: deploymentEnvironment,
+  calLink: import.meta.env.PUBLIC_CAL_LINK,
+  calNamespace: import.meta.env.PUBLIC_CAL_NAMESPACE,
+  localFallback: "santileoni/funnel",
+});
+---
+
+<BaseLayout
+  title={`See If You Qualify | ${campaign.landingTitle.split(" | ")[1] ?? "PulpSense"}`}
+  description="Answer a few quick questions to see if your business qualifies for a free Google and AI visibility audit."
+  turnstileTarget="#pr-funnel-form"
+>
+  <FunnelAnalytics
+    client:load
+    apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
+    host={import.meta.env.PUBLIC_POSTHOG_HOST}
+    environment={deploymentEnvironment}
+    funnelId={campaign.funnelId}
+    page="application"
+  />
+  <TrackingPixels client:interaction="idle" pixels={pixels} interactionReady />
+
+  <div id="pr-funnel" class="pr-application-page">
+    <main class="pr-main">
+      <QualificationSection
+        funnelId={campaign.funnelId}
+        qualifiedRedirect={campaign.thankYouPath}
+        qualificationCallout={campaign.qualificationCallout}
+        calLink={cal.calLink}
+        calNamespace={cal.namespace}
+        turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}
+      />
+    </main>
+    <DisclosureFooter />
+  </div>
+</BaseLayout>

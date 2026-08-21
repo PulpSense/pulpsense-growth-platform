@@ -1,11 +1,11 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const funnelPath = "/visibility-audit/law-firms/";
+const applicationPath = "/visibility-audit/law-firms/apply/";
 const metaRequestPattern =
   /(?:connect\.facebook\.net|facebook\.com\/tr|graph\.facebook\.com)/u;
 
 const enterContactDetails = async (page: Page) => {
-  await page.goto(funnelPath);
+  await page.goto(applicationPath);
   await page.locator("#pr-funnel-form").scrollIntoViewIfNeeded();
   const submit = page.getByRole("button", { name: "Continue" });
   await expect(submit).toBeEnabled({ timeout: 30_000 });

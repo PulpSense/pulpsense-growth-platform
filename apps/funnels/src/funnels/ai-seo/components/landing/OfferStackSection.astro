@@ -1,3 +1,9 @@
+---
+type Props = { ctaPath: string };
+
+const { ctaPath } = Astro.props;
+---
+
 <!-- Offer stack -->
 <section class="pr-section">
   <div class="pr-container pr-center">
@@ -33,7 +39,9 @@
           where you rank, and how many calls came in
         </li>
       </ul>
-      <a class="pr-btn" href="#pr-funnel-form">Get Your Visibility Audit</a>
+      <a class="pr-btn" href={ctaPath} data-funnel-cta="final"
+        >Get Your Visibility Audit</a
+      >
       <p class="pr-note">
         We work with one business per service category in each market.
       </p>

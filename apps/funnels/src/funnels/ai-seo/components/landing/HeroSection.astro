@@ -4,9 +4,10 @@ import { VisibilityDeckCarousel } from "./VisibilityDeckCarousel";
 
 type Props = {
   heroCallout: string;
+  ctaPath: string;
 };
 
-const { heroCallout } = Astro.props;
+const { heroCallout, ctaPath } = Astro.props;
 ---
 
 <div class="pr-bar">{heroCallout}</div>
@@ -55,7 +56,9 @@ const { heroCallout } = Astro.props;
     shared leads. Results guaranteed, or we work free until you get them.
   </p>
   <VisibilityDeckCarousel client:idle />
-  <a class="pr-btn" href="#pr-funnel-form">Get Your Visibility Audit</a>
+  <a class="pr-btn" href={ctaPath} data-funnel-cta="hero"
+    >Get Your Visibility Audit</a
+  >
   <p class="pr-note">
     <u>Over 200M people</u> use ChatGPT every week to decide which service businesses
     to trust.

@@ -8,7 +8,7 @@ import {
 } from "./campaigns";
 
 describe("AI SEO campaigns", () => {
-  it("gives every campaign a distinct descriptive route and thank-you route", () => {
+  it("gives every campaign distinct landing, application, and thank-you routes", () => {
     expect(AI_SEO_CAMPAIGNS).toHaveLength(6);
     expect(new Set(AI_SEO_CAMPAIGNS.map(({ slug }) => slug))).toHaveLength(6);
 
@@ -23,6 +23,7 @@ describe("AI SEO campaigns", () => {
 
     for (const campaign of AI_SEO_CAMPAIGNS) {
       expect(campaign.landingPath).toBe(`/${campaign.slug}/`);
+      expect(campaign.qualificationPath).toBe(`/${campaign.slug}/apply/`);
       expect(campaign.thankYouPath).toBe(`/${campaign.slug}/thank-you/`);
     }
   });
