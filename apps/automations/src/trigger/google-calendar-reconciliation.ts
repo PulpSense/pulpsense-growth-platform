@@ -547,6 +547,7 @@ export const pollGoogleCalendarSalesAppointmentsTask = schedules.task({
   cron: "*/5 * * * *",
   retry: { maxAttempts: 3 },
   run: async ({ timestamp }) => {
+    const pollTimestamp = timestamp ?? new Date();
     const mode = parseReconciliationMode(
       process.env.GOOGLE_CALENDAR_RECONCILIATION_MODE,
     );
@@ -561,10 +562,10 @@ export const pollGoogleCalendarSalesAppointmentsTask = schedules.task({
     });
     const selected = selectEligibleSalesAppointments(
       await twenty.listSalesAppointments(),
-      timestamp,
+      pollTimestamp,
     );
     for (const appointment of selected) {
-      const bucket = Math.floor(timestamp.getTime() / (5 * 60_000));
+      const bucket = Math.floor(pollTimestamp.getTime() / (5 * 60_000));
       await reconcileGoogleCalendarSalesAppointmentTask.trigger(
         { salesAppointmentId: appointment.id },
         {

@@ -151,6 +151,20 @@ const options = {
 describe("Sales Appointment polling selection", () => {
   const now = new Date("2026-09-01T00:00:00.000Z");
 
+  it("uses the current time when a manual schedule run omits its timestamp", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    try {
+      const selected = selectEligibleSalesAppointments(
+        [appointment({ id: "inside", scheduledStartAt: now.toISOString() })],
+        undefined as unknown as Date,
+      );
+      expect(selected.map(({ id }) => id)).toEqual(["inside"]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("selects the seven-day lookback through 180-day horizon", () => {
     const selected = selectEligibleSalesAppointments(
       [
