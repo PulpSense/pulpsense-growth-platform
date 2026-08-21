@@ -142,7 +142,7 @@ export const googleRevision = (event: GoogleCalendarEvent) =>
 
 export const selectEligibleSalesAppointments = (
   appointments: SalesAppointmentRecord[],
-  now: Date,
+  now = new Date(),
 ) => {
   const lowerBound = now.getTime() - 7 * 24 * 60 * 60_000;
   const upperBound = now.getTime() + 180 * 24 * 60 * 60_000;
