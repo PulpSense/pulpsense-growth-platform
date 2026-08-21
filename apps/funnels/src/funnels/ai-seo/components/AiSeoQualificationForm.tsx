@@ -162,7 +162,11 @@ export function AiSeoQualificationForm({
   useEffect(() => {
     const funnelRoot = document.getElementById("pr-funnel");
     funnelRoot?.classList.toggle("pr-calendar-active", step === "calendar");
-    return () => funnelRoot?.classList.remove("pr-calendar-active");
+    funnelRoot?.classList.toggle("pr-qualification-active", step !== "contact");
+    return () => {
+      funnelRoot?.classList.remove("pr-calendar-active");
+      funnelRoot?.classList.remove("pr-qualification-active");
+    };
   }, [step]);
 
   useEffect(() => {
@@ -575,6 +579,15 @@ export function AiSeoQualificationForm({
                 onClick={() => chooseOwner("no")}
               >
                 No
+              </button>
+            </div>
+            <div className="pr-tf-actions">
+              <button
+                type="button"
+                className="pr-tf-back"
+                onClick={() => setStep("contact")}
+              >
+                ← Back
               </button>
             </div>
           </div>

@@ -14,7 +14,7 @@ type FunnelAnalyticsProps = {
   host?: string;
   funnelId: string;
   environment: DeploymentEnvironment;
-  page: "landing" | "qualified" | "unqualified";
+  page: "landing" | "application" | "qualified" | "unqualified";
 };
 
 export function FunnelAnalytics({
@@ -35,6 +35,25 @@ export function FunnelAnalytics({
     void configureFunnelAnalytics({ apiKey, host, environment, funnelId });
     trackFunnelEvent("funnel_viewed", { page });
   }, [apiKey, environment, funnelId, host, page]);
+
+  useEffect(() => {
+    const trackCta = (event: Event) => {
+      const placement = (event as CustomEvent<{ placement?: string }>).detail
+        ?.placement;
+      if (
+        placement === "hero" ||
+        placement === "proof" ||
+        placement === "mechanism" ||
+        placement === "faq" ||
+        placement === "final" ||
+        placement === "mobile_sticky"
+      ) {
+        trackFunnelEvent("cta_clicked", { placement });
+      }
+    };
+    window.addEventListener("pulpsense:cta-clicked", trackCta);
+    return () => window.removeEventListener("pulpsense:cta-clicked", trackCta);
+  }, []);
 
   return null;
 }

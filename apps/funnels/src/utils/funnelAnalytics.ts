@@ -15,7 +15,9 @@ type MediaAction = "play" | "pause" | "unmute" | "mute" | "seek";
 type BookingAction = "widget_viewed" | "booking_successful";
 
 export type FunnelAnalyticsEventProperties = {
-  funnel_viewed: { page: "landing" | "qualified" | "unqualified" };
+  funnel_viewed: {
+    page: "landing" | "application" | "qualified" | "unqualified";
+  };
   funnel_step_viewed: { step: FunnelStep };
   funnel_validation_failed: { step: FunnelStep; fields: string[] };
   funnel_step_completed: { step: Exclude<FunnelStep, "booking"> };
@@ -74,7 +76,9 @@ const allowedFields = new Set([
 ]);
 
 const allowedValues = {
-  funnel_viewed: { page: new Set(["landing", "qualified", "unqualified"]) },
+  funnel_viewed: {
+    page: new Set(["landing", "application", "qualified", "unqualified"]),
+  },
   funnel_step_viewed: {
     step: new Set(["contact", "qualification", "booking"]),
   },

@@ -16,7 +16,6 @@ import LandingInteractions from "@/funnels/ai-seo/components/landing/LandingInte
 import MarketShiftSection from "@/funnels/ai-seo/components/landing/MarketShiftSection.astro";
 import OfferStackSection from "@/funnels/ai-seo/components/landing/OfferStackSection.astro";
 import ProcessSection from "@/funnels/ai-seo/components/landing/ProcessSection.astro";
-import QualificationSection from "@/funnels/ai-seo/components/landing/QualificationSection.astro";
 import ResultsSection from "@/funnels/ai-seo/components/landing/ResultsSection.astro";
 import ReviewsSection from "@/funnels/ai-seo/components/landing/ReviewsSection.astro";
 import StickyCta from "@/funnels/ai-seo/components/landing/StickyCta.astro";
@@ -24,7 +23,6 @@ import "@/funnels/ai-seo/styles/landing.css";
 import {
   createBrowserTrackingConfig,
   parseDeploymentEnvironment,
-  resolveCalConfig,
 } from "@/lib/funnel/runtime-config";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 
@@ -44,18 +42,11 @@ const pixels = createBrowserTrackingConfig({
   metaPixelId,
   allowPreview: import.meta.env.PUBLIC_ENABLE_META_PIXEL_IN_PREVIEW === "true",
 });
-const cal = resolveCalConfig({
-  environment: deploymentEnvironment,
-  calLink: import.meta.env.PUBLIC_CAL_LINK,
-  calNamespace: import.meta.env.PUBLIC_CAL_NAMESPACE,
-  localFallback: "santileoni/funnel",
-});
 ---
 
 <BaseLayout
   title={campaign.landingTitle}
   description={campaign.landingDescription}
-  turnstileTarget="#pr-funnel-form"
 >
   <link
     slot="head"
@@ -75,29 +66,24 @@ const cal = resolveCalConfig({
 
   <div id="pr-funnel">
     <main class="pr-main">
-      <HeroSection heroCallout={campaign.heroCallout} />
+      <HeroSection
+        heroCallout={campaign.heroCallout}
+        ctaPath={campaign.qualificationPath}
+      />
       <BenefitsSection />
       <MarketShiftSection />
       <ComparisonSection />
       <EducationSection />
       <ResultsSection />
       <ProcessSection />
-      <OfferStackSection />
+      <OfferStackSection ctaPath={campaign.qualificationPath} />
       <GuaranteeSection />
       <FaqSection />
       <ReviewsSection />
-      <QualificationSection
-        funnelId={campaign.funnelId}
-        qualifiedRedirect={campaign.thankYouPath}
-        qualificationCallout={campaign.qualificationCallout}
-        calLink={cal.calLink}
-        calNamespace={cal.namespace}
-        turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}
-      />
     </main>
 
     <DisclosureFooter />
-    <StickyCta />
+    <StickyCta ctaPath={campaign.qualificationPath} />
   </div>
   <LandingInteractions />
 </BaseLayout>

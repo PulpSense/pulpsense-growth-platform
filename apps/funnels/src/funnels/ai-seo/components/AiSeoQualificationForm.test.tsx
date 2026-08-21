@@ -64,6 +64,7 @@ const renderForm = async (
   turnstileSiteKey: string | null = "test-site-key",
 ) => {
   const container = document.createElement("div");
+  container.id = "pr-funnel";
   document.body.append(container);
   root = createRoot(container);
 
@@ -281,6 +282,18 @@ describe("AiSeoQualificationForm step order", () => {
     expect(submission.submitApplication).not.toHaveBeenCalled();
     expect(document.body.textContent).toContain(
       "Are you the owner or primary decision-maker",
+    );
+    expect(document.getElementById("pr-funnel")?.classList).toContain(
+      "pr-qualification-active",
+    );
+
+    await act(async () => getButton("← Back").click());
+
+    expect(document.body.textContent).toContain(
+      "Enter your details to start your free audit request",
+    );
+    expect(document.getElementById("pr-funnel")?.classList).not.toContain(
+      "pr-qualification-active",
     );
   });
 
