@@ -43,8 +43,12 @@ test("an internal test lead reaches the real Cal booking embed", async ({
     body: { accepted: true },
   });
 
-  await page.getByRole("button", { name: "Yes", exact: true }).click();
-  await page.getByRole("button", { name: "$1,500+/month" }).click();
+  await page
+    .getByRole("button", {
+      name: "Intake isn't converting enough inquiries",
+      exact: true,
+    })
+    .click();
 
   await expect(page.getByText("Book Free Audit Call")).toBeVisible({
     timeout: 30_000,
