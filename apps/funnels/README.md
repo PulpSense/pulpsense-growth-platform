@@ -58,9 +58,12 @@ composition shell:
 ```text
 src/funnels/ai-seo/
 ├── components/
+│   ├── application/        # Dedicated qualification-page sections
 │   ├── landing/            # Landing-page sections and interactions
 │   └── thank-you/          # Confirmation-page sections and interactions
-└── styles/                 # Route-specific funnel stylesheets
+└── styles/
+    ├── application.css     # Qualification-page behavior and focus mode
+    └── funnel.css          # Shared funnel and component styles
 ```
 
 Lead magnets remain internal domain objects in `packages/lead-magnets`. Their
