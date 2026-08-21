@@ -54,4 +54,62 @@ describe("pre-call reschedule guards", () => {
     ).resolves.toEqual({ skipped: "sales_appointment_guard_failed" });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+
+  it("retries stale Brevo state after Twenty proves the replacement is current", async () => {
+    let brevoReads = 0;
+    const fetcher = vi.fn<typeof fetch>(async (input) => {
+      const url = String(input);
+      if (url.includes("twenty.example.com")) {
+        return Response.json({
+          salesAppointment: {
+            automationGeneration: 2,
+            currentCalBookingUid: payload.bookingUid,
+            scheduledStartAt: payload.expectedStartTime,
+            synchronizationStatus: "SYNCHRONIZED",
+          },
+        });
+      }
+      brevoReads += 1;
+      return Response.json({
+        emailBlacklisted: brevoReads >= 3,
+        attributes: {
+          PULPSENSE_PRECALL_SEQUENCE_ID:
+            brevoReads >= 3 ? payload.sequenceId : "precall:old",
+        },
+      });
+    });
+    const attempt = async <Result>(operation: () => Promise<Result>) => {
+      try {
+        return await operation();
+      } catch {
+        return operation();
+      }
+    };
+
+    await expect(
+      deliverPrecallSequence(
+        {
+          ...payload,
+          salesAppointmentId: "22222222-2222-4222-8222-222222222222",
+          automationGeneration: 2,
+        },
+        {
+          PULPSENSE_AUTOMATION_ENVIRONMENT: "production",
+          PRECALL_EMAILS_ENABLED: "true",
+          BREVO_API_KEY: "brevo",
+          CAL_API_KEY: "cal",
+          TWENTY_API_ORIGIN: "https://twenty.example.com",
+          TWENTY_API_KEY: "twenty",
+          GOOGLE_CALENDAR_RECONCILIATION_MODE: "reconcile",
+          GOOGLE_CALENDAR_RECONCILIATION_CANARY_ONLY: "false",
+        },
+        {
+          fetch: fetcher,
+          attempt,
+          now: () => new Date("2026-09-01T00:00:00.000Z"),
+        },
+      ),
+    ).resolves.toEqual({ skipped: "suppressed" });
+    expect(brevoReads).toBe(3);
+  });
 });
