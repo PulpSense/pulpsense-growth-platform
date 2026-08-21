@@ -29,8 +29,10 @@ import {
 import { resolveMetaEnvironment } from "./meta-destination.js";
 import {
   projectSalesAppointmentLifecycle,
+  salesAppointmentIdFor,
   type SalesAppointmentProjectionOutcome,
 } from "./sales-appointment-ledger.js";
+import type { SalesAppointmentAutomationGuard } from "./sales-appointment-automation-guard.js";
 import { createTwentySalesAppointmentAdapter } from "./twenty-sales-appointment-adapter.js";
 
 type AdapterDestination = "twenty" | "meta" | "slack" | "brevo" | "trigger";
@@ -282,12 +284,14 @@ const capturePostHogPersonLinkSafely = async (
 
 const precallPayloadFromBooking = (
   event: BookingCompletedEvent | BookingRescheduledEvent,
+  guard?: SalesAppointmentAutomationGuard,
 ) => ({
   submissionId: event.submissionId,
   firstName: event.payload.firstName,
   lastName: event.payload.lastName,
   email: event.payload.email,
   bookingUid: event.payload.booking.uid,
+  ...(guard ?? {}),
   expectedStartTime: event.payload.booking.startTime,
   expectedEndTime: event.payload.booking.endTime,
   attendeeTimeZone: event.payload.booking.attendeeTimeZone,
@@ -321,14 +325,20 @@ export async function processFunnelEvent(
       previousBookingUid: event.payload.booking.previousUid,
       environment: event.environment,
     });
+    // The canonical lifecycle projection must advance before replacement
+    // reminders are created. Their send-time generation guard is resolved
+    // from this state and therefore cannot authorize the superseded booking.
+    const salesAppointment = dependencies.projectSalesAppointment
+      ? await executeTwenty(
+          event,
+          dependencies,
+          "project_sales_appointment",
+          () => dependencies.projectSalesAppointment!(event),
+        )
+      : undefined;
     const gmailReminders =
       dependencies.scheduleMeetingReminders?.(event, { channel: "gmail" }) ??
       Promise.resolve();
-    const salesAppointment = dependencies.projectSalesAppointment
-      ? executeTwenty(event, dependencies, "project_sales_appointment", () =>
-          dependencies.projectSalesAppointment!(event),
-        )
-      : Promise.resolve();
     const smsReminders = dependencies.scheduleMeetingReminders
       ? (async () => {
           const { personId } = await executeTwenty(
@@ -347,7 +357,7 @@ export async function processFunnelEvent(
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
       gmailReminders,
       smsReminders,
-      salesAppointment,
+      salesAppointment: Promise.resolve(salesAppointment),
       measurement: capturePostHogSafely(event, dependencies),
     });
     await dependencies.schedulePrecallSequence?.(event);
@@ -1405,6 +1415,36 @@ export function createProcessorDependencies(
   };
   const salesAppointmentAdapter =
     createTwentySalesAppointmentAdapter(twentyClient);
+  const resolveAutomationGuard = async (
+    event: BookingCompletedEvent | BookingRescheduledEvent,
+  ) => {
+    if (event.eventType === "booking_completed") {
+      return {
+        salesAppointmentId: await salesAppointmentIdFor(
+          event.payload.booking.uid,
+        ),
+        automationGeneration: 1,
+      };
+    }
+    const version = await salesAppointmentAdapter.findBookingVersion(
+      event.payload.booking.uid,
+    );
+    if (!version) {
+      throw new Error(
+        "Replacement BookingVersion is unavailable for automation guard",
+      );
+    }
+    const appointment = await salesAppointmentAdapter.getSalesAppointment(
+      version.salesAppointmentId,
+    );
+    if (!appointment?.automationGeneration) {
+      throw new Error("Sales Appointment automation generation is unavailable");
+    }
+    return {
+      salesAppointmentId: appointment.id,
+      automationGeneration: appointment.automationGeneration,
+    };
+  };
   const closedStageValues = new Set(
     (environment.TWENTY_CLOSED_STAGE_VALUES ?? "WON,LOST,CLOSED")
       .split(",")
@@ -1606,7 +1646,7 @@ export function createProcessorDependencies(
       : {}),
     ...(environment.CAL_API_KEY
       ? {
-          scheduleMeetingReminders: (
+          scheduleMeetingReminders: async (
             event: BookingCompletedEvent | BookingRescheduledEvent,
             target: ReminderScheduleTarget,
           ) =>
@@ -1615,9 +1655,15 @@ export function createProcessorDependencies(
                 destination: "trigger",
                 operation: "schedule_meeting_reminders",
               },
-              () =>
-                scheduleMeetingReminders(event, target, (payload, options) =>
-                  sendMeetingReminderTask.trigger(payload, options),
+              async () =>
+                scheduleMeetingReminders(
+                  event,
+                  target,
+                  (payload, options) =>
+                    sendMeetingReminderTask.trigger(payload, options),
+                  undefined,
+                  undefined,
+                  await resolveAutomationGuard(event),
                 ),
             ),
         }
@@ -1627,7 +1673,10 @@ export function createProcessorDependencies(
           schedulePrecallSequence: async (
             event: BookingCompletedEvent | BookingRescheduledEvent,
           ) => {
-            const payload = precallPayloadFromBooking(event);
+            const payload = precallPayloadFromBooking(
+              event,
+              await resolveAutomationGuard(event),
+            );
             return executeWithRetry(
               {
                 destination: "trigger",

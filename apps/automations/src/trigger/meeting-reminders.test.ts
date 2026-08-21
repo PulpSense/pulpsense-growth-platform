@@ -66,7 +66,42 @@ const enabledEnvironment: ReminderEnvironment = {
     "Hey {{first_name}} - see you {{daypart}} at {{local_time}}.\\n\\n{{meeting_url}}",
 };
 
+const salesAppointmentGuard = {
+  salesAppointmentId: "22222222-2222-4222-8222-222222222222",
+  automationGeneration: 1,
+};
+
+const guardedPayload = { ...payload, ...salesAppointmentGuard };
+
+const currentSalesAppointmentResponse = () =>
+  Response.json({
+    data: {
+      salesAppointment: {
+        automationGeneration: 1,
+        currentCalBookingUid: payload.bookingUid,
+        scheduledStartAt: payload.expectedStartTime,
+        synchronizationStatus: "SYNCHRONIZED",
+      },
+    },
+  });
+
 describe("meeting reminder scheduling", () => {
+  it("embeds the canonical Sales Appointment generation in new work", async () => {
+    const trigger = vi.fn().mockResolvedValue({ id: "run" });
+    await scheduleMeetingReminders(
+      bookingEvent,
+      { channel: "gmail" },
+      trigger,
+      new Date("2026-08-12T13:30:00.000Z"),
+      async (key) => key,
+      salesAppointmentGuard,
+    );
+    expect(trigger).toHaveBeenCalledWith(
+      expect.objectContaining(salesAppointmentGuard),
+      expect.any(Object),
+    );
+  });
+
   it("schedules only future thresholds with stable idempotency keys", async () => {
     const trigger = vi.fn().mockResolvedValue({ id: "run" });
     const createKey = vi.fn(async (key: string) => `key:${key}`);
@@ -122,6 +157,25 @@ describe("meeting reminder scheduling", () => {
 });
 
 describe("meeting reminder delivery", () => {
+  it("fails closed when Twenty is configured but a queued run lacks a generation", async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    await expect(
+      deliverMeetingReminder(
+        payload,
+        {
+          ...enabledEnvironment,
+          TWENTY_API_ORIGIN: "https://twenty.example.com",
+          TWENTY_API_KEY: "twenty",
+        },
+        {
+          fetch: fetcher,
+          now: () => new Date("2026-08-12T13:00:00.000Z"),
+        },
+      ),
+    ).resolves.toEqual({ skipped: "sales_appointment_guard_failed" });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
   it("accepts legacy queued Gmail payloads without a channel or phone", () => {
     const { channel, phone } = meetingReminderPayloadSchema.parse({
       ...payload,
@@ -144,33 +198,45 @@ describe("meeting reminder delivery", () => {
   });
 
   it("skips a cancelled or superseded booking before Gmail delivery", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
-      Response.json({
-        status: "success",
-        data: {
-          uid: payload.bookingUid,
-          title: "AI SEO Audit",
-          status: "cancelled",
-          start: payload.expectedStartTime,
-          end: "2026-08-12T14:30:00.000Z",
-          attendees: [
-            { email: "maya@brand.com", timeZone: "America/New_York" },
-          ],
-        },
-      }),
-    );
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(currentSalesAppointmentResponse())
+      .mockResolvedValueOnce(
+        Response.json({
+          status: "success",
+          data: {
+            uid: payload.bookingUid,
+            title: "AI SEO Audit",
+            status: "cancelled",
+            start: payload.expectedStartTime,
+            end: "2026-08-12T14:30:00.000Z",
+            attendees: [
+              { email: "maya@brand.com", timeZone: "America/New_York" },
+            ],
+          },
+        }),
+      );
     await expect(
-      deliverMeetingReminder(payload, enabledEnvironment, {
-        fetch: fetcher,
-        now: () => new Date("2026-08-12T13:00:00.000Z"),
-      }),
+      deliverMeetingReminder(
+        guardedPayload,
+        {
+          ...enabledEnvironment,
+          TWENTY_API_ORIGIN: "https://twenty.example.com",
+          TWENTY_API_KEY: "twenty",
+        },
+        {
+          fetch: fetcher,
+          now: () => new Date("2026-08-12T13:00:00.000Z"),
+        },
+      ),
     ).resolves.toEqual({ skipped: "inactive_or_superseded" });
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
   it("refreshes Gmail authorization and sends the configured template", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
+      .mockResolvedValueOnce(currentSalesAppointmentResponse())
       .mockResolvedValueOnce(
         Response.json({
           status: "success",
@@ -191,16 +257,24 @@ describe("meeting reminder delivery", () => {
       .mockResolvedValueOnce(Response.json({ id: "gmail-message-id" }));
 
     await expect(
-      deliverMeetingReminder(payload, enabledEnvironment, {
-        fetch: fetcher,
-        now: () => new Date("2026-08-12T13:00:00.000Z"),
-      }),
+      deliverMeetingReminder(
+        guardedPayload,
+        {
+          ...enabledEnvironment,
+          TWENTY_API_ORIGIN: "https://twenty.example.com",
+          TWENTY_API_KEY: "twenty",
+        },
+        {
+          fetch: fetcher,
+          now: () => new Date("2026-08-12T13:00:00.000Z"),
+        },
+      ),
     ).resolves.toEqual({
       sent: true,
       channel: "gmail",
     });
-    expect(fetcher).toHaveBeenCalledTimes(3);
-    const gmailRequest = fetcher.mock.calls[2];
+    expect(fetcher).toHaveBeenCalledTimes(4);
+    const gmailRequest = fetcher.mock.calls[3];
     expect(gmailRequest?.[0]).toBe(
       "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
     );
@@ -222,6 +296,7 @@ describe("meeting reminder delivery", () => {
   it("sends a Person-bound SMS through the Twenty communications action", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
+      .mockResolvedValueOnce(currentSalesAppointmentResponse())
       .mockResolvedValueOnce(
         Response.json({
           status: "success",
@@ -249,6 +324,7 @@ describe("meeting reminder delivery", () => {
 
     const smsPayload = {
       ...payload,
+      ...salesAppointmentGuard,
       personId: "11111111-1111-4111-8111-111111111111",
       channel: "sms" as const,
       threshold: "90m" as const,
@@ -276,16 +352,16 @@ describe("meeting reminder delivery", () => {
       sent: true,
       channel: "sms",
     });
-    expect(fetcher).toHaveBeenCalledTimes(2);
-    expect(fetcher.mock.calls[1]?.[0]).toBe("https://twenty.test/s/telnyx/sms");
-    expect(fetcher.mock.calls[1]?.[1]).toMatchObject({
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(fetcher.mock.calls[2]?.[0]).toBe("https://twenty.test/s/telnyx/sms");
+    expect(fetcher.mock.calls[2]?.[1]).toMatchObject({
       method: "POST",
       headers: {
         Authorization: "Bearer twenty-test",
         "Content-Type": "application/json",
       },
     });
-    expect(JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(fetcher.mock.calls[2]?.[1]?.body))).toEqual({
       clientRequestId:
         "appointment-reminder:cal_uid_123:2026-08-12T14:00:00.000Z:90m",
       personId: "11111111-1111-4111-8111-111111111111",
@@ -339,6 +415,7 @@ describe("meeting reminder delivery", () => {
   it("treats a Twenty application-level refusal as a failed reminder", async () => {
     const fetcher = vi
       .fn<typeof fetch>()
+      .mockResolvedValueOnce(currentSalesAppointmentResponse())
       .mockResolvedValueOnce(
         Response.json({
           status: "success",
@@ -363,6 +440,7 @@ describe("meeting reminder delivery", () => {
       deliverMeetingReminder(
         {
           ...payload,
+          ...salesAppointmentGuard,
           personId: "11111111-1111-4111-8111-111111111111",
           channel: "sms",
           threshold: "90m",
@@ -381,30 +459,34 @@ describe("meeting reminder delivery", () => {
         },
       ),
     ).rejects.toThrow("Twenty SMS reminder refused: SMS consent is required");
-    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher).toHaveBeenCalledTimes(3);
   });
 
   it("fails closed before sending SMS when Cal omits the join link", async () => {
-    const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(
-      Response.json({
-        status: "success",
-        data: {
-          uid: payload.bookingUid,
-          title: "AI SEO Audit",
-          status: "accepted",
-          start: payload.expectedStartTime,
-          end: "2026-08-12T14:30:00.000Z",
-          attendees: [
-            { email: "maya@brand.com", timeZone: "America/New_York" },
-          ],
-        },
-      }),
-    );
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(currentSalesAppointmentResponse())
+      .mockResolvedValueOnce(
+        Response.json({
+          status: "success",
+          data: {
+            uid: payload.bookingUid,
+            title: "AI SEO Audit",
+            status: "accepted",
+            start: payload.expectedStartTime,
+            end: "2026-08-12T14:30:00.000Z",
+            attendees: [
+              { email: "maya@brand.com", timeZone: "America/New_York" },
+            ],
+          },
+        }),
+      );
 
     await expect(
       deliverMeetingReminder(
         {
           ...payload,
+          ...salesAppointmentGuard,
           personId: "11111111-1111-4111-8111-111111111111",
           channel: "sms",
           threshold: "90m",
@@ -423,6 +505,6 @@ describe("meeting reminder delivery", () => {
         },
       ),
     ).rejects.toThrow("Cal meeting URL is not configured");
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });

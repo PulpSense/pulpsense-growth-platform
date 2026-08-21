@@ -1,4 +1,4 @@
-import { idempotencyKeys, logger, schemaTask, wait } from "@trigger.dev/sdk";
+import { idempotencyKeys, logger, retry, schemaTask, wait } from "@trigger.dev/sdk";
 import { z } from "zod";
 import { createPrecallOptOutToken } from "@pulpsense/contracts";
 
@@ -9,6 +9,12 @@ import {
   type PrecallModuleId,
 } from "./precall-schedule.js";
 import { sendBrevoTransactionalEmail } from "./brevo-transactional.js";
+import { triggerRunUrl } from "./trigger-dashboard.js";
+import {
+  salesAppointmentAutomationGuardShape,
+  verifySalesAppointmentAutomationGuard,
+} from "./sales-appointment-automation-guard.js";
+import { sendReliabilityAlert } from "./reliability-alerts.js";
 
 export const precallSequencePayloadSchema = z
   .object({
@@ -17,6 +23,7 @@ export const precallSequencePayloadSchema = z
     lastName: z.string().trim().max(100),
     email: z.string().email().max(320),
     bookingUid: z.string().trim().min(1).max(200),
+    ...salesAppointmentAutomationGuardShape,
     expectedStartTime: z.string().datetime({ offset: true }),
     expectedEndTime: z.string().datetime({ offset: true }),
     attendeeTimeZone: z.string().trim().min(1).max(100),
@@ -50,11 +57,15 @@ type PrecallEnvironment = {
   BREVO_PRECALL_SENDER_NAME?: string;
   BREVO_PRECALL_REPLY_TO_EMAIL?: string;
   CAL_API_KEY?: string;
+  TWENTY_API_ORIGIN?: string;
+  TWENTY_API_KEY?: string;
+  SLACK_BOT_TOKEN?: string;
 };
 
 type PrecallRuntime = {
   fetch: typeof fetch;
   now?: () => Date;
+  attempt?: <Result>(operation: () => Promise<Result>) => Promise<Result>;
 };
 
 export const precallRunIdempotencyKey = (sequenceId: string) =>
@@ -69,6 +80,11 @@ export const precallSendIdempotencyKey = (
   sequenceId: string,
   moduleId: PrecallModuleId,
 ) => `precall-send:${sequenceId}:${moduleId}`;
+
+export const accumulatedPrecallSentMask = (
+  payloadMask: number,
+  persistedMask: unknown,
+) => payloadMask | Number(persistedMask ?? 0);
 
 export const conversationalSenderName = (displayName: string) =>
   displayName.trim().split(/\s+/)[0] ?? displayName;
@@ -190,14 +206,12 @@ export const deliverPrecallSequence = async (
   const now = runtime.now?.() ?? new Date();
   const meetingStart = new Date(payload.expectedStartTime);
   if (now >= meetingStart) return { skipped: "appointment_started" as const };
-  const schedule = buildPrecallSchedule({
-    now,
-    meetingStart,
-    sentMask: payload.sentMask,
-  }).filter((slot) => payload.isNewBooking || slot.moduleId !== "confirmation");
   const apiKey = required(environment.BREVO_API_KEY, "BREVO_API_KEY");
   const calApiKey = required(environment.CAL_API_KEY, "CAL_API_KEY");
-  const state = await readBrevoState(payload.email, apiKey, runtime.fetch);
+  const attempt = runtime.attempt ?? (async (operation) => operation());
+  const state = await attempt(() =>
+    readBrevoState(payload.email, apiKey, runtime.fetch),
+  );
   if (!state) return { skipped: "contact_not_found" as const };
   if (state.emailBlacklisted === true) return { skipped: "suppressed" as const };
   if (state.attributes?.PULPSENSE_PRECALL_OPTED_OUT_AT) {
@@ -206,6 +220,26 @@ export const deliverPrecallSequence = async (
   if (state.attributes?.PULPSENSE_PRECALL_SEQUENCE_ID !== payload.sequenceId) {
     return { skipped: "superseded" as const };
   }
+  if (
+    !(await attempt(() =>
+      verifySalesAppointmentAutomationGuard(
+        payload,
+        environment,
+        runtime.fetch,
+        "pre-call",
+      ),
+    ))
+  ) {
+    return { skipped: "sales_appointment_guard_failed" as const };
+  }
+  const schedule = buildPrecallSchedule({
+    now,
+    meetingStart,
+    sentMask: accumulatedPrecallSentMask(
+      payload.sentMask,
+      state.attributes?.PULPSENSE_PRECALL_SENT_MASK,
+    ),
+  }).filter((slot) => payload.isNewBooking || slot.moduleId !== "confirmation");
 
   for (const slot of schedule) {
     const sendAt = slot.sendAt;
@@ -220,13 +254,26 @@ export const deliverPrecallSequence = async (
         idempotencyKeyTTL: "1y",
       });
     }
-    const current = await readBrevoState(payload.email, apiKey, runtime.fetch);
-    const booking = await calBooking(payload.bookingUid, calApiKey, runtime.fetch);
+    const current = await attempt(() =>
+      readBrevoState(payload.email, apiKey, runtime.fetch),
+    );
+    const booking = await attempt(() =>
+      calBooking(payload.bookingUid, calApiKey, runtime.fetch),
+    );
+    const generationIsCurrent = await attempt(() =>
+      verifySalesAppointmentAutomationGuard(
+        payload,
+        environment,
+        runtime.fetch,
+        "pre-call",
+      ),
+    );
     if (
       !current ||
       current.emailBlacklisted === true ||
       current.attributes?.PULPSENSE_PRECALL_OPTED_OUT_AT ||
       current.attributes?.PULPSENSE_PRECALL_SEQUENCE_ID !== payload.sequenceId ||
+      !generationIsCurrent ||
       !booking ||
       booking.status.toLowerCase() !== "accepted" ||
       booking.uid !== payload.bookingUid ||
@@ -282,12 +329,19 @@ export const deliverPrecallSequence = async (
           "proof-wesley-glen", "market-applicability", "call-quality", "economics",
           "multiple-locations", "market-exclusivity", "why-now",
         ].indexOf(slot.moduleId);
-    await updateBrevoState(payload.email, apiKey, {
-      PULPSENSE_PRECALL_STATUS: "active",
-      PULPSENSE_PRECALL_SEQUENCE_ID: payload.sequenceId,
-      PULPSENSE_PRECALL_SENT_MASK: Number(current.attributes?.PULPSENSE_PRECALL_SENT_MASK ?? 0) | bitMask,
-      PULPSENSE_PRECALL_COPY_VERSION: "precall-v1",
-    }, runtime.fetch);
+    await updateBrevoState(
+      payload.email,
+      apiKey,
+      {
+        PULPSENSE_PRECALL_STATUS: "active",
+        PULPSENSE_PRECALL_SEQUENCE_ID: payload.sequenceId,
+        PULPSENSE_PRECALL_SENT_MASK:
+          Number(current.attributes?.PULPSENSE_PRECALL_SENT_MASK ?? 0) |
+          bitMask,
+        PULPSENSE_PRECALL_COPY_VERSION: "precall-v1",
+      },
+      runtime.fetch,
+    );
   }
   return { sent: true as const, sequenceId: payload.sequenceId };
 };
@@ -295,8 +349,8 @@ export const deliverPrecallSequence = async (
 export const runPrecallSequenceTask = schemaTask({
   id: "run-precall-sequence",
   schema: precallSequencePayloadSchema,
-  retry: { maxAttempts: 3 },
-  run: async (payload) => {
+  retry: { maxAttempts: 1 },
+  run: async (payload, { ctx }) => {
     const environment: PrecallEnvironment = {
       PULPSENSE_AUTOMATION_ENVIRONMENT: process.env.PULPSENSE_AUTOMATION_ENVIRONMENT,
       PRECALL_EMAILS_ENABLED: process.env.PRECALL_EMAILS_ENABLED,
@@ -308,15 +362,48 @@ export const runPrecallSequenceTask = schemaTask({
       BREVO_PRECALL_SENDER_NAME: process.env.BREVO_PRECALL_SENDER_NAME,
       BREVO_PRECALL_REPLY_TO_EMAIL: process.env.BREVO_PRECALL_REPLY_TO_EMAIL,
       CAL_API_KEY: process.env.CAL_API_KEY,
+      TWENTY_API_ORIGIN: process.env.TWENTY_API_ORIGIN,
+      TWENTY_API_KEY: process.env.TWENTY_API_KEY,
+      SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
     };
     try {
-      return await deliverPrecallSequence(payload, environment, { fetch });
+      return await deliverPrecallSequence(payload, environment, {
+        fetch,
+        attempt: (operation) =>
+          retry.onThrow(operation, {
+            maxAttempts: 5,
+            factor: 2,
+            minTimeoutInMs: 1_000,
+            maxTimeoutInMs: 30_000,
+            randomize: true,
+          }),
+      });
     } catch (error) {
       logger.error("Pre-call sequence failed", {
         submissionId: payload.submissionId,
         sequenceId: payload.sequenceId,
         error: error instanceof Error ? error.message : "unknown",
       });
+      if (environment.SLACK_BOT_TOKEN) {
+        try {
+          await sendReliabilityAlert(
+            {
+              token: environment.SLACK_BOT_TOKEN,
+              text: [
+                `:rotating_light: *Pre-call sequence failed* — ${payload.environment}`,
+                `Sales Appointment: \`${payload.salesAppointmentId ?? "legacy-unmapped"}\` · Booking: \`${payload.bookingUid}\``,
+                `<${triggerRunUrl(ctx.environment.slug, ctx.run.id)}|Open in Trigger>`,
+              ].join("\n"),
+            },
+            fetch,
+          );
+        } catch {
+          logger.info("Pre-call failure alert delivery failed", {
+            submissionId: payload.submissionId,
+            bookingUid: payload.bookingUid,
+          });
+        }
+      }
       throw error;
     }
   },
