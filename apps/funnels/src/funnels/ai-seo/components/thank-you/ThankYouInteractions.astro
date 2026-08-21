@@ -21,7 +21,7 @@
 
     var colors = ["#2563eb", "#38bdf8", "#facc15", "#fb7185", "#ffffff"];
     var isMobile = window.innerWidth < 768;
-    var particleCount = isMobile ? 48 : 80;
+    var particleCount = isMobile ? 60 : 96;
     var width = window.innerWidth;
     var height = window.innerHeight;
 
@@ -35,11 +35,11 @@
       var side = i % 2 === 0 ? -1 : 1;
       var size = 6 + Math.random() * 8;
       var startX = side < 0 ? -24 : width + 24;
-      var startY = height * (0.12 + Math.random() * 0.3);
+      var startY = height * (0.58 + Math.random() * 0.24);
       var middleX =
         width *
         (side < 0 ? 0.2 + Math.random() * 0.22 : 0.8 - Math.random() * 0.22);
-      var middleY = Math.max(20, startY - 140 - Math.random() * 240);
+      var middleY = Math.max(24, startY - 240 - Math.random() * 300);
       var endX =
         width *
         (side < 0 ? 0.55 + Math.random() * 0.4 : 0.05 + Math.random() * 0.4);
@@ -95,8 +95,8 @@
           },
         ],
         {
-          duration: 2100 + Math.random() * 700,
-          delay: Math.random() * 100,
+          duration: 2400 + Math.random() * 800,
+          delay: Math.random() * 150,
           fill: "forwards",
         },
       );
@@ -104,7 +104,7 @@
 
     setTimeout(function () {
       overlay.remove();
-    }, 3000);
+    }, 3600);
   })();
 </script>
 <script is:inline>
