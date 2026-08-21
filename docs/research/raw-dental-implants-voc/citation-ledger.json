@@ -1,0 +1,101 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": 1,
+      "url": "https://www.ada.org/resources/research/health-policy-institute/economic-outlook-and-emerging-issues",
+      "title": "ADA HPI: Economic Outlook and Emerging Issues in Dentistry",
+      "accessed": "2026-08-21",
+      "quotes": [
+        {
+          "text": "Appointment wait times for new patients have been stable throughout 2025.",
+          "added": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "url": "https://www.dentaleconomics.com/practice/article/55343557/a-comparative-analysis-of-dental-implant-costs-across-major-us-markets",
+      "title": "Dental Economics: 2025 implant costs across major U.S. markets",
+      "accessed": "2026-08-21",
+      "quotes": [
+        {
+          "text": "The nationwide median cost for a complete dental implant in 2025 is $4,000, with significant regional and provider-based variations.",
+          "added": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "url": "https://www.carecredit.com/providers/insights/support-patients-dental-anxiety-about-cost-care",
+      "title": "CareCredit: Support patients with dental cost anxiety",
+      "accessed": "2026-08-21",
+      "quotes": [
+        {
+          "text": "Dental cost anxiety is a barrier that may prevent patients from pursuing necessary dental care, often due to worry about unexpected expenses or concerns about high-cost procedures.",
+          "added": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "url": "https://glidewelldental.com/education/chairside-magazine/volume-17-issue-2/new-approach-to-increasing-implant-case-acceptance",
+      "title": "Glidewell: A new approach to increasing implant case acceptance",
+      "accessed": "2026-08-21",
+      "quotes": [
+        {
+          "text": "Potential implant patients are more concerned about the complex­ity, discomfort, time and expense.",
+          "added": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "url": "https://www.dentrixascend.com/insights/blogs/improve-case-acceptance-dental-practice",
+      "title": "Dentrix Ascend: How to improve dental case acceptance",
+      "accessed": "2026-08-21",
+      "quotes": [
+        {
+          "text": "Improving case acceptance in dentistry isn’t a sales problem. It’s almost always a clarity problem.",
+          "added": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "url": "https://www.swissmonkey.io/articles/staffing-solutions/improve-dental-implant-case-acceptance",
+      "title": "Swiss Monkey: How to improve dental implant case acceptance",
+      "accessed": "2026-08-21",
+      "quotes": [
+        {
+          "text": "Current staffing shortages magnify these gaps and make consistent patient communication difficult.",
+          "added": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "url": "https://www.dentaleconomics.com/practice/article/14301274/practice-production-prioritized-one-simple-technique-to-increase-case-acceptance",
+      "title": "Dental Economics: One technique to increase case acceptance",
+      "accessed": "2026-08-21",
+      "quotes": [
+        {
+          "text": "The reason is that as patients feel they are developing more of a personal relationship than a professional relationship, they tend to trust the doctor and team more.",
+          "added": "2026-08-21"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "url": "https://withcherry.com/blog/dental-implants-financing",
+      "title": "Cherry: Dental implant financing options",
+      "accessed": "2026-08-21",
+      "quotes": [
+        {
+          "text": "Whether your patients need a single tooth or full mouth dental implants, the cost can be a major hurdle — often ranging from $3,000 to $50,000+.",
+          "added": "2026-08-21"
+        }
+      ]
+    }
+  ]
+}
