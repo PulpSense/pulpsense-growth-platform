@@ -2,6 +2,7 @@ import type { BookingRescheduledEvent } from "@pulpsense/contracts";
 import {
   idempotencyKeys,
   logger,
+  queue,
   schedules,
   schemaTask,
   wait,
@@ -23,6 +24,11 @@ import { createTwentySalesAppointmentAdapter } from "./twenty-sales-appointment-
 
 const CAL_API_VERSION = "2026-02-25";
 const CAL_REFERENCES_API_VERSION = "2024-08-13";
+
+const googleCalendarReconciliationQueue = queue({
+  name: "google-calendar-reconciliation",
+  concurrencyLimit: 1,
+});
 
 type CalendarReconciliationEnvironment = {
   TWENTY_API_ORIGIN?: string;
@@ -487,6 +493,7 @@ const reconciliationPayloadSchema = z.object({
 
 export const reconcileGoogleCalendarSalesAppointmentTask = schemaTask({
   id: "reconcile-google-calendar-sales-appointment",
+  queue: googleCalendarReconciliationQueue,
   schema: reconciliationPayloadSchema,
   retry: { maxAttempts: 1 },
   run: async ({ salesAppointmentId }) => {
@@ -574,7 +581,6 @@ export const pollGoogleCalendarSalesAppointmentsTask = schedules.task({
             { scope: "global" },
           ),
           idempotencyKeyTTL: "1d",
-          queue: "google-calendar-reconciliation",
           concurrencyKey: appointment.id,
         },
       );
