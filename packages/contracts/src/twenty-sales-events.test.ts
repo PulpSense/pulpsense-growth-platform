@@ -20,10 +20,11 @@ describe("Twenty sales webhook contract", () => {
         stageValue: "stage-won",
         amount: 12500,
         currency: "USD",
+        isTest: false,
         updatedFields: ["stage"],
         environment: "production",
       }),
-    ).toMatchObject({ stageValue: "stage-won", amount: 12500 });
+    ).toMatchObject({ stageValue: "stage-won", amount: 12500, isTest: false });
   });
 
   it("rejects records without Person and originating Journey references", () => {

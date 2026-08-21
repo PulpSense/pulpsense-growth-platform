@@ -31,6 +31,7 @@ const baseEvent = {
   stageValue: stageValue("stage-won"),
   amount: 12500,
   currency: "USD",
+  isTest: false,
   updatedFields: ["stage"],
   environment: "production" as const,
 };
@@ -81,6 +82,19 @@ const stageMetadataResponse = () =>
   });
 
 describe("Twenty terminal sales outcome processing", () => {
+  it("suppresses every commercial outcome for a test Opportunity", async () => {
+    const deps = dependencies();
+
+    await expect(
+      processTwentySalesOutcome({ ...baseEvent, isTest: true }, deps),
+    ).resolves.toEqual({ emitted: null, ignored: "test_opportunity" });
+
+    expect(deps.resolveStageOptionId).not.toHaveBeenCalled();
+    expect(deps.resolveProspectId).not.toHaveBeenCalled();
+    expect(deps.capture).not.toHaveBeenCalled();
+    expect(deps.recordOutcome).not.toHaveBeenCalled();
+  });
+
   it("emits one completed sale when an Opportunity enters the won stage", async () => {
     const deps = dependencies();
     await expect(processTwentySalesOutcome(baseEvent, deps)).resolves.toEqual({
