@@ -96,6 +96,7 @@ const publicRoutes = campaignRoutes.flatMap(
           ? [
               "45 Qualified New-Client Inquiries",
               "What to prepare for the live audit",
+              "Material guarantee terms",
             ]
           : ["45 New Calls", "What to expect on our call"],
         lawFirmPilot,

@@ -1,6 +1,19 @@
 import { defineAiSeoCampaign } from "./define";
+import { validateLawFirmCampaignPresentation } from "./law-firm-policy";
+import type { GuaranteeTermsContent } from "./types";
 
-export const lawFirmsCampaign = defineAiSeoCampaign({
+const lawFirmGuaranteeTerms = {
+  heading: "Material guarantee terms",
+  items: [
+    "Available only to approved applicants with agreed spend or growth capacity, source-system access, and decision-maker or operational-owner participation.",
+    "A qualified inquiry is one unique prospective client in the agreed practice area and geography who meets the written case-type, timing, and payment or case-value screen.",
+    "The inquiry must be attributable through call tracking, a tracked form, recorded attribution, or prospect self-report. Spam, vendors, duplicates, misdials, directions or general-information requests, and known disqualifying conflicts where reasonably determinable are excluded.",
+    "The firm must provide required access and approvals, maintain agreed intake coverage, return missed inquiries within 15 minutes during declared coverage hours, and record dispositions within two business days.",
+    "The guarantee does not promise retainers, case outcomes, collected fees, revenue, ROI, or rankings in Google, maps, LSAs, AI assistants, or any other third-party system.",
+  ],
+} as const satisfies GuaranteeTermsContent;
+
+const lawFirmsCampaignConfig = defineAiSeoCampaign({
   identity: {
     key: "lawyers",
     slug: "visibility-audit/law-firms",
@@ -181,7 +194,7 @@ export const lawFirmsCampaign = defineAiSeoCampaign({
             ", finalized only after access, baseline, and dependencies are confirmed",
         },
       ],
-      ctaLabel: "See If Your Firm Qualifies",
+      ctaLabel: "Map My Firm's Lost-Matter Funnel",
       note: "This is a law-firm pilot for approved applicants. The guarantee's eligibility, measurement, intake, and attribution terms are shown directly below.",
     },
     guarantee: {
@@ -197,16 +210,7 @@ export const lawFirmsCampaign = defineAiSeoCampaign({
         "Full refund of initial program service fees",
         "Transferable assets stay with your firm",
       ],
-      terms: {
-        heading: "Material guarantee terms",
-        items: [
-          "Available only to approved applicants with agreed spend or growth capacity, source-system access, and decision-maker or operational-owner participation.",
-          "A qualified inquiry is one unique prospective client in the agreed practice area and geography who meets the written case-type, timing, and payment or case-value screen.",
-          "The inquiry must be attributable through call tracking, a tracked form, recorded attribution, or prospect self-report. Spam, vendors, duplicates, misdials, directions or general-information requests, and known disqualifying conflicts where reasonably determinable are excluded.",
-          "The firm must provide required access and approvals, maintain agreed intake coverage, return missed inquiries within 15 minutes during declared coverage hours, and record dispositions within two business days.",
-          "The guarantee does not promise retainers, case outcomes, collected fees, revenue, ROI, or rankings in Google, maps, LSAs, AI assistants, or any other third-party system.",
-        ],
-      },
+      terms: lawFirmGuaranteeTerms,
     },
     faq: {
       heading: "Frequently Asked Questions",
@@ -301,6 +305,7 @@ export const lawFirmsCampaign = defineAiSeoCampaign({
     ],
     callout:
       "The audit produces a current funnel map, one-practice-area economics model, one dated Google and AI visibility sample, three priority gaps, and a conditional 90-day test plan. AI visibility is diagnostic; no search or AI placement is guaranteed.",
+    guaranteeTerms: lawFirmGuaranteeTerms,
     proofRating: null,
     proofLabel: null,
   },
@@ -327,3 +332,7 @@ export const lawFirmsCampaign = defineAiSeoCampaign({
     reviews: null,
   },
 });
+
+export const lawFirmsCampaign = validateLawFirmCampaignPresentation(
+  lawFirmsCampaignConfig,
+);

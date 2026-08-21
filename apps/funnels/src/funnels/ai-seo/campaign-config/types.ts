@@ -40,6 +40,11 @@ export type RichLineContent = {
   after?: string;
 };
 
+export type GuaranteeTermsContent = {
+  heading: string;
+  items: readonly string[];
+};
+
 export type LandingContent = {
   hero: {
     callout: string;
@@ -113,10 +118,7 @@ export type LandingContent = {
     titleSuffix: string;
     body: string;
     pills: readonly string[];
-    terms: {
-      heading: string;
-      items: readonly string[];
-    } | null;
+    terms: GuaranteeTermsContent | null;
   };
   faq: {
     heading: string;
@@ -140,6 +142,7 @@ export type ApplicationPageContent = {
   expectationHeading: string;
   expectations: readonly RichLineContent[];
   callout: string;
+  guaranteeTerms: GuaranteeTermsContent | null;
   proofRating: string | null;
   proofLabel: string | null;
 };

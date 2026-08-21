@@ -11,6 +11,7 @@ import {
   sharedLandingContent,
   sharedThankYouContent,
 } from "./campaign-config/shared-content";
+import { RETIRED_LAW_FIRM_COPY } from "./campaign-config/law-firm-policy";
 
 describe("AI SEO campaigns", () => {
   it("gives every campaign distinct landing, application, and thank-you routes", () => {
@@ -192,6 +193,9 @@ describe("AI SEO campaigns", () => {
     expect(lawFirms?.landing.offer.heading).toBe(
       "Map My Firm's Lost-Matter Funnel",
     );
+    expect(lawFirms?.landing.offer.ctaLabel).toBe(
+      "Map My Firm's Lost-Matter Funnel",
+    );
     expect(lawFirms?.landing.results).toBeNull();
     expect(lawFirms?.landing.reviews).toBeNull();
     expect(lawFirms?.thankYou.videos).toBeNull();
@@ -234,6 +238,9 @@ describe("AI SEO campaigns", () => {
     if (!lawFirms) throw new Error("Law-firm campaign is missing");
 
     expect(lawFirms.landing.guarantee.terms?.items).toHaveLength(5);
+    expect(lawFirms.application.guaranteeTerms).toBe(
+      lawFirms.landing.guarantee.terms,
+    );
     expect(JSON.stringify(lawFirms)).toContain(
       "return missed inquiries within 15 minutes",
     );
@@ -242,17 +249,7 @@ describe("AI SEO campaigns", () => {
     );
 
     const serialized = JSON.stringify(lawFirms);
-    for (const retiredCopy of [
-      "45 New Calls",
-      "45 additional calls",
-      "Ranking #1 Google",
-      "Top 3",
-      "14 Days",
-      "4.9/5",
-      "Twin Oaks Dental",
-      "Wesley Glen",
-      "legal inquiries",
-    ]) {
+    for (const retiredCopy of RETIRED_LAW_FIRM_COPY) {
       expect(serialized).not.toContain(retiredCopy);
     }
   });

@@ -319,6 +319,7 @@ export const sharedApplicationContent = {
   ],
   callout:
     "Many established businesses have no idea their next customer just went to a competitor that Google or ChatGPT recommended first. On the call, you'll see exactly who's getting picked ahead of you, and what it's costing you.",
+  guaranteeTerms: null,
   proofRating: "4.9/5",
   proofLabel: "from 100+ service business owners",
 } as const satisfies ApplicationPageContent;
