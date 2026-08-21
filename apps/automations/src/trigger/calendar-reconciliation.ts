@@ -298,6 +298,11 @@ const preflight = async (
         previousCal: cal,
       };
     }
+    return {
+      outcome: "cal_advanced" as const,
+      appointment,
+      cal: replacement ?? cal,
+    };
   }
   if (sameInstant(cal.start, candidate.start)) {
     return { outcome: "provider_converged" as const, appointment, google, cal };

@@ -443,6 +443,24 @@ describe("reconcileSalesAppointment", () => {
     expect(adapters.enqueueLifecycleRepair).toHaveBeenCalledTimes(1);
   });
 
+  it("lets a provider-side replacement with a different start win", async () => {
+    const providerStart = "2026-09-13T18:00:00.000Z";
+    const { adapters } = harness();
+    vi.mocked(adapters.getCalBooking).mockImplementation(async (uid) => {
+      if (uid === "attendee-new") {
+        return calBooking({ uid: "attendee-new", start: providerStart });
+      }
+      return calBooking({
+        status: "cancelled",
+        rescheduledToUid: "attendee-new",
+      });
+    });
+    await expect(
+      reconcileSalesAppointment(appointmentId, options, adapters),
+    ).resolves.toMatchObject({ outcome: "concurrent_cal_change" });
+    expect(adapters.rescheduleCalBooking).not.toHaveBeenCalled();
+  });
+
   it("fails closed when a replacement leaves two active Google events", async () => {
     const { adapters } = harness();
     vi.mocked(adapters.getCalBookingReferences).mockResolvedValue([
