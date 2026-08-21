@@ -243,6 +243,58 @@ describe("AiSeoQualificationForm Turnstile gate", () => {
 });
 
 describe("AiSeoQualificationForm step order", () => {
+  it("enters focus mode while saving contact details and restores the page on failure", async () => {
+    let issueToken: ((token: string) => void) | undefined;
+    let resolveContact!: (result: {
+      accepted: false;
+      error: "rate_limited";
+      retryAvailable: true;
+    }) => void;
+    window.turnstile = {
+      render: vi.fn((_element, options) => {
+        issueToken = options.callback;
+        return "widget-id";
+      }),
+      remove: vi.fn(),
+      reset: vi.fn(),
+    };
+    submission.submitContact.mockReturnValue(
+      new Promise((resolve) => {
+        resolveContact = resolve;
+      }),
+    );
+
+    await renderForm();
+    await act(async () => issueToken?.("verified-token"));
+    await enterValue("#ai-seo-first", "Santi");
+    await enterValue("#ai-seo-email", "santi@example.com");
+    await enterValue("#ai-seo-phone", "2125551212");
+    await act(async () => {
+      getSubmitButton().click();
+      await Promise.resolve();
+    });
+
+    expect(document.getElementById("pr-funnel")?.classList).toContain(
+      "pr-qualification-active",
+    );
+
+    await act(async () => {
+      resolveContact({
+        accepted: false,
+        error: "rate_limited",
+        retryAvailable: true,
+      });
+      await Promise.resolve();
+    });
+
+    expect(document.getElementById("pr-funnel")?.classList).not.toContain(
+      "pr-qualification-active",
+    );
+    expect(document.body.textContent).toContain(
+      "Too many attempts. Please wait a minute and try again.",
+    );
+  });
+
   it("captures the lead before showing qualification questions", async () => {
     let issueToken: ((token: string) => void) | undefined;
     window.turnstile = {

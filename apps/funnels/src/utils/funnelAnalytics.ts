@@ -4,13 +4,15 @@ import { z } from "zod";
 import type { DeploymentEnvironment } from "@/lib/funnel/runtime-config";
 
 type FunnelStep = "contact" | "qualification" | "booking";
-type CtaPlacement =
-  | "hero"
-  | "proof"
-  | "mechanism"
-  | "faq"
-  | "final"
-  | "mobile_sticky";
+export const CTA_PLACEMENTS = [
+  "hero",
+  "proof",
+  "mechanism",
+  "faq",
+  "final",
+  "mobile_sticky",
+] as const;
+export type CtaPlacement = (typeof CTA_PLACEMENTS)[number];
 type MediaAction = "play" | "pause" | "unmute" | "mute" | "seek";
 type BookingAction = "widget_viewed" | "booking_successful";
 
@@ -75,6 +77,11 @@ const allowedFields = new Set([
   "investmentIntent",
 ]);
 
+const ctaPlacements: ReadonlySet<string> = new Set(CTA_PLACEMENTS);
+
+export const isCtaPlacement = (value: unknown): value is CtaPlacement =>
+  typeof value === "string" && ctaPlacements.has(value);
+
 const allowedValues = {
   funnel_viewed: {
     page: new Set(["landing", "application", "qualified", "unqualified"]),
@@ -90,14 +97,7 @@ const allowedValues = {
     status: new Set(["qualified", "unqualified"]),
   },
   cta_clicked: {
-    placement: new Set([
-      "hero",
-      "proof",
-      "mechanism",
-      "faq",
-      "final",
-      "mobile_sticky",
-    ]),
+    placement: ctaPlacements,
   },
   media_interaction: {
     action: new Set(["play", "pause", "unmute", "mute", "seek"]),

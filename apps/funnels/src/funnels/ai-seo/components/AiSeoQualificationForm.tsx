@@ -162,12 +162,15 @@ export function AiSeoQualificationForm({
   useEffect(() => {
     const funnelRoot = document.getElementById("pr-funnel");
     funnelRoot?.classList.toggle("pr-calendar-active", step === "calendar");
-    funnelRoot?.classList.toggle("pr-qualification-active", step !== "contact");
+    funnelRoot?.classList.toggle(
+      "pr-qualification-active",
+      submitting || step !== "contact",
+    );
     return () => {
       funnelRoot?.classList.remove("pr-calendar-active");
       funnelRoot?.classList.remove("pr-qualification-active");
     };
-  }, [step]);
+  }, [step, submitting]);
 
   useEffect(() => {
     if (step !== "contact") return;

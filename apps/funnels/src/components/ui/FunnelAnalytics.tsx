@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import type { DeploymentEnvironment } from "@/lib/funnel/runtime-config";
 import {
   configureFunnelAnalytics,
+  isCtaPlacement,
   trackFunnelEvent,
 } from "@/utils/funnelAnalytics";
 import { captureFunnelAttribution } from "@/utils/funnelAttribution";
@@ -40,14 +41,7 @@ export function FunnelAnalytics({
     const trackCta = (event: Event) => {
       const placement = (event as CustomEvent<{ placement?: string }>).detail
         ?.placement;
-      if (
-        placement === "hero" ||
-        placement === "proof" ||
-        placement === "mechanism" ||
-        placement === "faq" ||
-        placement === "final" ||
-        placement === "mobile_sticky"
-      ) {
+      if (isCtaPlacement(placement)) {
         trackFunnelEvent("cta_clicked", { placement });
       }
     };
