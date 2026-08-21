@@ -1313,6 +1313,28 @@ body {
   font-size: 0.85rem;
   font-weight: 600;
 }
+#pr-funnel .pr-guarantee-terms {
+  max-width: 38rem;
+  margin: 1.5rem auto 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  text-align: left;
+}
+#pr-funnel .pr-guarantee-terms h3 {
+  margin: 0 0 0.75rem;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  text-align: center;
+}
+#pr-funnel .pr-guarantee-terms ul {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.83rem;
+  line-height: 1.5;
+}
 #pr-funnel .pr-faq {
   max-width: 44rem;
   margin: 0 auto;

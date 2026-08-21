@@ -5,7 +5,7 @@ import reviewConnor from "../../../../assets/ai-seo/review-connor.webp";
 import reviewGeorgia from "../../../../assets/ai-seo/review-georgia.webp";
 import type { ThankYouContent } from "../../campaign-config";
 
-type Props = { content: ThankYouContent["reviews"] };
+type Props = { content: NonNullable<ThankYouContent["reviews"]> };
 
 const { content } = Astro.props;
 ---

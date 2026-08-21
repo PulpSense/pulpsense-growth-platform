@@ -11,8 +11,10 @@ const { content } = Astro.props;
   <div class="pr-container">
     <div class="pr-guarantee">
       <h2>
-        <strong>{content.promise}</strong>
-        <strong>{content.timeframe}</strong>. {content.titleSuffix}
+        <strong>{content.promise}</strong>{content.promiseSeparator}
+        <strong>{content.timeframe}</strong>{content.titleSeparator}{
+          content.titleSuffix
+        }
       </h2>
       <p>
         {content.body}
@@ -24,6 +26,18 @@ const { content } = Astro.props;
           ))
         }
       </div>
+      {
+        content.terms && (
+          <div class="pr-guarantee-terms">
+            <h3>{content.terms.heading}</h3>
+            <ul>
+              {content.terms.items.map((term) => (
+                <li>{term}</li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
     </div>
   </div>
 </section>

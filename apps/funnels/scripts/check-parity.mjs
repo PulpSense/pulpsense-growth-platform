@@ -47,6 +47,7 @@ const campaignRoutes = [
   {
     slug: "visibility-audit/law-firms",
     funnelId: "ai-seo",
+    lawFirmPilot: true,
   },
   {
     slug: "visibility-audit/dental-practices",
@@ -70,33 +71,47 @@ const campaignRoutes = [
   },
 ];
 
-const publicRoutes = campaignRoutes.flatMap(({ slug, funnelId }) => {
-  const landingPath = `/${slug}/`;
-  const applicationPath = `${landingPath}apply/`;
-  const thankYouPath = `${landingPath}thank-you/`;
-  return [
-    {
-      kind: "landing",
-      path: landingPath,
-      funnelId,
-      deck: "VisibilityDeckCarousel",
-      markers: ["45 New Calls", "Get Your Visibility Audit"],
-    },
-    {
-      kind: "application",
-      path: applicationPath,
-      funnelId,
-      thankYouPath,
-      markers: ["45 New Calls", "What to expect on our call"],
-    },
-    {
-      kind: "thank-you",
-      path: thankYouPath,
-      deck: "ThankYouDeckCarousel",
-      markers: ["ONE LAST THING", "Review this quick briefing"],
-    },
-  ];
-});
+const publicRoutes = campaignRoutes.flatMap(
+  ({ slug, funnelId, lawFirmPilot = false }) => {
+    const landingPath = `/${slug}/`;
+    const applicationPath = `${landingPath}apply/`;
+    const thankYouPath = `${landingPath}thank-you/`;
+    return [
+      {
+        kind: "landing",
+        path: landingPath,
+        funnelId,
+        deck: lawFirmPilot ? undefined : "VisibilityDeckCarousel",
+        markers: lawFirmPilot
+          ? ["45 Qualified New-Client Inquiries", "See If Your Firm Qualifies"]
+          : ["45 New Calls", "Get Your Visibility Audit"],
+        lawFirmPilot,
+      },
+      {
+        kind: "application",
+        path: applicationPath,
+        funnelId,
+        thankYouPath,
+        markers: lawFirmPilot
+          ? [
+              "45 Qualified New-Client Inquiries",
+              "What to prepare for the live audit",
+            ]
+          : ["45 New Calls", "What to expect on our call"],
+        lawFirmPilot,
+      },
+      {
+        kind: "thank-you",
+        path: thankYouPath,
+        deck: lawFirmPilot ? undefined : "ThankYouDeckCarousel",
+        markers: lawFirmPilot
+          ? ["source-to-signature audit is booked", "last 60–90 days"]
+          : ["ONE LAST THING", "Review this quick briefing"],
+        lawFirmPilot,
+      },
+    ];
+  },
+);
 const applicationHtmlByFunnelId = new Map();
 
 async function postJson(path, body) {
@@ -201,6 +216,18 @@ try {
       assert.ok(
         html.includes(`component-export="${route.deck}"`),
         `${route.path} should embed its native deck carousel`,
+      );
+    }
+    if (route.lawFirmPilot) {
+      assert.doesNotMatch(
+        html,
+        /VisibilityDeckCarousel|ThankYouDeckCarousel|Twin Oaks Dental|Wesley Glen|4\.9\/5|What (?:Service Business Owners|Local Businesses) Say About Us/,
+        `${route.path} should omit cross-industry decks, proof, ratings, and reviews`,
+      );
+      assert.doesNotMatch(
+        html,
+        /45 New Calls|45 additional calls|Ranking #1 Google|Top 3|14 Days/,
+        `${route.path} should omit retired law-firm claims`,
       );
     }
     assert.doesNotMatch(

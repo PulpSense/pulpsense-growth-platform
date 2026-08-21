@@ -6,6 +6,11 @@ import {
   resolveAiSeoBrowserPixelId,
   resolveAiSeoCampaign,
 } from "./campaigns";
+import {
+  sharedApplicationContent,
+  sharedLandingContent,
+  sharedThankYouContent,
+} from "./campaign-config/shared-content";
 
 describe("AI SEO campaigns", () => {
   it("gives every campaign distinct landing, application, and thank-you routes", () => {
@@ -127,8 +132,8 @@ describe("AI SEO campaigns", () => {
     ).toEqual([
       [
         "lawyers",
-        "45 More Calls in 90 Days for Law Firms | PulpSense",
-        "Your Law Firm Visibility Audit Is Booked | PulpSense",
+        "45 Qualified New-Client Inquiries in 90 Days for Law Firms | PulpSense",
+        "Your Law-Firm Growth Audit Is Booked | PulpSense",
       ],
       [
         "dentists",
@@ -167,7 +172,7 @@ describe("AI SEO campaigns", () => {
   it("provides a relevant nationwide service callout for every niche", () => {
     expect(AI_SEO_CAMPAIGNS.map(({ landing }) => landing.hero.callout)).toEqual(
       [
-        "⚖️ Proudly serving law firms nationwide",
+        "⚖️ Law-firm pilot for approved US firms",
         "🦷 Proudly serving dental practices nationwide",
         "🦷 Proudly serving dental implant practices nationwide",
         "✨ Proudly serving plastic surgery practices nationwide",
@@ -177,10 +182,33 @@ describe("AI SEO campaigns", () => {
     );
   });
 
-  it("allows a niche to override only the qualification callout", () => {
-    expect(AI_SEO_CAMPAIGNS[0].application.callout).toContain(
-      "established businesses",
+  it("keeps the approved law-firm presentation isolated from shared copy", () => {
+    const [lawFirms, ...otherCampaigns] = AI_SEO_CAMPAIGNS;
+
+    expect(lawFirms?.landing.hero.promise).toBe(
+      "45 Qualified New-Client Inquiries",
     );
+    expect(lawFirms?.landing.hero.ctaLabel).toBe("See If Your Firm Qualifies");
+    expect(lawFirms?.landing.offer.heading).toBe(
+      "Map My Firm's Lost-Matter Funnel",
+    );
+    expect(lawFirms?.landing.results).toBeNull();
+    expect(lawFirms?.landing.reviews).toBeNull();
+    expect(lawFirms?.thankYou.videos).toBeNull();
+    expect(lawFirms?.thankYou.reviews).toBeNull();
+
+    for (const campaign of otherCampaigns) {
+      expect(campaign.landing.benefits).toBe(sharedLandingContent.benefits);
+      expect(campaign.landing.results).toBe(sharedLandingContent.results);
+      expect(campaign.landing.reviews).toBe(sharedLandingContent.reviews);
+      expect(campaign.application.expectations).toBe(
+        sharedApplicationContent.expectations,
+      );
+      expect(campaign.thankYou).toBe(sharedThankYouContent);
+    }
+  });
+
+  it("keeps niche-specific qualification callouts", () => {
     expect(AI_SEO_CAMPAIGNS[1].application.callout).toContain(
       "dental practices",
     );
@@ -191,11 +219,41 @@ describe("AI SEO campaigns", () => {
 
   it("provides complete presentation content for every route shell", () => {
     for (const campaign of AI_SEO_CAMPAIGNS) {
-      expect(campaign.landing.hero.ctaLabel).toBe("Get Your Visibility Audit");
+      expect(campaign.landing.hero.ctaLabel.length).toBeGreaterThan(0);
       expect(campaign.landing.benefits.cards).toHaveLength(3);
       expect(campaign.landing.faq.items).toHaveLength(10);
       expect(campaign.application.expectations).toHaveLength(4);
-      expect(campaign.thankYou.videos.items).toHaveLength(5);
+      if (campaign.thankYou.videos) {
+        expect(campaign.thankYou.videos.items).toHaveLength(5);
+      }
+    }
+  });
+
+  it("makes the law-firm guarantee terms conspicuous and removes retired proof", () => {
+    const lawFirms = AI_SEO_CAMPAIGNS[0];
+    if (!lawFirms) throw new Error("Law-firm campaign is missing");
+
+    expect(lawFirms.landing.guarantee.terms?.items).toHaveLength(5);
+    expect(JSON.stringify(lawFirms)).toContain(
+      "return missed inquiries within 15 minutes",
+    );
+    expect(JSON.stringify(lawFirms)).toContain(
+      "record dispositions within two business days",
+    );
+
+    const serialized = JSON.stringify(lawFirms);
+    for (const retiredCopy of [
+      "45 New Calls",
+      "45 additional calls",
+      "Ranking #1 Google",
+      "Top 3",
+      "14 Days",
+      "4.9/5",
+      "Twin Oaks Dental",
+      "Wesley Glen",
+      "legal inquiries",
+    ]) {
+      expect(serialized).not.toContain(retiredCopy);
     }
   });
 });

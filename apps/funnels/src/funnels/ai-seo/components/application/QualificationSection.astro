@@ -25,14 +25,21 @@ const {
 <section class="pr-section pr-section-gray" id="pr-funnel-form">
   <div class="pr-container pr-center">
     <header class="pr-application-intro">
-      <div class="pr-badge">
-        <span class="pr-stars" aria-hidden="true">★★★★★</span>
-        <span class="pr-badge-copy">{content.badge}</span>
-      </div>
+      {
+        content.badge && (
+          <div class="pr-badge">
+            <span class="pr-stars" aria-hidden="true">
+              ★★★★★
+            </span>
+            <span class="pr-badge-copy">{content.badge}</span>
+          </div>
+        )
+      }
       <h1 class="pr-h2" style="font-size: clamp(1.65rem, 4vw, 2.75rem)">
         <span style="color: var(--pr-blue)">{content.promise}</span>{" "}in{" "}
-        <span style="color: var(--pr-blue)">{content.timeframe}</span>.{" "}
-        {content.titleSuffix}
+        <span style="color: var(--pr-blue)">{content.timeframe}</span>{
+          content.titleSeparator
+        }{content.titleSuffix}
       </h1>
       <p class="pr-sub pr-form-intro">
         {content.intro}
@@ -77,40 +84,32 @@ const {
         <div class="pr-expect-callout">
           {content.callout}
         </div>
-        <div class="pr-expect-proof">
-          <span class="pr-stars" aria-hidden="true">
-            <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-              ></path>
-            </svg>
-            <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-              ></path>
-            </svg>
-            <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-              ></path>
-            </svg>
-            <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-              ></path>
-            </svg>
-            <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-              ></path>
-            </svg>
-          </span>
-          <span>
-            <strong>{content.proofRating}</strong>
-            {" "}
-            {content.proofLabel}
-          </span>
-        </div>
+        {
+          content.proofRating && content.proofLabel && (
+            <div class="pr-expect-proof">
+              <span class="pr-stars" aria-hidden="true">
+                <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+                <svg class="pr-star" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                </svg>
+              </span>
+              <span>
+                <strong>{content.proofRating}</strong> {content.proofLabel}
+              </span>
+            </div>
+          )
+        }
       </aside>
     </div>
   </div>

@@ -1,7 +1,7 @@
 ---
 import type { LandingContent } from "../../campaign-config";
 
-type Props = { content: LandingContent["results"] };
+type Props = { content: NonNullable<LandingContent["results"]> };
 
 const { content } = Astro.props;
 ---

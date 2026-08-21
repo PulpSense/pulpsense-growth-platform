@@ -74,7 +74,11 @@ const pixels = createBrowserTrackingConfig({
       <MarketShiftSection content={campaign.landing.marketShift} />
       <ComparisonSection content={campaign.landing.comparison} />
       <EducationSection content={campaign.landing.education} />
-      <ResultsSection content={campaign.landing.results} />
+      {
+        campaign.landing.results && (
+          <ResultsSection content={campaign.landing.results} />
+        )
+      }
       <ProcessSection content={campaign.landing.process} />
       <OfferStackSection
         content={campaign.landing.offer}
@@ -82,7 +86,11 @@ const pixels = createBrowserTrackingConfig({
       />
       <GuaranteeSection content={campaign.landing.guarantee} />
       <FaqSection content={campaign.landing.faq} />
-      <ReviewsSection content={campaign.landing.reviews} />
+      {
+        campaign.landing.reviews && (
+          <ReviewsSection content={campaign.landing.reviews} />
+        )
+      }
     </main>
 
     <DisclosureFooter />

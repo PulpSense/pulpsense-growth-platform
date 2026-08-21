@@ -2,7 +2,7 @@
 import WistiaPlayer from "@/components/funnel/WistiaPlayer.astro";
 import type { ThankYouContent } from "../../campaign-config";
 
-type Props = { content: ThankYouContent["videos"] };
+type Props = { content: NonNullable<ThankYouContent["videos"]> };
 
 const { content } = Astro.props;
 ---

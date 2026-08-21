@@ -11,6 +11,7 @@ export const sharedLandingContent = {
     promise: "45 New Calls",
     timeframePrefix: "in",
     timeframe: "90 Days",
+    titleSeparator: " ",
     titleSuffix: "by Ranking #1 Google & ChatGPT",
     lead: "Get found when people in your market are ready to call. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
     ctaLabel: "Get Your Visibility Audit",
@@ -19,6 +20,7 @@ export const sharedLandingContent = {
       after:
         " use ChatGPT every week to decide which service businesses to trust.",
     },
+    showDeck: true,
     logoLabel: "Trusted by Growing Businesses",
   },
   benefits: {
@@ -204,7 +206,9 @@ export const sharedLandingContent = {
   },
   guarantee: {
     promise: "45 New Calls",
+    promiseSeparator: "",
     timeframe: "in 90 Days",
+    titleSeparator: ". ",
     titleSuffix: "Or We Work Free Until You Do.",
     body: "We build the system that gets your business recommended across Google Maps, organic search, AI Overviews, and ChatGPT. If you do not receive 45 additional calls in 90 days, we work free until you do.",
     pills: [
@@ -213,6 +217,7 @@ export const sharedLandingContent = {
       "✅ No paid advertising required",
       "✅ Baseline agreed during onboarding",
     ],
+    terms: null,
   },
   faq: {
     heading: "Frequently Asked Questions",
@@ -278,9 +283,12 @@ export const sharedLandingContent = {
 } as const satisfies LandingContent;
 
 export const sharedApplicationContent = {
+  pageTitle: null,
+  pageDescription: null,
   badge: "Rated 4.9/5 by 100+ Service Business Owners",
   promise: "45 New Calls",
   timeframe: "90 Days",
+  titleSeparator: ". ",
   titleSuffix: "Or We Work Free Until You Do.",
   intro:
     "Enter your details, then answer a few quick questions to see if your established service business qualifies for the guarantee.",
@@ -320,6 +328,7 @@ export const sharedThankYouContent = {
     heading: "ONE LAST THING: Complete these required steps ✅",
     intro:
       "Review this quick briefing before your Regional Visibility Audit. 45 calls in 90 days. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
+    showDeck: true,
   },
   calendar: {
     stepLabel: "Step 1",
