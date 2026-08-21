@@ -1,10 +1,11 @@
 ---
-type Props = { ctaPath: string };
+import type { LandingContent } from "../../campaign-config";
 
-const { ctaPath } = Astro.props;
+type Props = { content: LandingContent["stickyCta"]; ctaPath: string };
+
+const { content, ctaPath } = Astro.props;
 ---
 
 <div class="pr-sticky-cta" aria-hidden="true">
-  <a href={ctaPath} data-funnel-cta="mobile_sticky">Get Your Visibility Audit</a
-  >
+  <a href={ctaPath} data-funnel-cta="mobile_sticky">{content.label}</a>
 </div>

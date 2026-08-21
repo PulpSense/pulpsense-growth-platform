@@ -1,45 +1,28 @@
+---
+import type { LandingContent } from "../../campaign-config";
+
+type Props = { content: LandingContent["process"] };
+
+const { content } = Astro.props;
+---
+
 <!-- How it works -->
 <section class="pr-section pr-section-gray">
   <div class="pr-container pr-center">
-    <h2 class="pr-h2">How It Works</h2>
-    <p class="pr-sub">
-      Your roadmap from invisible to recommended. You invest about 30 minutes,
-      we handle the rest.
-    </p>
+    <h2 class="pr-h2">{content.heading}</h2>
+    <p class="pr-sub">{content.intro}</p>
     <div class="pr-steps2">
-      <div class="pr-step2">
-        <span class="pr-step2-num">1</span>
-        <div>
-          <h3>We Audit Your Visibility (Day 1)</h3>
-          <p>
-            We check where you stand on Google Maps, AI Overviews, and ChatGPT,
-            live, on a 15-minute call. You&apos;ll see exactly what&apos;s
-            costing you calls.
-          </p>
-        </div>
-      </div>
-      <div class="pr-step2">
-        <span class="pr-step2-num">2</span>
-        <div>
-          <h3>We Build Your Foundation (Weeks 1–3)</h3>
-          <p>
-            Structured data so AI can read your business, listings on the map
-            and directory sources AI actually pulls from, Google Business
-            Profile optimization, and content that matches what customers ask.
-          </p>
-        </div>
-      </div>
-      <div class="pr-step2">
-        <span class="pr-step2-num">3</span>
-        <div>
-          <h3>We Keep You Visible (Ongoing)</h3>
-          <p>
-            Monthly re-audits, citation monitoring, profile management, and a
-            simple report showing exactly what moved and how many calls
-            you&apos;re getting.
-          </p>
-        </div>
-      </div>
+      {
+        content.steps.map((step, index) => (
+          <div class="pr-step2">
+            <span class="pr-step2-num">{index + 1}</span>
+            <div>
+              <h3>{step.title}</h3>
+              <p>{step.body}</p>
+            </div>
+          </div>
+        ))
+      }
     </div>
   </div>
 </section>

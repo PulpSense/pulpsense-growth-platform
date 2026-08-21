@@ -1,51 +1,33 @@
+---
+import type { LandingContent } from "../../campaign-config";
+
+type Props = { content: LandingContent["comparison"] };
+
+const { content } = Astro.props;
+---
+
 <!-- Comparison table -->
 <section class="pr-section">
   <div class="pr-container pr-center">
-    <h2 class="pr-h2">Traditional Paid Ads vs. AI Search</h2>
-    <p class="pr-sub">
-      Paid ads stop when the budget stops. Our system builds visibility that
-      keeps sending people directly to your business.
-    </p>
+    <h2 class="pr-h2">{content.heading}</h2>
+    <p class="pr-sub">{content.intro}</p>
     <div class="pr-compare-wrap">
       <table class="pr-compare">
         <thead>
           <tr>
-            <th>Feature</th>
-            <th>Traditional Paid Ads</th>
-            <th>PulpSense</th>
+            {content.headings.map((heading) => <th>{heading}</th>)}
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td>Google and AI visibility</td>
-            <td class="pr-no">Stops outside ads</td>
-            <td class="pr-yes">Built into strategy</td>
-          </tr>
-          <tr>
-            <td>Lead ownership</td>
-            <td class="pr-no">Routed through platforms</td>
-            <td class="pr-yes">Direct to your business</td>
-          </tr>
-          <tr>
-            <td>Competition</td>
-            <td class="pr-no">Pay more to compete</td>
-            <td class="pr-yes">Build market authority</td>
-          </tr>
-          <tr>
-            <td>Ongoing ad spend</td>
-            <td class="pr-no">Required for leads</td>
-            <td class="pr-yes">No ad spend required</td>
-          </tr>
-          <tr>
-            <td>Shared leads</td>
-            <td class="pr-no">Often shared</td>
-            <td class="pr-yes">Never shared</td>
-          </tr>
-          <tr>
-            <td>Guarantee</td>
-            <td class="pr-no">Usually none</td>
-            <td class="pr-yes">45 calls or free</td>
-          </tr>
+          {
+            content.rows.map((row) => (
+              <tr>
+                <td>{row.feature}</td>
+                <td class="pr-no">{row.alternative}</td>
+                <td class="pr-yes">{row.pulpsense}</td>
+              </tr>
+            ))
+          }
         </tbody>
       </table>
     </div>

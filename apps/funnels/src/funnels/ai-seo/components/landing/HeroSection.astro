@@ -1,16 +1,17 @@
 ---
 import ClientLogoCarousel from "./ClientLogoCarousel.astro";
 import { VisibilityDeckCarousel } from "./VisibilityDeckCarousel";
+import type { LandingContent } from "../../campaign-config";
 
 type Props = {
-  heroCallout: string;
+  content: LandingContent["hero"];
   ctaPath: string;
 };
 
-const { heroCallout, ctaPath } = Astro.props;
+const { content, ctaPath } = Astro.props;
 ---
 
-<div class="pr-bar">{heroCallout}</div>
+<div class="pr-bar">{content.callout}</div>
 
 <div class="pr-hero-inner pr-center">
   <div class="pr-badge">
@@ -41,27 +42,21 @@ const { heroCallout, ctaPath } = Astro.props;
         ></path>
       </svg>
     </span>
-    <span class="pr-badge-copy"
-      >Rated 4.9/5 by 100+ Service Business Owners</span
-    >
+    <span class="pr-badge-copy">{content.badge}</span>
   </div>
   <h1 class="pr-h1">
-    <span class="pr-accent">45 New Calls</span>{" "}
-    <span class="pr-accent">in</span>{" "}
-    <span class="pr-accent">90 Days</span>{" "}by Ranking #1 Google &amp;
-    ChatGPT
+    <span class="pr-accent">{content.promise}</span>{" "}
+    <span class="pr-accent">{content.timeframePrefix}</span>{" "}
+    <span class="pr-accent">{content.timeframe}</span>{" "}
+    {content.titleSuffix}
   </h1>
   <p class="pr-lead">
-    Get found when people in your market are ready to call. No ad spend. No
-    shared leads. Results guaranteed, or we work free until you get them.
+    {content.lead}
   </p>
   <VisibilityDeckCarousel client:idle />
-  <a class="pr-btn" href={ctaPath} data-funnel-cta="hero"
-    >Get Your Visibility Audit</a
-  >
+  <a class="pr-btn" href={ctaPath} data-funnel-cta="hero">{content.ctaLabel}</a>
   <p class="pr-note">
-    <u>Over 200M people</u> use ChatGPT every week to decide which service businesses
-    to trust.
+    {content.note.before}<u>{content.note.emphasis}</u>{content.note.after}
   </p>
-  <ClientLogoCarousel />
+  <ClientLogoCarousel label={content.logoLabel} />
 </div>

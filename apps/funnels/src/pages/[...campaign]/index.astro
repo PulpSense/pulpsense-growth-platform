@@ -45,8 +45,8 @@ const pixels = createBrowserTrackingConfig({
 ---
 
 <BaseLayout
-  title={campaign.landingTitle}
-  description={campaign.landingDescription}
+  title={campaign.metadata.landingTitle}
+  description={campaign.metadata.landingDescription}
 >
   <link
     slot="head"
@@ -59,7 +59,7 @@ const pixels = createBrowserTrackingConfig({
     apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
     host={import.meta.env.PUBLIC_POSTHOG_HOST}
     environment={deploymentEnvironment}
-    funnelId={campaign.funnelId}
+    funnelId={campaign.identity.funnelId}
     page="landing"
   />
   <TrackingPixels client:interaction="idle" pixels={pixels} interactionReady />
@@ -67,23 +67,29 @@ const pixels = createBrowserTrackingConfig({
   <div id="pr-funnel">
     <main class="pr-main">
       <HeroSection
-        heroCallout={campaign.heroCallout}
+        content={campaign.landing.hero}
         ctaPath={campaign.qualificationPath}
       />
-      <BenefitsSection />
-      <MarketShiftSection />
-      <ComparisonSection />
-      <EducationSection />
-      <ResultsSection />
-      <ProcessSection />
-      <OfferStackSection ctaPath={campaign.qualificationPath} />
-      <GuaranteeSection />
-      <FaqSection />
-      <ReviewsSection />
+      <BenefitsSection content={campaign.landing.benefits} />
+      <MarketShiftSection content={campaign.landing.marketShift} />
+      <ComparisonSection content={campaign.landing.comparison} />
+      <EducationSection content={campaign.landing.education} />
+      <ResultsSection content={campaign.landing.results} />
+      <ProcessSection content={campaign.landing.process} />
+      <OfferStackSection
+        content={campaign.landing.offer}
+        ctaPath={campaign.qualificationPath}
+      />
+      <GuaranteeSection content={campaign.landing.guarantee} />
+      <FaqSection content={campaign.landing.faq} />
+      <ReviewsSection content={campaign.landing.reviews} />
     </main>
 
     <DisclosureFooter />
-    <StickyCta ctaPath={campaign.qualificationPath} />
+    <StickyCta
+      content={campaign.landing.stickyCta}
+      ctaPath={campaign.qualificationPath}
+    />
   </div>
   <LandingInteractions />
 </BaseLayout>

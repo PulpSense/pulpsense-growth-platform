@@ -1,36 +1,25 @@
+---
+import type { LandingContent } from "../../campaign-config";
+
+type Props = { content: LandingContent["education"] };
+
+const { content } = Astro.props;
+---
+
 <!-- This isn't SEO / Ads -->
 <section class="pr-section pr-section-gray">
   <div class="pr-container pr-center">
-    <h2 class="pr-h2">This Isn&apos;t SEO. This Isn&apos;t Ads.</h2>
-    <p class="pr-sub">
-      Getting recommended by AI is a different game, and almost nobody in your
-      market is playing it yet.
-    </p>
+    <h2 class="pr-h2">{content.heading}</h2>
+    <p class="pr-sub">{content.intro}</p>
     <div class="pr-edu">
-      <div class="pr-edu-item">
-        <h3>AI Pulls From Sources Most Agencies Ignore</h3>
-        <p>
-          ChatGPT and AI Overviews don&apos;t just read your website. They pull
-          from map data, business directories, citations, and review profiles,
-          the exact sources most SEO shops never touch.
-        </p>
-      </div>
-      <div class="pr-edu-item">
-        <h3>It&apos;s About Trust Signals, Not Keywords</h3>
-        <p>
-          The service businesses AI recommends have consistent listings, strong
-          review profiles, structured data, and clean citations across the web.
-          We build every one of those signals for you.
-        </p>
-      </div>
-      <div class="pr-edu-item">
-        <h3>Being Big Doesn&apos;t Make You Visible</h3>
-        <p>
-          Plenty of large companies are completely invisible in AI search
-          because nobody optimized for it. This isn&apos;t about size, it&apos;s
-          about whether you&apos;ve been set up for AI specifically.
-        </p>
-      </div>
+      {
+        content.items.map((item) => (
+          <div class="pr-edu-item">
+            <h3>{item.title}</h3>
+            <p>{item.body}</p>
+          </div>
+        ))
+      }
     </div>
   </div>
 </section>

@@ -1,50 +1,23 @@
 ---
 import WistiaPlayer from "@/components/funnel/WistiaPlayer.astro";
+import type { ThankYouContent } from "../../campaign-config";
+
+type Props = { content: ThankYouContent["videos"] };
+
+const { content } = Astro.props;
 ---
 
-<h2 class="pr-videos-head">Step 2: Hear from business owners like you</h2>
+<h2 class="pr-videos-head">{content.heading}</h2>
 
 <div class="pr-video-grid">
-  <article class="pr-video-card">
-    <h3>Nick Saraev — Founder at Leftclick.ai</h3>
-    <div class="pr-video-frame">
-      <WistiaPlayer mediaId="tam0inpvqg" label="Testimonial from Nick Saraev" />
-    </div>
-  </article>
-  <article class="pr-video-card">
-    <h3>Eric von Schumann — Founder at Redomiciled</h3>
-    <div class="pr-video-frame">
-      <WistiaPlayer
-        mediaId="p8fr4xpew8"
-        label="Testimonial from Eric von Schumann"
-      />
-    </div>
-  </article>
-  <article class="pr-video-card">
-    <h3>Charlie Vicente — Co-Founder at Ares Projects</h3>
-    <div class="pr-video-frame">
-      <WistiaPlayer
-        mediaId="mg51fk3kah"
-        label="Testimonial from Charlie Vicente"
-      />
-    </div>
-  </article>
-  <article class="pr-video-card">
-    <h3>Chase Wicklund — CEO at StackEleven Marketing</h3>
-    <div class="pr-video-frame">
-      <WistiaPlayer
-        mediaId="nrehjvyz7s"
-        label="Testimonial from Chase Wicklund"
-      />
-    </div>
-  </article>
-  <article class="pr-video-card">
-    <h3>Frank van den Oever — CEO at YMF Global</h3>
-    <div class="pr-video-frame">
-      <WistiaPlayer
-        mediaId="ge2tc7bxu9"
-        label="Testimonial from Frank van den Oever"
-      />
-    </div>
-  </article>
+  {
+    content.items.map((item) => (
+      <article class="pr-video-card">
+        <h3>{item.title}</h3>
+        <div class="pr-video-frame">
+          <WistiaPlayer mediaId={item.mediaId} label={item.label} />
+        </div>
+      </article>
+    ))
+  }
 </div>

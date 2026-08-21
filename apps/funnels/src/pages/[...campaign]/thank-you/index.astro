@@ -38,8 +38,8 @@ const pixels = createBrowserTrackingConfig({
 ---
 
 <BaseLayout
-  title={campaign.thankYouTitle}
-  description={campaign.thankYouDescription}
+  title={campaign.metadata.thankYouTitle}
+  description={campaign.metadata.thankYouDescription}
 >
   <meta slot="head" name="referrer" content="strict-origin-when-cross-origin" />
   <link
@@ -54,18 +54,18 @@ const pixels = createBrowserTrackingConfig({
     apiKey={import.meta.env.PUBLIC_POSTHOG_KEY}
     host={import.meta.env.PUBLIC_POSTHOG_HOST}
     environment={deploymentEnvironment}
-    funnelId={campaign.funnelId}
+    funnelId={campaign.identity.funnelId}
     page="qualified"
   />
   <TrackingPixels client:interaction="idle" pixels={pixels} interactionReady />
 
   <div id="pr-funnel">
     <main class="pr-main">
-      <ConfirmationHero />
+      <ConfirmationHero content={campaign.thankYou.confirmation} />
       <div class="pr-container pr-container-md">
-        <CalendarConfirmationStep />
-        <TestimonialVideosSection />
-        <ReviewsSection />
+        <CalendarConfirmationStep content={campaign.thankYou.calendar} />
+        <TestimonialVideosSection content={campaign.thankYou.videos} />
+        <ReviewsSection content={campaign.thankYou.reviews} />
       </div>
     </main>
 

@@ -72,6 +72,10 @@ const clients = [
   },
 ];
 
+type Props = { label: string };
+
+const { label } = Astro.props;
+
 const logoUrl = (asset: string) =>
   `/ai-seo/logos/${asset.replace(/-(webp|png|svg)$/u, ".$1")}`;
 
@@ -85,7 +89,7 @@ const compactLogoUrl = (asset: string) => {
   class="pr-client-logos"
   aria-label="Companies PulpSense has worked with"
 >
-  <p class="pr-client-logos-label">Trusted by Growing Businesses</p>
+  <p class="pr-client-logos-label">{label}</p>
   <div class="pr-client-logos-window">
     <div class="pr-client-logos-track">
       {
