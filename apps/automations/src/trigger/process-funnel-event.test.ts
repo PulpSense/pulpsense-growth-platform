@@ -15,6 +15,7 @@ import {
   formatTwentyFailureAlert,
   normalizeMetaName,
   processFunnelEvent,
+  shouldAdvanceOpportunityToCallBooked,
 } from "./process-funnel-event.js";
 import { triggerRunUrl } from "./trigger-dashboard.js";
 
@@ -35,6 +36,24 @@ const retryImmediately =
 describe("normalizeMetaName", () => {
   it("lowercases names and removes punctuation before hashing", () => {
     expect(normalizeMetaName("  Mary-Jane O’Connor  ")).toBe("maryjaneoconnor");
+  });
+});
+
+describe("Opportunity booking-stage policy", () => {
+  it.each([
+    ["QUALIFIED_AWAITING_BOOKING", true],
+    ["CALL_BOOKED", false],
+    ["PROPOSAL", false],
+    ["WON", false],
+    ["LOST", false],
+  ] as const)("allows advancement from %s: %s", (currentStage, expected) => {
+    expect(
+      shouldAdvanceOpportunityToCallBooked(
+        currentStage,
+        "QUALIFIED_AWAITING_BOOKING",
+        "CALL_BOOKED",
+      ),
+    ).toBe(expected);
   });
 });
 
@@ -119,7 +138,8 @@ const directContactEvent: ContactSubmittedEvent = {
   attribution: {
     firstTouch: event.attribution.firstTouch,
     lastTouch: {
-      landingPage: expectedTwentyDirectLastTouchAttribution.lastTouchLandingPage,
+      landingPage:
+        expectedTwentyDirectLastTouchAttribution.lastTouchLandingPage,
     },
   },
 };
@@ -375,6 +395,11 @@ describe("process-funnel-event", () => {
     const upsertTwentyPerson = vi
       .fn()
       .mockResolvedValue({ personId: "person_123" });
+    const projectSalesAppointment = vi.fn().mockResolvedValue({
+      salesAppointmentId: "appointment_123",
+      bookingVersionId: "version_456",
+      outcome: "rescheduled",
+    });
 
     await expect(
       processFunnelEvent(rescheduledEvent, {
@@ -382,6 +407,7 @@ describe("process-funnel-event", () => {
         sendMetaLead: vi.fn(),
         publishBrevoLifecycle,
         scheduleMeetingReminders,
+        projectSalesAppointment,
         log: { info: vi.fn() },
       }),
     ).resolves.toEqual({ ok: true, bookingUid: "cal_booking_456" });
@@ -394,6 +420,24 @@ describe("process-funnel-event", () => {
       personId: "person_123",
     });
     expect(upsertTwentyPerson).toHaveBeenCalledWith(rescheduledEvent);
+    expect(projectSalesAppointment).toHaveBeenCalledWith(rescheduledEvent);
+  });
+
+  it("projects a verified cancellation before completing lifecycle handling", async () => {
+    const projectSalesAppointment = vi.fn().mockResolvedValue({
+      salesAppointmentId: "appointment_123",
+      bookingVersionId: "version_123",
+      outcome: "cancelled",
+    });
+    await expect(
+      processFunnelEvent(cancelledEvent, {
+        upsertTwentyPerson: vi.fn(),
+        sendMetaLead: vi.fn(),
+        projectSalesAppointment,
+        log: { info: vi.fn() },
+      }),
+    ).resolves.toEqual({ ok: true, bookingUid: "cal_booking_123" });
+    expect(projectSalesAppointment).toHaveBeenCalledWith(cancelledEvent);
   });
 
   it("retries a delayed booking prerequisite without repeating Person upsert", async () => {
@@ -404,7 +448,7 @@ describe("process-funnel-event", () => {
       .fn()
       .mockRejectedValueOnce(new Error("Opportunity is not available yet"))
       .mockResolvedValueOnce({
-        activityId: "booking_activity_123",
+        salesAppointmentId: "booking_activity_123",
         opportunityId: "opportunity_123",
       });
     const sendMetaSchedule = vi.fn().mockResolvedValue({ eventsReceived: 1 });
@@ -419,7 +463,7 @@ describe("process-funnel-event", () => {
     });
 
     expect(result).toMatchObject({
-      activityId: "booking_activity_123",
+      salesAppointmentId: "booking_activity_123",
       opportunityId: "opportunity_123",
     });
     expect(upsertTwentyPerson).toHaveBeenCalledOnce();
@@ -432,7 +476,7 @@ describe("process-funnel-event", () => {
       .fn()
       .mockResolvedValue({ personId: "person_123" });
     const recordTwentyBooking = vi.fn().mockResolvedValue({
-      activityId: "booking_activity_123",
+      salesAppointmentId: "booking_activity_123",
       opportunityId: "opportunity_123",
     });
     const sendMetaSchedule = vi
@@ -679,7 +723,7 @@ describe("process-funnel-event", () => {
       .fn()
       .mockResolvedValue({ personId: "person_123" });
     const recordTwentyBooking = vi.fn().mockResolvedValue({
-      activityId: bookingEvent.payload.booking.uid,
+      salesAppointmentId: bookingEvent.payload.booking.uid,
       opportunityId: "opportunity_123",
     });
     const sendMetaSchedule = vi.fn().mockResolvedValue({ eventsReceived: 1 });
@@ -699,7 +743,7 @@ describe("process-funnel-event", () => {
     expect(result).toEqual({
       ok: true,
       personId: "person_123",
-      activityId: "cal_booking_123",
+      salesAppointmentId: "cal_booking_123",
       opportunityId: "opportunity_123",
       metaEventId: "booking_completed:cal_booking_123",
     });
@@ -728,8 +772,10 @@ describe("process-funnel-event", () => {
         }),
       )
       .mockResolvedValueOnce(Response.json({ data: {} }))
-      .mockResolvedValueOnce(Response.json({ data: {} }))
-      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(
+        Response.json({ data: { bookingVersions: { edges: [] } } }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 404 }))
       .mockResolvedValueOnce(
         Response.json({
           data: {
@@ -747,11 +793,44 @@ describe("process-funnel-event", () => {
         }),
       )
       .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            salesAppointment: {
+              id: "1c8466e7-f7dc-52c9-9f83-a8246ef6eeef",
+              rootCalBookingUid: "cal_booking_123",
+              currentCalBookingUid: "cal_booking_123",
+              originatingLeadJourneyId: bookingEvent.submissionId,
+              initialConfirmedAt: bookingEvent.occurredAt,
+              scheduledStartAt: bookingEvent.payload.booking.startTime,
+              scheduledEndAt: bookingEvent.payload.booking.endTime,
+              status: "SCHEDULED",
+              opportunityId: "opportunity_qualified",
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunity: {
+              id: "opportunity_qualified",
+              stage: "QUALIFIED_AWAITING_BOOKING",
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(Response.json({ data: {} }))
       .mockResolvedValueOnce(Response.json({ events_received: 1 }));
     const dependencies = createProcessorDependencies(
       {
         TWENTY_API_KEY: "twenty-sandbox-key",
         TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_QUALIFIED_STAGE_VALUE: "QUALIFIED_AWAITING_BOOKING",
         TWENTY_CALL_BOOKED_STAGE_VALUE: "CALL_BOOKED",
         META_PIXEL_ID: "pixel_123",
         META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
@@ -766,7 +845,7 @@ describe("process-funnel-event", () => {
     const result = await processFunnelEvent(bookingEvent, dependencies);
 
     expect(result).toMatchObject({
-      activityId: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
+      salesAppointmentId: "1c8466e7-f7dc-52c9-9f83-a8246ef6eeef",
       opportunityId: "opportunity_qualified",
       metaEventId: bookingEvent.eventId,
     });
@@ -777,23 +856,43 @@ describe("process-funnel-event", () => {
       smsConsentSource: "PULPSENSE_ADS_FUNNEL_BOOKING",
       smsConsentUpdatedAt: bookingEvent.occurredAt,
     });
-    expect(JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body))).toEqual({
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[5]?.[1]?.body)),
+    ).toMatchObject({
+      id: "1c8466e7-f7dc-52c9-9f83-a8246ef6eeef",
+      rootCalBookingUid: "cal_booking_123",
+      currentCalBookingUid: "cal_booking_123",
+      initialConfirmedAt: bookingEvent.occurredAt,
+      classification: "NON_PRODUCTION",
+      isCommercial: true,
+      isTest: true,
+      personId: "person_existing",
+      opportunityId: "opportunity_qualified",
+    });
+    expect(String(fetchMock.mock.calls[5]?.[0])).toContain(
+      "/rest/salesAppointments",
+    );
+    expect(fetchMock.mock.calls[5]?.[1]?.method).toBe("POST");
+    expect(JSON.parse(String(fetchMock.mock.calls[11]?.[1]?.body))).toEqual({
       id: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
       title: "Booking cal_booking_123",
       bodyV2: {
         markdown: expect.stringContaining("AI SEO Fit Call"),
       },
     });
-    expect(JSON.parse(String(fetchMock.mock.calls[3]?.[1]?.body))).toEqual({
+    expect(JSON.parse(String(fetchMock.mock.calls[12]?.[1]?.body))).toEqual({
       id: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
       noteId: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
       targetPersonId: "person_existing",
     });
-    expect(fetchMock.mock.calls[5]?.[1]?.method).toBe("PATCH");
-    expect(JSON.parse(String(fetchMock.mock.calls[5]?.[1]?.body))).toEqual({
+    expect(fetchMock.mock.calls[10]?.[1]?.method).toBe("PATCH");
+    expect(String(fetchMock.mock.calls[10]?.[0])).toContain(
+      "/rest/opportunities/opportunity_qualified",
+    );
+    expect(JSON.parse(String(fetchMock.mock.calls[10]?.[1]?.body))).toEqual({
       stage: "CALL_BOOKED",
     });
-    const metaBody = JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body));
+    const metaBody = JSON.parse(String(fetchMock.mock.calls[13]?.[1]?.body));
     expect(metaBody.data).toEqual([
       expect.objectContaining({
         event_name: "Schedule",
@@ -814,7 +913,7 @@ describe("process-funnel-event", () => {
     expect(metaBody.test_event_code).toBe("LAWYER_TEST");
   });
 
-  it("replays a booking without duplicating its activity or Meta identity", async () => {
+  it("finishes Opportunity advancement from a durably stored appointment on retry", async () => {
     const fetchMock = vi
       .fn<typeof fetch>()
       .mockResolvedValueOnce(
@@ -825,17 +924,17 @@ describe("process-funnel-event", () => {
         }),
       )
       .mockResolvedValueOnce(Response.json({ data: {} }))
-      .mockResolvedValueOnce(new Response(null, { status: 409 }))
-      .mockResolvedValueOnce(new Response(null, { status: 409 }))
       .mockResolvedValueOnce(
         Response.json({
           data: {
-            opportunities: {
+            bookingVersions: {
               edges: [
                 {
                   node: {
-                    id: "opportunity_qualified",
-                    stage: "QUALIFIED_AWAITING_BOOKING",
+                    id: "c6a2e6b6-8131-52cd-ae7e-afc1a243e2bd",
+                    calBookingUid: "cal_booking_123",
+                    salesAppointmentId: "1c8466e7-f7dc-52c9-9f83-a8246ef6eeef",
+                    state: "ACTIVE",
                   },
                 },
               ],
@@ -843,12 +942,43 @@ describe("process-funnel-event", () => {
           },
         }),
       )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            salesAppointment: {
+              id: "1c8466e7-f7dc-52c9-9f83-a8246ef6eeef",
+              rootCalBookingUid: "cal_booking_123",
+              currentCalBookingUid: "cal_booking_123",
+              currentBookingVersionId: "c6a2e6b6-8131-52cd-ae7e-afc1a243e2bd",
+              originatingLeadJourneyId: bookingEvent.submissionId,
+              initialConfirmedAt: bookingEvent.occurredAt,
+              scheduledStartAt: bookingEvent.payload.booking.startTime,
+              scheduledEndAt: bookingEvent.payload.booking.endTime,
+              status: "SCHEDULED",
+              opportunityId: "opportunity_original",
+            },
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({
+          data: {
+            opportunity: {
+              id: "opportunity_original",
+              stage: "QUALIFIED_AWAITING_BOOKING",
+            },
+          },
+        }),
+      )
       .mockResolvedValueOnce(Response.json({ data: {} }))
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
+      .mockResolvedValueOnce(new Response(null, { status: 409 }))
       .mockResolvedValueOnce(Response.json({ events_received: 1 }));
     const dependencies = createProcessorDependencies(
       {
         TWENTY_API_KEY: "twenty-sandbox-key",
         TWENTY_API_ORIGIN: "https://twenty.sandbox.example",
+        TWENTY_QUALIFIED_STAGE_VALUE: "QUALIFIED_AWAITING_BOOKING",
         TWENTY_CALL_BOOKED_STAGE_VALUE: "CALL_BOOKED",
         META_PIXEL_ID: "pixel_123",
         META_CAPI_ACCESS_TOKEN: "meta-sandbox-token",
@@ -862,16 +992,28 @@ describe("process-funnel-event", () => {
     const result = await processFunnelEvent(bookingEvent, dependencies);
 
     expect(result).toMatchObject({
-      activityId: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80",
-      opportunityId: "opportunity_qualified",
+      salesAppointmentId: "1c8466e7-f7dc-52c9-9f83-a8246ef6eeef",
+      opportunityId: "opportunity_original",
       metaEventId: bookingEvent.eventId,
     });
     expect(
-      JSON.parse(String(fetchMock.mock.calls[2]?.[1]?.body)),
+      JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)),
     ).toMatchObject({ id: "b702e143-bcbf-5f5e-8fdd-0c4c58f2fe80" });
-    expect(JSON.parse(String(fetchMock.mock.calls[6]?.[1]?.body)).data).toEqual(
+    expect(JSON.parse(String(fetchMock.mock.calls[8]?.[1]?.body)).data).toEqual(
       [expect.objectContaining({ event_id: bookingEvent.eventId })],
     );
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[1]?.body).includes("opportunities("),
+      ),
+    ).toBe(false);
+    expect(String(fetchMock.mock.calls[5]?.[0])).toContain(
+      "/rest/opportunities/opportunity_original",
+    );
+    expect(fetchMock.mock.calls[5]?.[1]?.method).toBe("PATCH");
+    expect(JSON.parse(String(fetchMock.mock.calls[5]?.[1]?.body))).toEqual({
+      stage: "CALL_BOOKED",
+    });
   });
 
   it("accepts an application before contact by upserting its Person prerequisite", async () => {

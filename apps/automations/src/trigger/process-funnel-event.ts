@@ -2,6 +2,7 @@ import {
   funnelEventSchema,
   isInternalTestLeadEmail,
   type ApplicationSubmittedEvent,
+  type BookingCancelledEvent,
   type BookingCompletedEvent,
   type BookingRescheduledEvent,
   type ContactSubmittedEvent,
@@ -26,6 +27,11 @@ import {
   createPostHogPersonLinkCapture,
 } from "./posthog-lifecycle.js";
 import { resolveMetaEnvironment } from "./meta-destination.js";
+import {
+  projectSalesAppointmentLifecycle,
+  type SalesAppointmentProjectionOutcome,
+} from "./sales-appointment-ledger.js";
+import { createTwentySalesAppointmentAdapter } from "./twenty-sales-appointment-adapter.js";
 
 type AdapterDestination = "twenty" | "meta" | "slack" | "brevo" | "trigger";
 
@@ -33,6 +39,7 @@ type AdapterOperation =
   | "upsert_person"
   | "record_application"
   | "record_booking"
+  | "project_sales_appointment"
   | "deliver_lead"
   | "deliver_application"
   | "deliver_schedule"
@@ -70,6 +77,7 @@ const displayOperation = (operation: AdapterOperation) =>
     upsert_person: "Upsert person",
     record_application: "Create application",
     record_booking: "Record booking",
+    project_sales_appointment: "Project Sales Appointment",
     deliver_lead: "Send lead",
     deliver_application: "Send application",
     deliver_schedule: "Send booking",
@@ -122,7 +130,10 @@ type ProcessorDependencies = {
   recordTwentyBooking?(
     event: BookingCompletedEvent,
     personId: string,
-  ): Promise<{ activityId: string; opportunityId: string }>;
+  ): Promise<{ salesAppointmentId: string; opportunityId: string }>;
+  projectSalesAppointment?(
+    event: BookingRescheduledEvent | BookingCancelledEvent,
+  ): Promise<SalesAppointmentProjectionOutcome>;
   sendMetaSchedule?(
     event: BookingCompletedEvent,
   ): Promise<{ eventsReceived: number }>;
@@ -313,6 +324,11 @@ export async function processFunnelEvent(
     const gmailReminders =
       dependencies.scheduleMeetingReminders?.(event, { channel: "gmail" }) ??
       Promise.resolve();
+    const salesAppointment = dependencies.projectSalesAppointment
+      ? executeTwenty(event, dependencies, "project_sales_appointment", () =>
+          dependencies.projectSalesAppointment!(event),
+        )
+      : Promise.resolve();
     const smsReminders = dependencies.scheduleMeetingReminders
       ? (async () => {
           const { personId } = await executeTwenty(
@@ -331,6 +347,7 @@ export async function processFunnelEvent(
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
       gmailReminders,
       smsReminders,
+      salesAppointment,
       measurement: capturePostHogSafely(event, dependencies),
     });
     await dependencies.schedulePrecallSequence?.(event);
@@ -345,6 +362,11 @@ export async function processFunnelEvent(
       environment: event.environment,
     });
     await runIndependent({
+      salesAppointment: dependencies.projectSalesAppointment
+        ? executeTwenty(event, dependencies, "project_sales_appointment", () =>
+            dependencies.projectSalesAppointment!(event),
+          )
+        : Promise.resolve(),
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
       measurement: capturePostHogSafely(event, dependencies),
     });
@@ -415,7 +437,7 @@ export async function processFunnelEvent(
       eventId: event.eventId,
       bookingUid: event.payload.booking.uid,
       personId,
-      activityId: booking.activityId,
+      salesAppointmentId: booking.salesAppointmentId,
       opportunityId: booking.opportunityId,
       metaEventsReceived: eventsReceived,
     });
@@ -423,7 +445,7 @@ export async function processFunnelEvent(
     return {
       ok: true as const,
       personId,
-      activityId: booking.activityId,
+      salesAppointmentId: booking.salesAppointmentId,
       opportunityId: booking.opportunityId,
       metaEventId: event.eventId,
     };
@@ -987,6 +1009,48 @@ const writeTwentyOpportunity = async (
   return createdId;
 };
 
+export const shouldAdvanceOpportunityToCallBooked = (
+  currentStage: string,
+  qualifiedStage: string,
+  callBookedStage: string,
+) => currentStage === qualifiedStage && currentStage !== callBookedStage;
+
+const advanceTwentyOpportunityToCallBooked = async (
+  client: TwentyClient,
+  opportunityId: string,
+  qualifiedStage: string,
+  callBookedStage: string,
+) => {
+  const response = await client.fetch(
+    `${client.origin}/rest/opportunities/${encodeURIComponent(opportunityId)}`,
+    { headers: twentyHeaders(client.apiKey) },
+  );
+  if (!response.ok) {
+    throw new Error(`Twenty opportunity lookup failed (${response.status})`);
+  }
+  const result = (await response.json()) as {
+    data?: { opportunity?: { id?: string; stage?: string } };
+  };
+  const opportunity = result.data?.opportunity;
+  if (!opportunity?.id || !opportunity.stage) {
+    throw new Error("Twenty opportunity lookup omitted identity or stage");
+  }
+  if (
+    !shouldAdvanceOpportunityToCallBooked(
+      opportunity.stage,
+      qualifiedStage,
+      callBookedStage,
+    )
+  ) {
+    return;
+  }
+  await writeTwentyOpportunity(
+    client,
+    { stage: callBookedStage },
+    opportunityId,
+  );
+};
+
 const recordTwentyApplication = async (
   event: ApplicationSubmittedEvent,
   personId: string,
@@ -1046,38 +1110,69 @@ const recordTwentyBooking = async (
   event: BookingCompletedEvent,
   personId: string,
   client: TwentyClient,
+  qualifiedStageValue: string | undefined,
   callBookedStageValue: string | undefined,
   closedStageValues: ReadonlySet<string>,
+  ledgerAdapter: ReturnType<typeof createTwentySalesAppointmentAdapter>,
 ) => {
-  const activityId = await deterministicUuid(
+  const qualifiedStage = required(
+    qualifiedStageValue,
+    "TWENTY_QUALIFIED_STAGE_VALUE",
+  );
+  const callBookedStage = required(
+    callBookedStageValue,
+    "TWENTY_CALL_BOOKED_STAGE_VALUE",
+  );
+  const projection: SalesAppointmentProjectionOutcome =
+    await projectSalesAppointmentLifecycle(
+      event,
+      {
+        resolveCreationContext: async () => {
+          const opportunity = await findOpenTwentyOpportunity(
+            client,
+            personId,
+            closedStageValues,
+          );
+          if (!opportunity) {
+            throw new Error(
+              "Qualified Opportunity is not available for booking",
+            );
+          }
+          return { personId, opportunityId: opportunity.id };
+        },
+      },
+      ledgerAdapter,
+    );
+  if (!projection.opportunityId) {
+    throw new Error("Sales Appointment is missing its Opportunity reference");
+  }
+  await advanceTwentyOpportunityToCallBooked(
+    client,
+    projection.opportunityId,
+    qualifiedStage,
+    callBookedStage,
+  );
+
+  // Notes are a human-readable timeline mirror only. Their deterministic ID
+  // remains separate from canonical Sales Appointment measurement state.
+  const noteId = await deterministicUuid(
     `cal-booking:${event.payload.booking.uid}`,
   );
   await createTwentyRecordOnce(client, "notes", {
-    id: activityId,
+    id: noteId,
     title: `Booking ${event.payload.booking.uid}`,
     bodyV2: { markdown: bookingMarkdown(event) },
   });
   await createTwentyRecordOnce(client, "noteTargets", {
-    id: activityId,
-    noteId: activityId,
+    id: noteId,
+    noteId,
     targetPersonId: personId,
   });
 
-  const opportunity = await findOpenTwentyOpportunity(
-    client,
-    personId,
-    closedStageValues,
-  );
-  if (!opportunity) {
-    throw new Error("Qualified Opportunity is not available for booking");
-  }
-  const stage = required(
-    callBookedStageValue,
-    "TWENTY_CALL_BOOKED_STAGE_VALUE",
-  );
-  await writeTwentyOpportunity(client, { stage }, opportunity.id);
-
-  return { activityId, opportunityId: opportunity.id };
+  return {
+    salesAppointmentId: projection.salesAppointmentId,
+    opportunityId: projection.opportunityId,
+  };
 };
 
 const sha256 = async (value: string) => {
@@ -1308,6 +1403,8 @@ export function createProcessorDependencies(
     origin: twentyOrigin,
     apiKey: twentyApiKey,
   };
+  const salesAppointmentAdapter =
+    createTwentySalesAppointmentAdapter(twentyClient);
   const closedStageValues = new Set(
     (environment.TWENTY_CLOSED_STAGE_VALUES ?? "WON,LOST,CLOSED")
       .split(",")
@@ -1434,9 +1531,13 @@ export function createProcessorDependencies(
         event,
         personId,
         twentyClient,
+        environment.TWENTY_QUALIFIED_STAGE_VALUE,
         environment.TWENTY_CALL_BOOKED_STAGE_VALUE,
         closedStageValues,
+        salesAppointmentAdapter,
       ),
+    projectSalesAppointment: (event) =>
+      projectSalesAppointmentLifecycle(event, {}, salesAppointmentAdapter),
     sendMetaLead: (event) =>
       sendMetaLead(
         event,

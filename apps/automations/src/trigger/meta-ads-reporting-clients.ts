@@ -84,7 +84,7 @@ export const fetchMetaInsights = async (
 
 export type TwentyAuditConfig = { origin: string; apiKey: string };
 
-export const countTwentyBookingNotes = async (
+export const countTwentySalesAppointments = async (
   config: TwentyAuditConfig,
   window: { since: string; untilExclusive: string },
   fetcher: Fetcher,
@@ -97,7 +97,7 @@ export const countTwentyBookingNotes = async (
     fetchedPages += 1;
     if (fetchedPages > 1_000) {
       throw new Error(
-        "Twenty booking audit pagination exceeded safe page limit",
+        "Twenty Sales Appointment audit pagination exceeded safe page limit",
       );
     }
     const response = await fetcher(
@@ -110,19 +110,26 @@ export const countTwentyBookingNotes = async (
         },
         body: JSON.stringify({
           query: `
-            query CountBookingNotes($titlePrefix: String!, $after: String) {
-              notes(
-                filter: { title: { startsWith: $titlePrefix } }
+            query CountSalesAppointments($after: String) {
+              salesAppointments(
                 first: 100
                 after: $after
               ) {
-                edges { node { id createdAt } }
+                edges {
+                  node {
+                    id
+                    initialConfirmedAt
+                    environment
+                    classification
+                    isCommercial
+                    isTest
+                  }
+                }
                 pageInfo { hasNextPage endCursor }
               }
             }
           `,
           variables: {
-            titlePrefix: "Booking ",
             ...(after ? { after } : {}),
           },
         }),
@@ -130,41 +137,64 @@ export const countTwentyBookingNotes = async (
     );
     const result = (await response.json()) as {
       data?: {
-        notes?: {
-          edges?: Array<{ node?: { id?: string; createdAt?: string } }>;
+        salesAppointments?: {
+          edges?: Array<{
+            node?: {
+              id?: string;
+              initialConfirmedAt?: string;
+              environment?: string;
+              classification?: string;
+              isCommercial?: boolean;
+              isTest?: boolean;
+            };
+          }>;
           pageInfo?: { hasNextPage?: boolean; endCursor?: string };
         };
       };
       errors?: unknown[];
     };
-    if (!response.ok || result.errors?.length || !result.data?.notes) {
-      throw new Error(`Twenty booking audit failed (${response.status})`);
+    if (
+      !response.ok ||
+      result.errors?.length ||
+      !result.data?.salesAppointments
+    ) {
+      throw new Error(
+        `Twenty Sales Appointment audit failed (${response.status})`,
+      );
     }
-    for (const edge of result.data.notes.edges ?? []) {
-      const note = edge.node;
+    for (const edge of result.data.salesAppointments.edges ?? []) {
+      const appointment = edge.node;
       if (
-        note?.id &&
-        note.createdAt &&
-        note.createdAt >= window.since &&
-        note.createdAt < window.untilExclusive
+        appointment?.id &&
+        appointment.initialConfirmedAt &&
+        appointment.environment === "production" &&
+        appointment.classification === "PRODUCTION_COMMERCIAL" &&
+        appointment.isCommercial === true &&
+        appointment.isTest === false &&
+        appointment.initialConfirmedAt >= window.since &&
+        appointment.initialConfirmedAt < window.untilExclusive
       ) {
-        ids.add(note.id);
+        ids.add(appointment.id);
       }
     }
-    const page = result.data.notes.pageInfo;
+    const page = result.data.salesAppointments.pageInfo;
     if (!page) {
-      throw new Error("Twenty booking audit omitted pageInfo");
+      throw new Error("Twenty Sales Appointment audit omitted pageInfo");
     }
     if (page.hasNextPage && !page.endCursor) {
-      throw new Error("Twenty booking audit pagination omitted cursor");
+      throw new Error(
+        "Twenty Sales Appointment audit pagination omitted cursor",
+      );
     }
     if (page.endCursor && seenCursors.has(page.endCursor)) {
-      throw new Error("Twenty booking audit pagination did not advance");
+      throw new Error(
+        "Twenty Sales Appointment audit pagination did not advance",
+      );
     }
     if (page.endCursor) seenCursors.add(page.endCursor);
     if (seenCursors.size > 1_000) {
       throw new Error(
-        "Twenty booking audit pagination exceeded safe page limit",
+        "Twenty Sales Appointment audit pagination exceeded safe page limit",
       );
     }
     after = page.hasNextPage ? page.endCursor : undefined;

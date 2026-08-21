@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "backfill:twenty-sales": "node scripts/backfill-twenty-sales-references.mjs",
+    "backfill:sales-appointments": "node scripts/backfill-sales-appointments.mjs",
     "dev": "trigger dev",
     "deploy": "trigger deploy",
     "check-types": "tsc --noEmit",
