@@ -117,6 +117,7 @@ export const formatBrevoFailureAlert = (
   ].join("\n");
 
 type ProcessorDependencies = {
+  internalCanary?: InternalCanaryConfiguration;
   assertEnvironment?(environment: FunnelEvent["environment"]): void;
   upsertTwentyPerson(event: FunnelEvent): Promise<{ personId: string }>;
   sendMetaLead(
@@ -125,6 +126,7 @@ type ProcessorDependencies = {
   recordTwentyApplication?(
     event: ApplicationSubmittedEvent,
     personId: string,
+    options?: { internalCanary: boolean },
   ): Promise<{ activityId: string; opportunityId?: string }>;
   sendMetaApplication?(
     event: ApplicationSubmittedEvent,
@@ -132,6 +134,7 @@ type ProcessorDependencies = {
   recordTwentyBooking?(
     event: BookingCompletedEvent,
     personId: string,
+    options?: { internalCanary: boolean },
   ): Promise<{ salesAppointmentId: string; opportunityId: string }>;
   projectSalesAppointment?(
     event: BookingRescheduledEvent | BookingCancelledEvent,
@@ -160,6 +163,37 @@ type ProcessorDependencies = {
     info(message: string, data?: Record<string, unknown>): void;
   };
 };
+
+type InternalCanaryConfiguration = {
+  submissionIds: ReadonlySet<string>;
+  attendeeEmail: string;
+};
+
+export const parseInternalCanaryConfiguration = (environment: {
+  PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS?: string;
+  GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL?: string;
+}): InternalCanaryConfiguration | undefined => {
+  const submissionIds = new Set(
+    (environment.PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS ?? "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean),
+  );
+  const attendeeEmail =
+    environment.GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL?.trim().toLowerCase();
+  if (submissionIds.size === 0 || !attendeeEmail) return undefined;
+  return { submissionIds, attendeeEmail };
+};
+
+const isInternalCanaryEvent = (
+  event: FunnelEvent,
+  configuration: InternalCanaryConfiguration | undefined,
+) =>
+  Boolean(
+    configuration?.submissionIds.has(event.submissionId) &&
+      event.payload.email.trim().toLowerCase() ===
+        configuration.attendeeEmail,
+  );
 
 export const isInternalTestLead = (event: FunnelEvent) =>
   isInternalTestLeadEmail(event.payload.email);
@@ -308,7 +342,11 @@ export async function processFunnelEvent(
   dependencies: ProcessorDependencies,
 ) {
   dependencies.assertEnvironment?.(event.environment);
-  if (isInternalTestLead(event)) {
+  const internalTestLead = isInternalTestLead(event);
+  const internalCanary =
+    internalTestLead &&
+    isInternalCanaryEvent(event, dependencies.internalCanary);
+  if (internalTestLead && !internalCanary) {
     dependencies.log.info("Skipped internal test lead", {
       submissionId: event.submissionId,
       eventId: event.eventId,
@@ -358,7 +396,9 @@ export async function processFunnelEvent(
       gmailReminders,
       smsReminders,
       salesAppointment: Promise.resolve(salesAppointment),
-      measurement: capturePostHogSafely(event, dependencies),
+      measurement: internalCanary
+        ? Promise.resolve()
+        : capturePostHogSafely(event, dependencies),
     });
     await dependencies.schedulePrecallSequence?.(event);
     return { ok: true as const, bookingUid: event.payload.booking.uid };
@@ -378,13 +418,18 @@ export async function processFunnelEvent(
           )
         : Promise.resolve(),
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      measurement: capturePostHogSafely(event, dependencies),
+      measurement: internalCanary
+        ? Promise.resolve()
+        : capturePostHogSafely(event, dependencies),
     });
     return { ok: true as const, bookingUid: event.payload.booking.uid };
   }
 
   if (event.eventType === "booking_completed") {
-    if (!dependencies.recordTwentyBooking || !dependencies.sendMetaSchedule) {
+    if (
+      !dependencies.recordTwentyBooking ||
+      (!internalCanary && !dependencies.sendMetaSchedule)
+    ) {
       throw new Error("Booking processing is not configured");
     }
     dependencies.log.info("Processing verified funnel booking", {
@@ -419,13 +464,20 @@ export async function processFunnelEvent(
             event,
             dependencies,
             "record_booking",
-            () => dependencies.recordTwentyBooking!(event, personId),
+            () =>
+              internalCanary
+                ? dependencies.recordTwentyBooking!(event, personId, {
+                    internalCanary: true,
+                  })
+                : dependencies.recordTwentyBooking!(event, personId),
           );
-          const { eventsReceived } = await executeAdapter(
-            dependencies,
-            { destination: "meta", operation: "deliver_schedule" },
-            () => dependencies.sendMetaSchedule!(event),
-          );
+          const { eventsReceived } = internalCanary
+            ? { eventsReceived: 0 }
+            : await executeAdapter(
+                dependencies,
+                { destination: "meta", operation: "deliver_schedule" },
+                () => dependencies.sendMetaSchedule!(event),
+              );
           return { personId, booking, eventsReceived };
         })();
         const [result] = await Promise.all([
@@ -434,13 +486,19 @@ export async function processFunnelEvent(
         ]);
         return result;
       })(),
-      slack: dependencies.postSlackBooking?.(event) ?? Promise.resolve(),
+      slack: internalCanary
+        ? Promise.resolve()
+        : (dependencies.postSlackBooking?.(event) ?? Promise.resolve()),
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
       gmailReminders,
-      measurement: capturePostHogSafely(event, dependencies),
+      measurement: internalCanary
+        ? Promise.resolve()
+        : capturePostHogSafely(event, dependencies),
     });
     const { personId, booking, eventsReceived } = destinations.core;
-    await capturePostHogPersonLinkSafely(event, personId, dependencies);
+    if (!internalCanary) {
+      await capturePostHogPersonLinkSafely(event, personId, dependencies);
+    }
 
     dependencies.log.info("Processed verified funnel booking", {
       submissionId: event.submissionId,
@@ -457,14 +515,16 @@ export async function processFunnelEvent(
       personId,
       salesAppointmentId: booking.salesAppointmentId,
       opportunityId: booking.opportunityId,
-      metaEventId: event.eventId,
+      ...(internalCanary
+        ? { internalCanary: true as const }
+        : { metaEventId: event.eventId }),
     };
   }
 
   if (event.eventType === "application_submitted") {
     if (
       !dependencies.recordTwentyApplication ||
-      !dependencies.sendMetaApplication
+      (!internalCanary && !dependencies.sendMetaApplication)
     ) {
       throw new Error("Application processing is not configured");
     }
@@ -488,20 +548,33 @@ export async function processFunnelEvent(
           event,
           dependencies,
           "record_application",
-          () => dependencies.recordTwentyApplication!(event, personId),
+          () =>
+            internalCanary
+              ? dependencies.recordTwentyApplication!(event, personId, {
+                  internalCanary: true,
+                })
+              : dependencies.recordTwentyApplication!(event, personId),
         );
-        const { eventsReceived } = await executeAdapter(
-          dependencies,
-          { destination: "meta", operation: "deliver_application" },
-          () => dependencies.sendMetaApplication!(event),
-        );
+        const { eventsReceived } = internalCanary
+          ? { eventsReceived: 0 }
+          : await executeAdapter(
+              dependencies,
+              { destination: "meta", operation: "deliver_application" },
+              () => dependencies.sendMetaApplication!(event),
+            );
         return { personId, application, eventsReceived };
       })(),
-      brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      measurement: capturePostHogSafely(event, dependencies),
+      brevo: internalCanary
+        ? Promise.resolve()
+        : (dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve()),
+      measurement: internalCanary
+        ? Promise.resolve()
+        : capturePostHogSafely(event, dependencies),
     });
     const { personId, application, eventsReceived } = destinations.core;
-    await capturePostHogPersonLinkSafely(event, personId, dependencies);
+    if (!internalCanary) {
+      await capturePostHogPersonLinkSafely(event, personId, dependencies);
+    }
 
     dependencies.log.info("Processed funnel application", {
       submissionId: event.submissionId,
@@ -521,7 +594,9 @@ export async function processFunnelEvent(
       ...(application.opportunityId
         ? { opportunityId: application.opportunityId }
         : {}),
-      metaEventId: event.eventId,
+      ...(internalCanary
+        ? { internalCanary: true as const }
+        : { metaEventId: event.eventId }),
     };
   }
 
@@ -541,19 +616,29 @@ export async function processFunnelEvent(
         "upsert_person",
         () => dependencies.upsertTwentyPerson(event),
       );
-      const { eventsReceived } = await executeAdapter(
-        dependencies,
-        { destination: "meta", operation: "deliver_lead" },
-        () => dependencies.sendMetaLead(event),
-      );
+      const { eventsReceived } = internalCanary
+        ? { eventsReceived: 0 }
+        : await executeAdapter(
+            dependencies,
+            { destination: "meta", operation: "deliver_lead" },
+            () => dependencies.sendMetaLead(event),
+          );
       return { personId, eventsReceived };
     })(),
-    slack: dependencies.postSlackLead?.(event) ?? Promise.resolve(),
-    brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-    measurement: capturePostHogSafely(event, dependencies),
+    slack: internalCanary
+      ? Promise.resolve()
+      : (dependencies.postSlackLead?.(event) ?? Promise.resolve()),
+    brevo: internalCanary
+      ? Promise.resolve()
+      : (dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve()),
+    measurement: internalCanary
+      ? Promise.resolve()
+      : capturePostHogSafely(event, dependencies),
   });
   const { personId, eventsReceived } = destinations.core;
-  await capturePostHogPersonLinkSafely(event, personId, dependencies);
+  if (!internalCanary) {
+    await capturePostHogPersonLinkSafely(event, personId, dependencies);
+  }
 
   dependencies.log.info("Processed funnel contact", {
     submissionId: event.submissionId,
@@ -565,7 +650,9 @@ export async function processFunnelEvent(
   return {
     ok: true as const,
     personId,
-    metaEventId: event.eventId,
+    ...(internalCanary
+      ? { internalCanary: true as const }
+      : { metaEventId: event.eventId }),
   };
 }
 
@@ -597,6 +684,8 @@ type ProcessorEnvironment = {
   PULPSENSE_BUSINESS_POSTAL_ADDRESS?: string;
   PRECALL_OPT_OUT_TOKEN_SECRET?: string;
   CAL_API_KEY?: string;
+  PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS?: string;
+  GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL?: string;
   PULPSENSE_AUTOMATION_ENVIRONMENT?: FunnelEvent["environment"];
 };
 
@@ -1067,6 +1156,7 @@ const recordTwentyApplication = async (
   client: TwentyClient,
   qualifiedStageValue: string | undefined,
   closedStageValues: ReadonlySet<string>,
+  options: { internalCanary: boolean },
 ) => {
   // Twenty's workspace automation is the sole Company creator. Trigger.dev
   // only matches the normalized email domain so both systems cannot race.
@@ -1087,11 +1177,9 @@ const recordTwentyApplication = async (
   }
 
   const stage = required(qualifiedStageValue, "TWENTY_QUALIFIED_STAGE_VALUE");
-  const openOpportunity = await findOpenTwentyOpportunity(
-    client,
-    personId,
-    closedStageValues,
-  );
+  const openOpportunity = options.internalCanary
+    ? undefined
+    : await findOpenTwentyOpportunity(client, personId, closedStageValues);
   const attemptOpportunityId = openOpportunity
     ? undefined
     : await deterministicUuid(`funnel-opportunity:${event.submissionId}`);
@@ -1100,6 +1188,7 @@ const recordTwentyApplication = async (
     {
       ...(attemptOpportunityId ? { id: attemptOpportunityId } : {}),
       name: `AI SEO – ${event.companyDomain}`,
+      ...(options.internalCanary ? { isTest: true } : {}),
       ...(openOpportunity ? {} : { stage }),
       ...(openOpportunity
         ? {}
@@ -1124,6 +1213,7 @@ const recordTwentyBooking = async (
   callBookedStageValue: string | undefined,
   closedStageValues: ReadonlySet<string>,
   ledgerAdapter: ReturnType<typeof createTwentySalesAppointmentAdapter>,
+  options: { internalCanary: boolean },
 ) => {
   const qualifiedStage = required(
     qualifiedStageValue,
@@ -1137,7 +1227,24 @@ const recordTwentyBooking = async (
     await projectSalesAppointmentLifecycle(
       event,
       {
+        ...(options.internalCanary
+          ? {
+              classification: {
+                classification: "NON_PRODUCTION" as const,
+                isTest: true,
+                isCommercial: false,
+              },
+            }
+          : {}),
         resolveCreationContext: async () => {
+          if (options.internalCanary) {
+            return {
+              personId,
+              opportunityId: await deterministicUuid(
+                `funnel-opportunity:${event.submissionId}`,
+              ),
+            };
+          }
           const opportunity = await findOpenTwentyOpportunity(
             client,
             personId,
@@ -1550,23 +1657,29 @@ export function createProcessorDependencies(
       },
     );
   };
+  const internalCanaryConfiguration =
+    parseInternalCanaryConfiguration(environment);
 
   return {
+    ...(internalCanaryConfiguration
+      ? { internalCanary: internalCanaryConfiguration }
+      : {}),
     assertEnvironment: (eventEnvironment) => {
       if (eventEnvironment !== automationEnvironment) {
         throw new Error("Funnel event environment does not match destinations");
       }
     },
     upsertTwentyPerson: (event) => upsertTwentyPerson(event, twentyClient),
-    recordTwentyApplication: (event, personId) =>
+    recordTwentyApplication: (event, personId, options) =>
       recordTwentyApplication(
         event,
         personId,
         twentyClient,
         environment.TWENTY_QUALIFIED_STAGE_VALUE,
         closedStageValues,
+        options ?? { internalCanary: false },
       ),
-    recordTwentyBooking: (event, personId) =>
+    recordTwentyBooking: (event, personId, options) =>
       recordTwentyBooking(
         event,
         personId,
@@ -1575,6 +1688,7 @@ export function createProcessorDependencies(
         environment.TWENTY_CALL_BOOKED_STAGE_VALUE,
         closedStageValues,
         salesAppointmentAdapter,
+        options ?? { internalCanary: false },
       ),
     projectSalesAppointment: (event) =>
       projectSalesAppointmentLifecycle(event, {}, salesAppointmentAdapter),
@@ -1746,6 +1860,11 @@ export const processFunnelEventTask = schemaTask({
           PRECALL_OPT_OUT_TOKEN_SECRET:
             process.env.PRECALL_OPT_OUT_TOKEN_SECRET,
           CAL_API_KEY: process.env.CAL_API_KEY,
+          PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS:
+            process.env.PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS,
+          GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL:
+            process.env
+              .GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL,
           PULPSENSE_AUTOMATION_ENVIRONMENT: process.env
             .PULPSENSE_AUTOMATION_ENVIRONMENT as
             | FunnelEvent["environment"]

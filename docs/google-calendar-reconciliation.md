@@ -70,6 +70,12 @@ Rollout controls:
   attendee email required during canarying. Set canary-only to `false` only
   after the mandatory live scenarios pass; the UID allowlist then stops gating
   general production appointments.
+- `PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS` is the comma-separated exact set
+  of signed Lead Journey UUIDs allowed to bypass full internal-test suppression.
+  Those events create the canonical Twenty prerequisites and appointment as
+  test data, but do not emit Meta or PostHog measurement or sales Slack alerts.
+  The canary Opportunity is written with `isTest = true`; the Sales Appointment
+  is `NON_PRODUCTION`, `isTest = true`, and `isCommercial = false`.
 
 ## Rollout
 

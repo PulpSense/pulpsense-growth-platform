@@ -36,6 +36,7 @@ const twentyWebhookSchema = z
         pointOfContactId: z.string().min(1).max(200).optional(),
         prospectId: z.string().optional(),
         originatingLeadJourneyId: z.string().optional(),
+        isTest: z.boolean().optional(),
         stage: z.string().min(1).max(200).optional(),
         pulpsenseSalesOutcome: z.enum(["WON", "LOST"]).optional(),
         amount: currencyAmountSchema.optional(),
@@ -173,6 +174,7 @@ export async function handleTwentySalesWebhook(
     personId: record.pointOfContactId,
     prospectId: record.prospectId,
     originatingLeadJourneyId: record.originatingLeadJourneyId,
+    isTest: record.isTest === true,
     stageValue: record.stage,
     previousOutcome:
       record.pulpsenseSalesOutcome === "WON"

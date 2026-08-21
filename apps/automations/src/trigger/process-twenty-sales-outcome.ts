@@ -55,6 +55,9 @@ export async function processTwentySalesOutcome(
   event: TwentySalesWebhookEvent,
   dependencies: TwentySalesOutcomeDependencies,
 ) {
+  if (event.isTest) {
+    return { emitted: null, ignored: "test_opportunity" } as const;
+  }
   const stageId = await dependencies.resolveStageOptionId(event.stageValue);
   const outcome = outcomeForStageId(stageId, dependencies);
   if (!outcome) {

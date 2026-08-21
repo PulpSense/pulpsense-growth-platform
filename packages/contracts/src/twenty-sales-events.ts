@@ -36,6 +36,7 @@ export const twentySalesWebhookEventSchema = z
     personId: z.string().min(1).max(200),
     prospectId: prospectIdSchema.optional(),
     originatingLeadJourneyId: z.uuid(),
+    isTest: z.boolean(),
     stageValue: twentyStageValueSchema,
     previousOutcome: z.enum(["won", "lost"]).optional(),
     amount: z.number().finite().nonnegative(),

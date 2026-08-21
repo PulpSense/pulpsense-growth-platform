@@ -158,6 +158,29 @@ describe("Sales Appointment lifecycle projection", () => {
     });
   });
 
+  it("classifies an explicitly approved production canary as non-commercial test data", async () => {
+    const memory = memoryAdapter();
+    const projection = await projectSalesAppointmentLifecycle(
+      completed,
+      {
+        personId: "person-canary",
+        opportunityId: "opportunity-canary",
+        classification: {
+          classification: "NON_PRODUCTION",
+          isTest: true,
+          isCommercial: false,
+        },
+      },
+      memory.adapter,
+    );
+
+    expect(memory.appointments.get(projection.salesAppointmentId)).toMatchObject({
+      classification: "NON_PRODUCTION",
+      isTest: true,
+      isCommercial: false,
+    });
+  });
+
   it("repairs an appointment-only partial create without advancing another Opportunity", async () => {
     const memory = memoryAdapter();
     const initial = await createInitial(memory);
