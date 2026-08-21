@@ -14,7 +14,7 @@ Twenty must expose the following custom objects before the lifecycle processor o
 | `scheduledEndAt`           | date-time                  | required                                         |
 | `originatingLeadJourneyId` | text                       | required, indexed                                |
 | `funnelId`                 | text                       | required                                         |
-| `environment`              | select                     | `local`, `preview`, `production`                 |
+| `environment`              | text                       | `local`, `preview`, `production`                 |
 | `classification`           | select                     | `PRODUCTION_COMMERCIAL`, `NON_PRODUCTION`        |
 | `isCommercial`             | boolean                    | required                                         |
 | `isTest`                   | boolean                    | required                                         |
