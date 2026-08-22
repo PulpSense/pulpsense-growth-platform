@@ -16,7 +16,7 @@ describe("Twenty Sales Appointment adapter", () => {
         Response.json({
           data: {
             salesAppointments: {
-              edges: [{ node: { id: "appointment-1" } }],
+              edges: [{ node: { id: "appointment-1", personId: "person-1" } }],
               pageInfo: { hasNextPage: true, endCursor: "cursor-1" },
             },
           },
@@ -26,7 +26,7 @@ describe("Twenty Sales Appointment adapter", () => {
         Response.json({
           data: {
             salesAppointments: {
-              edges: [{ node: { id: "appointment-2" } }],
+              edges: [{ node: { id: "appointment-2", personId: "person-2" } }],
               pageInfo: { hasNextPage: false, endCursor: null },
             },
           },
@@ -36,7 +36,10 @@ describe("Twenty Sales Appointment adapter", () => {
       createTwentySalesAppointmentAdapter(
         client(fetcher),
       ).listSalesAppointments(),
-    ).resolves.toEqual([{ id: "appointment-1" }, { id: "appointment-2" }]);
+    ).resolves.toEqual([
+      { id: "appointment-1", personId: "person-1" },
+      { id: "appointment-2", personId: "person-2" },
+    ]);
     expect(
       JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body)).variables,
     ).toEqual({ after: "cursor-1" });
@@ -102,5 +105,41 @@ describe("Twenty Sales Appointment adapter", () => {
         "appointment-1",
       ),
     ).resolves.toBeUndefined();
+  });
+
+  it("rejects a Sales Appointment without its required Person", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({
+        data: {
+          salesAppointments: {
+            edges: [{ node: { id: "appointment-1" } }],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        },
+      }),
+    );
+
+    await expect(
+      createTwentySalesAppointmentAdapter(
+        client(fetcher),
+      ).listSalesAppointments(),
+    ).rejects.toThrow("omitted its Person ID");
+  });
+
+  it("reads a person's display name for operational alerts", async () => {
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      Response.json({
+        person: { name: { firstName: "Ada", lastName: "Prospect" } },
+      }),
+    );
+
+    await expect(
+      createTwentySalesAppointmentAdapter(client(fetcher)).getPersonDisplayName(
+        "person-1",
+      ),
+    ).resolves.toBe("Ada Prospect");
+    expect(String(fetcher.mock.calls[0]?.[0])).toBe(
+      "https://twenty.test/rest/people/person-1",
+    );
   });
 });

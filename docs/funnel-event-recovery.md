@@ -12,10 +12,10 @@ Company creation remains owned by the audited Twenty workspace automation, whose
 
 ## Locate and diagnose a failed event
 
-1. Open the Trigger.dev run link in the `Twenty delivery exhausted retries` Slack alert. The alert contains only environment, funnel ID, event type, submission ID, event ID, failed operation, run ID, and run link.
+1. Open the Trigger.dev run link in the person-named Twenty failure Slack alert. The alert identifies the failed CRM step, impact, retry state, funnel, Lead Journey and booking IDs when applicable, and run ID. The private reliability channel may include the affected person's name but never their email, phone, application answers, or raw payload.
 2. Confirm that the run environment matches the event environment. Never replay a preview payload into production.
 3. Review the structured logs for the failed operation and retry attempts. Routine logs intentionally omit email, phone, names, and application answers.
-4. If the redacted context is insufficient, an authorized operator may inspect that run's original payload in Trigger.dev. Do not copy the payload into Slack, tickets, or ordinary logs.
+4. If the alert context is insufficient, an authorized operator may inspect that run's original payload in Trigger.dev. Do not copy the payload into Slack, tickets, or ordinary logs.
 5. Correct the destination problem first: credentials, API availability, Twenty schema/stage configuration, missing qualified Opportunity, or malformed sandbox setup.
 
 An application can arrive before its contact event because it carries enough verified contact data to upsert the Person. A booking with no open qualified Opportunity retries its Twenty booking operation; if the prerequisite still does not exist after exhaustion, process or replay the qualified application before replaying the booking.

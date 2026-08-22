@@ -23,6 +23,13 @@ import {
   type BrevoLifecycleEvent,
 } from "./lifecycle-destinations.js";
 import {
+  formatSlackNotification,
+  slackDeliveryOptions,
+  slackIdentifierFooter,
+  slackLink,
+  slackText,
+} from "./slack-notifications.js";
+import {
   scheduleMeetingReminders,
   sendMeetingReminderTask,
   type ReminderScheduleTarget,
@@ -71,18 +78,61 @@ export type AdapterExecutor = <Result>(
 ) => Promise<Result>;
 
 type TwentyFailureContext = {
+  firstName: string;
+  lastName: string;
   submissionId: string;
   eventId: string;
   eventType: FunnelEvent["eventType"];
   funnelId: FunnelEvent["funnelId"];
   environment: FunnelEvent["environment"];
   operation: AdapterOperation;
+  bookingUid?: string;
 };
 
 type InternalCanaryRecordOptions = { internalCanary: boolean };
 
-const triggerRunLink = (url: string | undefined, fallback: string) =>
-  url ? `<${url}|Open in Trigger>` : fallback;
+const displayName = (value: { firstName: string; lastName?: string }) =>
+  [value.firstName, value.lastName].filter(Boolean).join(" ");
+
+const twentyFailureCopy = (context: TwentyFailureContext) => {
+  const name = displayName(context);
+  switch (context.operation) {
+    case "upsert_person":
+      return {
+        title: `Couldn't sync ${name} to Twenty`,
+        failedStep: "Create or update the Person in Twenty",
+        impact:
+          "The funnel lead exists, but their Twenty Person may be missing or stale.",
+      };
+    case "record_application":
+      return {
+        title: `Couldn't record ${name}'s application`,
+        failedStep: "Update the Opportunity and application activity in Twenty",
+        impact:
+          "The application was accepted, but its CRM stage or activity may be stale.",
+      };
+    case "record_booking":
+      return {
+        title: `Couldn't record ${name}'s booking`,
+        failedStep: "Update the booking state in Twenty",
+        impact: "The booking exists, but the CRM booking state may be stale.",
+      };
+    case "project_sales_appointment":
+      return {
+        title: `Couldn't create ${name}'s Sales Appointment`,
+        failedStep: "Project the booking into the Sales Appointment ledger",
+        impact:
+          "The booking exists, but its Sales Appointment ledger record may be missing or stale.",
+      };
+    default:
+      return {
+        title: `Couldn't update ${name} in Twenty`,
+        failedStep: displayOperation(context.operation),
+        impact:
+          "The funnel event succeeded, but its Twenty CRM state may be stale.",
+      };
+  }
+};
 
 const displayOperation = (operation: AdapterOperation) =>
   ({
@@ -105,27 +155,103 @@ const displayOperation = (operation: AdapterOperation) =>
 export const formatTwentyFailureAlert = (
   context: TwentyFailureContext,
   runUrl?: string,
+  runId?: string,
 ) =>
-  [
-    `:rotating_light: *Twenty CRM sync failed* — ${context.environment}`,
-    `${displayOperation(context.operation)} · Funnel: \`${context.funnelId}\` · Journey: \`${context.submissionId}\``,
-    triggerRunLink(runUrl, "Trigger run unavailable"),
-  ].join("\n");
+  (() => {
+    const copy = twentyFailureCopy(context);
+    return formatSlackNotification({
+      tone: "failure",
+      title: copy.title,
+      environment: context.environment,
+      fields: [
+        { label: "Failed step", value: slackText(copy.failedStep) },
+        { label: "Impact", value: slackText(copy.impact) },
+        {
+          label: "Retry",
+          value: slackText("Exhausted — manual investigation required"),
+        },
+        { label: "Funnel", value: slackText(context.funnelId) },
+      ],
+      links: runUrl ? [slackLink("Open in Trigger", runUrl)] : undefined,
+      note: slackIdentifierFooter([
+        ["Journey", context.submissionId],
+        ["Booking", context.bookingUid],
+        ["Run", runId],
+      ]),
+    });
+  })();
+
+const brevoFailureCopy = (event: BrevoLifecycleEvent) => {
+  const name = displayName(event.payload);
+  if (event.eventType === "contact_submitted") {
+    return {
+      title: `Couldn't add ${name} to Brevo`,
+      failedStep: "Create or update the Brevo contact",
+      impact:
+        "The lead is recorded elsewhere, but Brevo lifecycle messaging cannot start.",
+    };
+  }
+  if (event.eventType === "application_submitted") {
+    return {
+      title: `Couldn't start ${name}'s booking follow-up`,
+      failedStep: "Publish the qualified application lifecycle event to Brevo",
+      impact:
+        "The application is recorded, but booking follow-up may not start.",
+    };
+  }
+  if (event.eventType === "booking_completed") {
+    return {
+      title: `Couldn't publish ${name}'s booking to Brevo`,
+      failedStep: "Publish the booking lifecycle event to Brevo",
+      impact:
+        "Brevo may not start booking confirmation and pre-call lifecycle messaging.",
+    };
+  }
+  if (event.eventType === "booking_rescheduled") {
+    return {
+      title: `Couldn't update ${name}'s new call time in Brevo`,
+      failedStep: "Publish the rescheduled booking lifecycle event to Brevo",
+      impact: "Brevo may continue showing the previous call time.",
+    };
+  }
+  return {
+    title: `Couldn't cancel ${name}'s Brevo lifecycle`,
+    failedStep: "Publish the booking cancellation lifecycle event to Brevo",
+    impact:
+      "Brevo's contact state may remain booked; send guards still verify the live booking.",
+  };
+};
 
 export const formatBrevoFailureAlert = (
   event: BrevoLifecycleEvent,
   runUrl?: string,
+  runId?: string,
 ) =>
-  [
-    `:rotating_light: *Brevo lifecycle sync failed* — ${event.environment}`,
-    [
-      `Journey: \`${event.submissionId}\``,
-      ...("booking" in event.payload
-        ? [`Booking: \`${event.payload.booking.uid}\``]
-        : []),
-    ].join(" · "),
-    triggerRunLink(runUrl, "Trigger run unavailable"),
-  ].join("\n");
+  (() => {
+    const copy = brevoFailureCopy(event);
+    return formatSlackNotification({
+      tone: "failure",
+      title: copy.title,
+      environment: event.environment,
+      fields: [
+        { label: "Failed step", value: slackText(copy.failedStep) },
+        { label: "Impact", value: slackText(copy.impact) },
+        {
+          label: "Retry",
+          value: slackText("Exhausted — manual investigation required"),
+        },
+      ],
+      links: runUrl ? [slackLink("Open in Trigger", runUrl)] : undefined,
+      note: slackIdentifierFooter([
+        ["Journey", event.submissionId],
+        [
+          "Booking",
+          "booking" in event.payload ? event.payload.booking.uid : undefined,
+        ],
+        ["Run", runId],
+      ]),
+    });
+  })();
 
 type ProcessorDependencies = {
   internalCanary?: InternalCanaryConfiguration;
@@ -265,12 +391,17 @@ const executeTwenty = async <Result>(
   } catch (error) {
     try {
       await dependencies.alertTwentyFailure?.({
+        firstName: event.payload.firstName,
+        lastName: event.payload.lastName,
         submissionId: event.submissionId,
         eventId: event.eventId,
         eventType: event.eventType,
         funnelId: event.funnelId,
         environment: event.environment,
         operation: operationName,
+        ...("booking" in event.payload
+          ? { bookingUid: event.payload.booking.uid }
+          : {}),
       });
     } catch {
       dependencies.log.info("Twenty failure alert delivery failed", {
@@ -1658,9 +1789,6 @@ export function createProcessorDependencies(
         },
       ));
   const alertTwentyFailure = async (context: TwentyFailureContext) => {
-    const runReference = runtime.run
-      ? `<${runtime.run.url}|${runtime.run.id}>`
-      : "unavailable";
     await executeWithRetry(
       { destination: "slack", operation: "alert_twenty_failure" },
       async () => {
@@ -1668,15 +1796,12 @@ export function createProcessorDependencies(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: [
-              ":rotating_light: Twenty delivery exhausted retries",
-              `Environment: ${context.environment}`,
-              `Funnel: ${context.funnelId}`,
-              `Event type: ${context.eventType}`,
-              `Submission: ${context.submissionId}`,
-              `Operation: ${displayOperation(context.operation)}`,
-              `Trigger.dev run: ${runReference}`,
-            ].join("\n"),
+            text: formatTwentyFailureAlert(
+              context,
+              runtime.run?.url,
+              runtime.run?.id,
+            ),
+            ...slackDeliveryOptions,
           }),
         });
         if (!response.ok) {
@@ -1687,11 +1812,8 @@ export function createProcessorDependencies(
   };
   const alertDestinationFailure = async (
     event: BrevoLifecycleEvent,
-    operation: AdapterOperation,
+    _operation: AdapterOperation,
   ) => {
-    const runReference = runtime.run
-      ? `<${runtime.run.url}|${runtime.run.id}>`
-      : "unavailable";
     await executeWithRetry(
       { destination: "slack", operation: "alert_destination_failure" },
       async () => {
@@ -1699,17 +1821,12 @@ export function createProcessorDependencies(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            text: [
-              ":rotating_light: Lifecycle destination exhausted retries",
-              `Environment: ${event.environment}`,
-              `Destination: brevo`,
-              `Operation: ${displayOperation(operation)}`,
-              `Lead Journey: ${event.submissionId}`,
-              ...("booking" in event.payload
-                ? [`Cal UID: ${event.payload.booking.uid}`]
-                : []),
-              `Trigger.dev run: ${runReference}`,
-            ].join("\n"),
+            text: formatBrevoFailureAlert(
+              event,
+              runtime.run?.url,
+              runtime.run?.id,
+            ),
+            ...slackDeliveryOptions,
           }),
         });
         if (!response.ok) {
@@ -1885,6 +2002,8 @@ export function createProcessorDependencies(
               personId: context.personId,
               oldStart: event.payload.booking.previousStartTime,
               intendedStart: event.payload.booking.startTime,
+              firstName: event.payload.firstName,
+              lastName: event.payload.lastName,
               previousBookingUid: event.payload.booking.previousUid,
               replacementBookingUid: event.payload.booking.uid,
             },

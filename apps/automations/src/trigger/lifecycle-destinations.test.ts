@@ -111,8 +111,31 @@ describe("Slack lead journey delivery", () => {
     expect(body.text).toContain("maya@brand.com");
     expect(body.text).toContain("+1 555 123 4567");
     expect(body.text).toContain("brand.com");
+    expect(body.text).toContain("*Source:* meta / paid-social / audit");
+    expect(body.text).toContain(`Journey ${contactEvent.submissionId}`);
     expect(body.text).not.toContain(contactEvent.requestContext.clientIp);
     expect(body.text).not.toContain(contactEvent.requestContext.fbc);
+  });
+
+  it("labels direct traffic instead of omitting source context", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({ ok: true, messages: [], response_metadata: {} }),
+      )
+      .mockResolvedValueOnce(Response.json({ ok: true, ts: "100.200" }));
+
+    await postSlackLead(
+      {
+        ...contactEvent,
+        attribution: { firstTouch: {}, lastTouch: {} },
+      },
+      slackConfig,
+      fetcher,
+    );
+
+    const body = JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body));
+    expect(body.text).toContain("*Source:* Direct / unknown");
   });
 
   it("reuses an existing root and posts one booking reply", async () => {
@@ -143,9 +166,34 @@ describe("Slack lead journey delivery", () => {
         event_payload: { event_id: bookingEvent.eventId },
       },
     });
-    expect(body.text).toContain("Booked");
+    expect(body.text).toContain("Maya Chen booked a sales call");
+    expect(body.text).toContain("<!date^");
+    expect(body.text).toContain("*Timezone:* America/New_York");
+    expect(body.text).toContain(`Journey ${bookingEvent.submissionId}`);
     expect(body.text).toContain("Open booking");
     expect(body.text).not.toContain(bookingEvent.payload.email);
+    expect(body.text).not.toContain("*Company:*");
+    expect(body.text).not.toContain("*Source:*");
+  });
+
+  it("formats a missing-thread booking fallback as one complete root", async () => {
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        Response.json({ ok: true, messages: [], response_metadata: {} }),
+      )
+      .mockResolvedValueOnce(Response.json({ ok: true, ts: "100.300" }));
+
+    await expect(
+      postSlackBooking(bookingEvent, slackConfig, fetcher),
+    ).resolves.toEqual({ threadTs: "100.300", fallbackRoot: true });
+    const body = JSON.parse(String(fetcher.mock.calls[1]?.[1]?.body));
+    expect(body.text).toContain("Maya Chen booked a sales call");
+    expect(body.text).toContain("*Email:* maya@brand.com");
+    expect(body.text).toContain("*Company:* brand.com");
+    expect(body.text).toContain("*Source:* meta / paid-social / audit");
+    expect(body.text.match(/:white_check_mark:/gu)).toHaveLength(1);
+    expect(body.text).not.toContain("New funnel lead");
   });
 
   it("posts the booking when Slack cannot inspect a stale thread", async () => {
