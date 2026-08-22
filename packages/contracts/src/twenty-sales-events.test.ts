@@ -45,6 +45,43 @@ describe("Twenty sales webhook contract", () => {
     ).toBe(false);
   });
 
+  it("accepts a terminal update while revenue is still pending", () => {
+    expect(
+      twentySalesWebhookEventSchema.safeParse({
+        schemaVersion: 2,
+        eventId: "event",
+        occurredAt: "2026-08-15T10:00:00.000Z",
+        workspaceId: "workspace-production",
+        opportunityId: "opportunity-1",
+        personId: "person-1",
+        originatingLeadJourneyId: "8be0f734-f3c9-4c8c-b4f8-7897f6285f12",
+        stageValue: "stage-won",
+        isTest: false,
+        updatedFields: ["stage"],
+        environment: "production",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejects partial revenue values", () => {
+    expect(
+      twentySalesWebhookEventSchema.safeParse({
+        schemaVersion: 2,
+        eventId: "event",
+        occurredAt: "2026-08-15T10:00:00.000Z",
+        workspaceId: "workspace-production",
+        opportunityId: "opportunity-1",
+        personId: "person-1",
+        originatingLeadJourneyId: "8be0f734-f3c9-4c8c-b4f8-7897f6285f12",
+        stageValue: "stage-won",
+        amount: 12500,
+        isTest: false,
+        updatedFields: ["stage"],
+        environment: "production",
+      }).success,
+    ).toBe(false);
+  });
+
   it("shares Twenty revenue-field classification across producers and consumers", () => {
     expect(isTwentyRevenueUpdatedField("amount.currencyCode")).toBe(true);
     expect(isTwentyRevenueUpdatedField("stage")).toBe(false);

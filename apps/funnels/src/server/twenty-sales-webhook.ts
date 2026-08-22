@@ -13,11 +13,12 @@ const isRelevantField = (field: string) =>
   field === "stage" || isTwentyRevenueUpdatedField(field);
 
 const currencyAmountSchema = z.object({
-  amountMicros: z.number().finite().nonnegative(),
+  amountMicros: z.number().finite().nonnegative().nullish(),
   currencyCode: z
     .string()
     .trim()
-    .regex(/^[A-Z]{3}$/u),
+    .regex(/^[A-Z]{3}$/u)
+    .nullish(),
 });
 
 const twentyWebhookSchema = z
@@ -39,7 +40,7 @@ const twentyWebhookSchema = z
         isTest: z.boolean().optional(),
         stage: z.string().min(1).max(200).optional(),
         pulpsenseSalesOutcome: z.enum(["WON", "LOST"]).optional(),
-        amount: currencyAmountSchema.optional(),
+        amount: currencyAmountSchema.nullish(),
       })
       .passthrough(),
     updatedFields: z.array(z.string().min(1).max(200)).max(100).optional(),
@@ -160,8 +161,7 @@ export async function handleTwentySalesWebhook(
   if (
     !record.pointOfContactId ||
     !record.originatingLeadJourneyId ||
-    !record.stage ||
-    !record.amount
+    !record.stage
   ) {
     return json({ error: "twenty_sales_references_missing" }, 422);
   }
@@ -182,8 +182,14 @@ export async function handleTwentySalesWebhook(
         : record.pulpsenseSalesOutcome === "LOST"
           ? "lost"
           : undefined,
-    amount: record.amount.amountMicros / 1_000_000,
-    currency: record.amount.currencyCode,
+    ...(record.amount?.amountMicros !== null &&
+    record.amount?.amountMicros !== undefined &&
+    record.amount.currencyCode
+      ? {
+          amount: record.amount.amountMicros / 1_000_000,
+          currency: record.amount.currencyCode,
+        }
+      : {}),
     updatedFields: webhook.updatedFields,
     environment: "production",
   });

@@ -199,6 +199,38 @@ describe("POST /api/webhooks/twenty", () => {
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
+  it("durably enqueues a won stage update while revenue is still pending", async () => {
+    const fetchMock = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(Response.json({ id: "run-pending-revenue" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const value = payload();
+
+    const response = await handleTwentySalesWebhook(
+      await requestFor({
+        ...value,
+        record: {
+          ...value.record,
+          amount: { amountMicros: null, currencyCode: null },
+        },
+      }),
+      env,
+    );
+
+    expect(response.status).toBe(202);
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)),
+    ).toMatchObject({
+      payload: {
+        stageValue: "NEW_DEALS_WON",
+        updatedFields: ["stage"],
+      },
+    });
+    expect(
+      JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).payload,
+    ).not.toHaveProperty("amount");
+  });
+
   it("rejects terminal updates without required CRM references", async () => {
     const valid = payload();
     const invalid = {

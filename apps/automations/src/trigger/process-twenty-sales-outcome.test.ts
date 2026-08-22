@@ -118,10 +118,21 @@ describe("Twenty terminal sales outcome processing", () => {
   it("emits a lost sale when an Opportunity enters the lost stage", async () => {
     const deps = dependencies();
     const result = await processTwentySalesOutcome(
-      { ...baseEvent, stageValue: stageValue("stage-lost") },
+      {
+        ...baseEvent,
+        stageValue: stageValue("stage-lost"),
+        amount: undefined,
+        currency: undefined,
+      },
       deps,
     );
     expect(result).toEqual({ emitted: "sale_lost" });
+    expect(deps.capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "sale_lost",
+        properties: expect.not.objectContaining({ amount: expect.anything() }),
+      }),
+    );
   });
 
   it("ignores intermediate Opportunity updates", async () => {
@@ -139,6 +150,7 @@ describe("Twenty terminal sales outcome processing", () => {
     const event = {
       ...baseEvent,
       eventId: "twenty:webhook-1:opportunity-1:adjusted",
+      previousOutcome: "won" as const,
       updatedFields: ["amount"],
       amount: 15000,
     };
@@ -152,12 +164,46 @@ describe("Twenty terminal sales outcome processing", () => {
     );
   });
 
+  it("waits for revenue when an Opportunity enters won without an amount", async () => {
+    const deps = dependencies();
+
+    await expect(
+      processTwentySalesOutcome(
+        { ...baseEvent, amount: undefined, currency: undefined },
+        deps,
+      ),
+    ).resolves.toEqual({ emitted: null, ignored: "won_pending_revenue" });
+
+    expect(deps.capture).not.toHaveBeenCalled();
+    expect(deps.recordOutcome).not.toHaveBeenCalled();
+  });
+
+  it("emits the first completed sale when revenue arrives after the won stage", async () => {
+    const deps = dependencies();
+    const event = {
+      ...baseEvent,
+      eventId: "twenty:webhook-1:opportunity-1:first-revenue",
+      updatedFields: ["amount"],
+    };
+
+    await expect(processTwentySalesOutcome(event, deps)).resolves.toEqual({
+      emitted: "sale_completed",
+    });
+    expect(deps.capture).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "sale_completed",
+        insertId: `sale_completed:${event.opportunityId}`,
+      }),
+    );
+  });
+
   it("treats a currency-only update to a won sale as a revenue adjustment", async () => {
     const deps = dependencies();
     const result = await processTwentySalesOutcome(
       {
         ...baseEvent,
         eventId: "twenty:webhook-1:opportunity-1:currency-adjusted",
+        previousOutcome: "won",
         updatedFields: ["amount.currencyCode"],
         currency: "EUR",
       },
