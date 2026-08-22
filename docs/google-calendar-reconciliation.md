@@ -212,12 +212,18 @@ time and return to `SCHEDULED`. `CANCELLED` remains terminal.
    dispatched child run, Twenty and provider read-back, and Slack. For each
    eligible appointment, directly open the exact Cal booking UID and verify its
    status and canonical time. Search the designated Google Calendar by that
-   exact UID/reschedule link, inspect every result, and verify that exactly one
-   active event represents the appointment. An `unchanged` child verifies the
-   mapped Google event and Twenty state, but returns before the Cal read and is
-   not a duplicate-event search. Immediately set mode to `off` if any duplicate
-   event, unexplained Cal mutation, stale automation, missing mapping, or
-   unexpected alert appears.
+   exact UID/reschedule link and inspect every result. Verify that exactly one
+   event is the canonical mapped appointment. A user may intentionally duplicate
+   the original Google invite for a follow-up or onboarding meeting with the
+   same booker; because Google copies the description, those distinct meetings
+   can retain the original Cal link and appear in the UID search. Treat every
+   additional result as unexplained until the operator confirms its distinct
+   purpose, time, and attendee. For future copies, remove the original Cal
+   reschedule/cancel link because it still controls the canonical booking. An
+   `unchanged` child verifies the mapped Google event and Twenty state, but
+   returns before the Cal read and is not a duplicate-event search. Immediately
+   set mode to `off` if any duplicate event, unexplained Cal mutation, stale
+   automation, missing mapping, or unexpected alert appears.
 
 Provider-owned Google and Cal emails may both be delivered. The description
 patch sets `sendUpdates=none`, but Google notes that some messages may still be
