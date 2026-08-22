@@ -295,9 +295,18 @@ describe("AI SEO campaigns", () => {
       sharedThankYouContent.videos?.items,
     );
 
-    const serialized = JSON.stringify(medSpas);
-    expect(serialized).not.toContain("45 New Calls");
-    expect(serialized).not.toContain("law firm");
+    const serialized = JSON.stringify(medSpas).toLowerCase();
+    const forbiddenMedSpaCopy = [
+      "45 new calls",
+      "law firm",
+      "dental practice",
+      "dental implant",
+      "plastic surgery",
+      "hair restoration",
+    ];
+    for (const forbiddenCopy of forbiddenMedSpaCopy) {
+      expect(serialized).not.toContain(forbiddenCopy);
+    }
   });
 
   it("keeps niche-specific qualification callouts", () => {
