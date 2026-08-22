@@ -57,11 +57,11 @@ export const medSpasCampaign = defineAiSeoCampaign({
     education: {
       heading: "This Isn't SEO. This Isn't Ads.",
       intro:
-        "Getting recommended by AI requires a different set of signals than traditional SEO or ads.",
+        "Getting recommended by AI is a different game, and almost nobody in your market is playing it yet.",
       items: [
         {
           title: "AI Pulls From Sources Most Agencies Ignore",
-          body: "ChatGPT and AI Overviews don't just read your website. They pull from map data, industry directories, citations, and review profiles, the sources many traditional SEO programs overlook.",
+          body: "ChatGPT and AI Overviews don't just read your website. They pull from map data, industry directories, citations, and review profiles, the sources many SEO programs overlook.",
         },
         {
           title: "It's About Trust Signals, Not Keywords",
@@ -84,7 +84,7 @@ export const medSpasCampaign = defineAiSeoCampaign({
     process: {
       heading: "How It Works for Your Practice",
       intro:
-        "Your roadmap from hard to find to recommended. Your team invests about 30 minutes; we handle the rest.",
+        "Your roadmap from hard to find to recommended. Your team invests about 30 minutes. We handle the rest.",
       steps: [
         {
           title: "We Audit Your Visibility (Day 1)",
@@ -200,19 +200,14 @@ export const medSpasCampaign = defineAiSeoCampaign({
     confirmation: {
       ...sharedThankYouContent.confirmation,
       intro:
-        "Review this quick briefing before your Med-Spa Visibility Audit. 45 qualified treatment inquiries in 90 days. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
+        "Review this quick briefing before your Visibility Audit. 45 qualified treatment inquiries in 90 days. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
     },
     calendar: {
       ...sharedThankYouContent.calendar,
       beforeConfirmation:
-        "Search your inbox and spam for your Med-Spa Visibility Audit invitation. Open it and click ",
+        'Search your inbox and spam for your "Rank #1 on Google & AI" invitation. Open it and click ',
     },
-    videos: sharedThankYouContent.videos
-      ? {
-          ...sharedThankYouContent.videos,
-          heading: "Step 2: Hear From Businesses We've Helped",
-        }
-      : null,
+    videos: sharedThankYouContent.videos,
     reviews: sharedThankYouContent.reviews
       ? {
           heading: "What Businesses We've Helped Say About Us",
