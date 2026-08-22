@@ -275,9 +275,9 @@ describe("AI SEO campaigns", () => {
     expect(lawFirms.application.guaranteeTerms).toBe(
       lawFirms.landing.guarantee.terms,
     );
-    const serialized = JSON.stringify(lawFirms);
+    const serialized = JSON.stringify(lawFirms).toLowerCase();
     for (const retiredCopy of RETIRED_LAW_FIRM_COPY) {
-      expect(serialized).not.toContain(retiredCopy);
+      expect(serialized).not.toContain(retiredCopy.toLowerCase());
     }
   });
 

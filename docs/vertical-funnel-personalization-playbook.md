@@ -64,7 +64,8 @@ personalization must keep these elements unchanged:
 - contact capture, validation, attribution, qualification, and booking behavior;
 - qualification answer options, thresholds, and disqualification logic;
 - shared proof assets until approved vertical-specific proof exists;
-- the “Traditional Paid Ads vs. AI Search” comparison copy;
+- the “Traditional Paid Ads vs. AI Search” comparison copy, except the approved
+  law-firm Guarantee value described below;
 - the 45-results-in-90-days offer structure and work-free remedy;
 - the concise shared guarantee terms inside Important Disclosures.
 
@@ -105,6 +106,10 @@ Keep the comparison section universal unless a separate change is approved:
 >
 > Paid ads stop when the budget stops. Our system builds visibility that keeps
 > sending people directly to your business.
+
+The law-firm funnel has one approved exception: only the PulpSense value in the
+Guarantee row may read “45 qualified inquiries or we work free.” Every other
+comparison heading, introduction, feature, and value stays shared.
 
 ### Application page
 
@@ -262,9 +267,10 @@ Law firms demonstrate the permitted scope:
 - Major headlines and supporting paragraphs use firm, client, matter,
   practice-area, intake, and signed-matter language.
 - The same two qualification questions use law-firm and qualified-inquiry nouns.
-- The comparison section, layout, proof assets, CTA behavior, answer choices,
-  thresholds, booking flow, guarantee remedy, and shared disclosure stayed the
-  same.
+- The comparison stayed shared except for its PulpSense Guarantee value, which
+  reads “45 qualified inquiries or we work free.” The layout, proof assets, CTA
+  behavior, answer choices, thresholds, booking flow, guarantee remedy, and
+  shared disclosure stayed the same.
 
 That is the model for the remaining verticals: recognizable niche expertise on
 top of the same optimized funnel.

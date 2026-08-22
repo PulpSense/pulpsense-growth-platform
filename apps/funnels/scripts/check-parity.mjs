@@ -262,7 +262,7 @@ try {
       );
       assert.doesNotMatch(html, /legal inquiries/i);
       assert.doesNotMatch(html, /45 calls or free/i);
-      assert.doesNotMatch(html, /fully refunded|full refund/i);
+      assert.doesNotMatch(html, /refund/i);
     }
     assert.doesNotMatch(
       html,
