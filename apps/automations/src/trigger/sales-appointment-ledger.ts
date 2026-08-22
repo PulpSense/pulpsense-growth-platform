@@ -270,6 +270,17 @@ const projectRescheduled = async (
   const replacementId =
     replacement?.id ?? (await bookingVersionIdFor(booking.uid));
   if (
+    replacement?.salesAppointmentId === appointment.id &&
+    previous.state === "SUPERSEDED" &&
+    replacement.state === "SUPERSEDED"
+  ) {
+    return {
+      salesAppointmentId: appointment.id,
+      bookingVersionId: replacementId,
+      outcome: "duplicate",
+    };
+  }
+  if (
     appointment.currentBookingVersionId !== previous.id &&
     appointment.currentBookingVersionId !== replacementId
   ) {

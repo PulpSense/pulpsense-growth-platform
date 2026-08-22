@@ -402,6 +402,13 @@ const completeProviderSuccess = async (
     }
     return "webhook_confirmed";
   }
+  if (
+    canonical &&
+    canonical.currentCalBookingUid !== acceptedAppointment.currentCalBookingUid &&
+    canonical.currentCalBookingUid !== replacementBooking.uid
+  ) {
+    return "concurrent_cal_change";
+  }
   await adapters.enqueueLifecycleRepair({
     salesAppointment: acceptedAppointment,
     previousBooking,
