@@ -159,7 +159,7 @@ describe("AI SEO campaigns", () => {
       ],
       [
         "med-spas",
-        "45 More Calls in 90 Days for Med Spas | PulpSense",
+        "45 Qualified Treatment Inquiries in 90 Days for Med Spas | PulpSense",
         "Your Med Spa Visibility Audit Is Booked | PulpSense",
       ],
     ]);
@@ -185,7 +185,11 @@ describe("AI SEO campaigns", () => {
   });
 
   it("personalizes law-firm copy without changing the shared CRO structure", () => {
-    const [lawFirms, ...otherCampaigns] = AI_SEO_CAMPAIGNS;
+    const lawFirms = AI_SEO_CAMPAIGNS[0];
+    const controlCampaigns = AI_SEO_CAMPAIGNS.filter(
+      ({ identity }) =>
+        identity.key !== "lawyers" && identity.key !== "med-spas",
+    );
 
     expect(lawFirms?.landing.hero.promise).toBe(
       "45 Qualified New-Client Inquiries",
@@ -235,7 +239,7 @@ describe("AI SEO campaigns", () => {
         "What monthly marketing budget have you set aside to generate more qualified new-client inquiries?",
     });
 
-    for (const campaign of otherCampaigns) {
+    for (const campaign of controlCampaigns) {
       expect(campaign.landing.benefits).toBe(sharedLandingContent.benefits);
       expect(campaign.landing.results).toBe(sharedLandingContent.results);
       expect(campaign.landing.reviews).toBe(sharedLandingContent.reviews);
@@ -244,6 +248,56 @@ describe("AI SEO campaigns", () => {
       );
       expect(campaign.thankYou).toBe(sharedThankYouContent);
     }
+  });
+
+  it("personalizes med-spa copy without changing the shared CRO structure", () => {
+    const medSpas = AI_SEO_CAMPAIGNS.find(
+      ({ identity }) => identity.key === "med-spas",
+    );
+    if (!medSpas) throw new Error("Med-spa campaign is missing");
+
+    expect(medSpas.landing.hero.promise).toBe(
+      "45 Qualified Treatment Inquiries",
+    );
+    expect(medSpas.landing.hero.ctaLabel).toBe(
+      sharedLandingContent.hero.ctaLabel,
+    );
+    expect(medSpas.landing.benefits.cards).toHaveLength(
+      sharedLandingContent.benefits.cards.length,
+    );
+    expect(medSpas.landing.benefits.cards[1]).toBe(
+      sharedLandingContent.benefits.cards[1],
+    );
+    expect(medSpas.landing.comparison).toBe(sharedLandingContent.comparison);
+    expect(medSpas.landing.results?.items).toBe(
+      sharedLandingContent.results?.items,
+    );
+    expect(medSpas.landing.offer.items).toBe(sharedLandingContent.offer.items);
+    expect(medSpas.landing.guarantee.terms).toBe(sharedGuaranteeTerms);
+    expect(medSpas.landing.guarantee.pills).toHaveLength(
+      sharedLandingContent.guarantee.pills.length,
+    );
+    expect(medSpas.landing.faq.items).toHaveLength(
+      sharedLandingContent.faq.items.length,
+    );
+    expect(medSpas.application.expectations).toHaveLength(
+      sharedApplicationContent.expectations.length,
+    );
+    expect(medSpas.application.guaranteeTerms).toBe(sharedGuaranteeTerms);
+    expect(medSpas.application.qualification).toEqual({
+      kind: "owner-budget",
+      ownerQuestion:
+        "Are you the owner or primary decision-maker for the med spa?",
+      budgetQuestion:
+        "What monthly marketing budget have you set aside to generate more qualified treatment inquiries?",
+    });
+    expect(medSpas.thankYou.videos?.items).toBe(
+      sharedThankYouContent.videos?.items,
+    );
+
+    const serialized = JSON.stringify(medSpas);
+    expect(serialized).not.toContain("45 New Calls");
+    expect(serialized).not.toContain("law firm");
   });
 
   it("keeps niche-specific qualification callouts", () => {
