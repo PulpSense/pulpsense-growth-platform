@@ -2,22 +2,10 @@ import { defineAiSeoCampaign } from "./define";
 import { validateLawFirmCampaignPresentation } from "./law-firm-policy";
 import {
   sharedApplicationContent,
+  sharedGuaranteeTerms,
   sharedLandingContent,
   sharedThankYouContent,
 } from "./shared-content";
-import type { GuaranteeTermsContent } from "./types";
-
-const lawFirmGuaranteeTerms = {
-  heading: "Material guarantee terms",
-  items: [
-    "Available only to approved applicants with agreed spend or growth capacity, source-system access, and decision-maker or operational-owner participation.",
-    "If an approved firm receives fewer than 45 qualified new-client inquiries in the initial 90-day program while meeting the agreed requirements, PulpSense continues the agreed services at no service fee until the target is reached.",
-    "A qualified inquiry is one unique prospective client in the agreed practice area and geography who meets the written case-type, timing, and payment or case-value screen.",
-    "The inquiry must be attributable through call tracking, a tracked form, recorded attribution, or prospect self-report. Spam, vendors, duplicates, misdials, directions or general-information requests, and known disqualifying conflicts where reasonably determinable are excluded.",
-    "The firm must provide required access and approvals, maintain agreed intake coverage, return missed inquiries within 15 minutes during declared coverage hours, and record dispositions within two business days.",
-    "The guarantee does not promise retainers, case outcomes, collected fees, revenue, ROI, or rankings in Google, maps, LSAs, AI assistants, or any other third-party system.",
-  ],
-} as const satisfies GuaranteeTermsContent;
 
 const lawFirmsCampaignConfig = defineAiSeoCampaign({
   identity: {
@@ -193,7 +181,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
         "✅ No paid advertising required",
         "✅ Baseline agreed during onboarding",
       ],
-      terms: lawFirmGuaranteeTerms,
+      terms: sharedGuaranteeTerms,
     },
     faq: {
       heading: "Frequently Asked Questions",
@@ -289,7 +277,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
     ],
     callout:
       "Many established firms have no idea their next client just went to a competitor that Google or ChatGPT recommended first. On the call, you'll see exactly who's getting picked ahead of you, and what it's costing your firm.",
-    guaranteeTerms: lawFirmGuaranteeTerms,
+    guaranteeTerms: sharedGuaranteeTerms,
     qualification: {
       kind: "owner-budget",
       ownerQuestion:

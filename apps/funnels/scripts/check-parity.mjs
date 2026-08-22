@@ -96,7 +96,7 @@ const campaignPublicRoutes = campaignRoutes.flatMap(
           ? [
               "45 Qualified New-Client Inquiries",
               "What to expect on our call",
-              "Material guarantee terms",
+              "Guarantee terms",
             ]
           : ["45 New Calls", "What to expect on our call"],
         lawFirmPilot,
@@ -250,11 +250,6 @@ try {
       assert.doesNotMatch(html, /legal inquiries/i);
       assert.doesNotMatch(html, /45 calls or free/i);
       assert.doesNotMatch(html, /fully refunded|full refund/i);
-      assert.ok(
-        html.indexOf("Material guarantee terms") >
-          html.indexOf('class="pr-footer"'),
-        `${route.path} should place material guarantee terms in the footer disclosure`,
-      );
     }
     assert.doesNotMatch(
       html,
@@ -270,6 +265,10 @@ try {
     }
 
     if (route.funnelId) {
+      assert.ok(
+        html.indexOf("Guarantee terms") > html.indexOf("Important Disclosures"),
+        `${route.path} should include shared guarantee terms inside Important Disclosures`,
+      );
       assert.ok(
         html.includes(route.funnelId),
         `${route.path} should use the ${route.funnelId} identity`,
