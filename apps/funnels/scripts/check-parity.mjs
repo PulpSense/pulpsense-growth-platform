@@ -137,6 +137,19 @@ const personalizationPreviewRoutes = [
 const publicRoutes = [...campaignPublicRoutes, ...personalizationPreviewRoutes];
 const applicationHtmlByFunnelId = new Map();
 
+function assertGuaranteeTermsInsideDisclosureFooter(html, path) {
+  const disclosureFooter = html.match(
+    /<section class="pr-footer">([\s\S]*?)<\/section>/,
+  )?.[1];
+
+  assert.ok(disclosureFooter, `${path} should render the disclosure footer`);
+  assert.ok(
+    disclosureFooter.indexOf("Guarantee terms") >
+      disclosureFooter.indexOf("Important Disclosures"),
+    `${path} should include shared guarantee terms inside Important Disclosures`,
+  );
+}
+
 async function postJson(path, body) {
   return fetch(`${origin}${path}`, {
     method: "POST",
@@ -264,11 +277,9 @@ try {
       );
     }
 
+    assertGuaranteeTermsInsideDisclosureFooter(html, route.path);
+
     if (route.funnelId) {
-      assert.ok(
-        html.indexOf("Guarantee terms") > html.indexOf("Important Disclosures"),
-        `${route.path} should include shared guarantee terms inside Important Disclosures`,
-      );
       assert.ok(
         html.includes(route.funnelId),
         `${route.path} should use the ${route.funnelId} identity`,
