@@ -113,14 +113,19 @@ export const aiSeoApplicationAnswersSchema = z
   })
   .strict();
 
+export const LAW_FIRM_GROWTH_CONSTRAINTS = [
+  "Not enough new-client inquiries",
+  "Too many low-quality inquiries",
+  "Intake isn't converting enough inquiries",
+  "We can't tell which marketing produces signed matters",
+] as const;
+
+export type LawFirmGrowthConstraint =
+  (typeof LAW_FIRM_GROWTH_CONSTRAINTS)[number];
+
 export const lawFirmGrowthConstraintAnswersSchema = z
   .object({
-    growthConstraint: z.enum([
-      "Not enough new-client inquiries",
-      "Too many low-quality inquiries",
-      "Intake isn't converting enough inquiries",
-      "We can't tell which marketing produces signed matters",
-    ]),
+    growthConstraint: z.enum(LAW_FIRM_GROWTH_CONSTRAINTS),
   })
   .strict();
 
