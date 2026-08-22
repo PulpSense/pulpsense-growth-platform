@@ -185,6 +185,31 @@ no provider event changed during the rollback or re-enable. Slack channel
 `C09FTA0TEEN` contained no calendar, reconciliation, or appointment alert during
 the observation window.
 
+### Fresh post-classification provider read-back
+
+At 13:14:42 UTC, after the operator had classified Len's additional meetings
+and after production had returned to `reconcile`, all provider state was read
+again rather than relying on the 12:35 audit:
+
+- direct Cal booking pages returned the unchanged canonical UIDs and start
+  times for all four eligible appointments;
+- exact-UID searches in the designated Google Calendar returned one result for
+  the internal canary, Jamie, and Taunya, and the same three Len results;
+- every Len result was reopened: the August 19 canonical appointment, the
+  operator-confirmed August 20 follow-up, and the operator-confirmed August 21
+  onboarding meeting all retained the expected purpose and time;
+- direct Twenty read-back showed all four canonical rows `SYNCHRONIZED`, with
+  their stored Google event IDs and observed starts equal to the canonical
+  values; and
+- no provider event was edited or deleted.
+
+The immediately subsequent 13:15 UTC scheduled poll
+`run_06g2j77icqsr4upanu041eh401` ran in `reconcile`, selected four, and
+dispatched four inspected children: `run_06g2j78j0o7k5ajqdk2d4op601`,
+`run_06g2j78inseb3h6m9uqth2ck01`, `run_06g2j78ie7j33pi0brtsi36201`, and
+`run_06g2j78i2rdl7vu5ohsei19e01`. All completed `unchanged` with the same
+canonical Google revisions, and the reliability Slack channel remained quiet.
+
 ## Validation
 
 - `pnpm lint`
