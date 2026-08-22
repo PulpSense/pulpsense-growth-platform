@@ -35,26 +35,25 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
     benefits: {
       heading: "Why Law Firms Are Moving Beyond Traditional Marketing",
       intro:
-        "Potential clients aren't navigating through ten search results anymore. They ask, and they call the firm they're given.",
+        "Potential clients aren't navigating through ten search results anymore. They ask, and they call the name they're given.",
       cards: [
         {
           icon: "📞",
           title: "More High-Intent Inquiries",
-          body: "Appear when potential clients in your market are actively comparing law firms and ready to speak with one.",
+          body: "Appear when potential clients in your market are actively comparing providers and ready to speak with one.",
         },
         sharedLandingContent.benefits.cards[1],
         {
           icon: "🎯",
           title: "New-Client Demand You Own",
-          body: "These are direct inquiries to your firm, not shared leads sold to several competing firms as with traditional agencies.",
+          body: "These are direct inquiries to your practice, not shared leads sold to several local competitors as with traditional agencies.",
         },
       ],
     },
     marketShift: {
-      heading:
-        "Your Next Client Is Asking Google and AI Which Law Firm to Trust",
+      heading: "Your Next Client Is Asking Google and AI Who to Trust",
       intro:
-        "They search, compare a short list, and contact the most credible firm. If you're missing from that list, they call another firm.",
+        "They search, compare a short list, and contact the name that feels most credible. If you're missing from that list, they choose someone else.",
       stats: [
         {
           value: "200M+",
@@ -70,7 +69,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
           label: "To start climbing in Google & AI search",
         },
       ],
-      note: "Establish your firm's authority early before AI recommendations get more competitive.",
+      note: "Establish authority early before AI recommendations get more competitive.",
     },
     comparison: {
       ...sharedLandingContent.comparison,
@@ -84,9 +83,9 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
       ),
     },
     education: {
-      heading: "This Isn't Traditional Law-Firm SEO. This Isn't Ads.",
+      heading: "This Isn't SEO. This Isn't Ads.",
       intro:
-        "Getting your firm recommended by AI is a different game, and most firms in your market aren't playing it yet.",
+        "Getting recommended by AI is a different game, and almost nobody in your market is playing it yet.",
       items: [
         {
           title: "AI Pulls From Sources Most Agencies Ignore",
@@ -94,11 +93,11 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
         },
         {
           title: "It's About Trust Signals, Not Keywords",
-          body: "The law firms AI recommends have consistent listings, strong review profiles, structured data, and clean citations across the web. We build every one of those signals for you.",
+          body: "The practices AI recommends have consistent listings, strong review profiles, structured data, and clean citations across the web. We build every one of those signals for you.",
         },
         {
-          title: "Being a Large Firm Doesn't Make You Visible",
-          body: "Plenty of established firms are completely invisible in AI search because nobody optimized for it. This isn't about firm size, it's about whether you've been set up for AI specifically.",
+          title: "Being Established Doesn't Make You Visible",
+          body: "Plenty of big practices are completely invisible in AI search because nobody optimized for it. This isn't about size, it's about whether you've been set up for AI specifically.",
         },
       ],
     },
@@ -107,32 +106,32 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
           ...sharedLandingContent.results,
           heading: "Real Google and AI Visibility Results",
           intro:
-            "These examples come from other local-service businesses and show what happened when they put our visibility system to work.",
+            "Don't take our word for it. See what happened when businesses put our system to work.",
         }
       : null,
     process: {
-      heading: "How It Works for Your Firm",
+      heading: "How It Works for Your Practice",
       intro:
-        "Your roadmap from invisible to recommended. Your team invests about 30 minutes, we handle the rest.",
+        "Your roadmap from invisible to recommended. You invest about 30 minutes, we handle the rest.",
       steps: [
         {
-          title: "We Audit Your Firm's Visibility (Day 1)",
-          body: "We check where your firm stands on Google Maps, AI Overviews, and ChatGPT, live, on a 15-minute call. You'll see exactly what's costing you inquiries.",
+          title: "We Audit Your Visibility (Day 1)",
+          body: "We check where you stand on Google Maps, AI Overviews, and ChatGPT, live, on a 15-minute call. You'll see exactly what's costing you inquiries.",
         },
         {
           title: "We Build Your Foundation (Weeks 1–3)",
-          body: "Structured data so AI can read your firm, listings on the map and legal-directory sources AI pulls from, Google Business Profile optimization, and content that matches what potential clients ask.",
+          body: "Structured data so AI can read your practice, listings on the map and legal-directory sources AI pulls from, Google Business Profile optimization, and content that matches what potential clients ask.",
         },
         {
-          title: "We Keep Your Firm Visible (Ongoing)",
+          title: "We Keep Your Practice Visible (Ongoing)",
           body: "Monthly re-audits, citation monitoring, profile management, and a simple report showing exactly what moved and how many qualified inquiries you're getting.",
         },
       ],
     },
     offer: {
-      heading: "Everything Your Firm Needs to Rank Across Google and AI",
+      heading: "Everything You Need to Rank Across Google and AI",
       intro:
-        "The scope is built around your practice areas, markets, current visibility, and competition. We handle the implementation.",
+        "The scope is built around your practice areas, market, current visibility, and competition. We handle the implementation.",
       items: [
         {
           emphasis: "Google Business Profile optimization",
@@ -145,19 +144,18 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
             ", including the trust signals ChatGPT and AI Overviews pull from",
         },
         {
-          emphasis: "Review system built for your firm",
+          emphasis: "Review system built for your practice",
           after:
             ", turns your 5-star reviews into ranking fuel, not just stars",
         },
         {
           emphasis: "Ongoing profile activity & management",
-          after:
-            ", so Google never marks your firm inactive while competitors post",
+          after: ", so Google never marks you inactive while competitors post",
         },
         {
           emphasis: "AI-ready practice-area content",
           after:
-            ", structured so Google and AI can understand and recommend your firm",
+            ", structured so Google and AI can understand and recommend your practice",
         },
         {
           emphasis: "Monthly re-audits + a simple report",
@@ -174,7 +172,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
       timeframe: "in 90 Days",
       titleSeparator: ". ",
       titleSuffix: "Or We Work Free Until You Do.",
-      body: "We build the system that gets your firm recommended across Google Maps, organic search, AI Overviews, and ChatGPT. If you do not receive 45 qualified new-client inquiries in 90 days, we work free until you do.",
+      body: "We build the system that gets your practice recommended across Google Maps, organic search, AI Overviews, and ChatGPT. If you do not receive 45 qualified new-client inquiries in 90 days, we work free until you do.",
       pills: [
         "✅ 45 qualified new-client inquiries in 90 days",
         "✅ We continue free if we miss the target",
@@ -194,7 +192,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
         {
           question: "How do you measure Google and AI visibility?",
           answer:
-            "We benchmark your firm's presence across Google, organic search, AI Overviews, ChatGPT, and the sources those systems use for recommendations.",
+            "We benchmark your practice's presence across Google, organic search, AI Overviews, ChatGPT, and the sources those systems use for recommendations.",
         },
         {
           question: "What counts as a qualified new-client inquiry?",
@@ -209,12 +207,12 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
         {
           question: "Does this work across multiple offices or locations?",
           answer:
-            "Yes. The scope is built around the practice area, markets, offices, and competition that matter to your firm.",
+            "Yes. The scope is built around the practice area, markets, offices, and competition that matter to your practice.",
         },
         {
           question: "How is this different from traditional paid advertising?",
           answer:
-            "Paid ads stop when the budget stops. This system builds visibility across Google and AI that keeps sending prospective clients directly to your firm.",
+            "Paid ads stop when the budget stops. This system builds visibility across Google and AI that keeps sending prospective clients directly to your practice.",
         },
         {
           question: "How quickly should we expect movement?",
@@ -225,7 +223,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
           question:
             "What happens if we receive fewer than 45 qualified inquiries?",
           answer:
-            "For an approved applicant that meets the agreed access, approval, intake, response, and disposition requirements, we continue the agreed services at no service fee until the firm receives 45 qualified new-client inquiries.",
+            "For an approved applicant that meets the agreed access, approval, intake, response, and disposition requirements, we continue the agreed services at no service fee until the practice receives 45 qualified new-client inquiries.",
         },
         {
           question: "Can you work with our website, CRM, and intake systems?",
@@ -254,29 +252,29 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
     titleSeparator: ". ",
     titleSuffix: "Or We Work Free Until You Do.",
     intro:
-      "Enter your details, then answer two quick questions to see if your law firm qualifies for the guarantee.",
+      "Enter your details, then answer two quick questions to see if your established practice qualifies for the guarantee.",
     expectations: [
       sharedApplicationContent.expectations[0],
       {
         before: "We ",
-        emphasis: "pull up your firm's live rankings",
+        emphasis: "pull up your live rankings",
         after:
-          " on the call and show you exactly where you stand against the firms ranking above you in Google Maps, AI Overviews, and ChatGPT.",
+          " on the call and show you exactly where you stand against local competitors ranking above you in Google Maps, AI Overviews, and ChatGPT.",
       },
       {
         before: "We estimate ",
         emphasis: "how many inquiries you're losing every month",
-        after: " to the firms potential clients are finding first.",
+        after: " to the competitors potential clients are finding first.",
       },
       {
         before:
-          "We map the exact 3 signals (Google Business Profile, Maps & AI search citations) that move your firm into the ",
+          "We map the exact 3 signals (Google Business Profile, Maps & AI search citations) that move your practice into the ",
         emphasis: "Top 3",
         after: ".",
       },
     ],
     callout:
-      "Many established firms have no idea their next client just went to a competitor that Google or ChatGPT recommended first. On the call, you'll see exactly who's getting picked ahead of you, and what it's costing your firm.",
+      "Many established practices have no idea their next client just went to a competitor that Google or ChatGPT recommended first. On the call, you'll see exactly who's getting picked ahead of you, and what it's costing you.",
     guaranteeTerms: sharedGuaranteeTerms,
     qualification: {
       kind: "owner-budget",
@@ -291,19 +289,14 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
     confirmation: {
       ...sharedThankYouContent.confirmation,
       intro:
-        "Review this quick briefing before your Law-Firm Visibility Audit. 45 qualified new-client inquiries in 90 days. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
+        "Review this quick briefing before your Audit. 45 qualified new-client inquiries in 90 days. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
     },
     calendar: {
       ...sharedThankYouContent.calendar,
       beforeConfirmation:
-        "Search your inbox and spam for your Law-Firm Visibility Audit invitation. Open it and click ",
+        'Search your inbox and spam for your "Rank #1 on Google & AI" invitation. Open it and click ',
     },
-    videos: sharedThankYouContent.videos
-      ? {
-          ...sharedThankYouContent.videos,
-          heading: "Step 2: Hear From Businesses We've Helped",
-        }
-      : null,
+    videos: sharedThankYouContent.videos,
     reviews: sharedThankYouContent.reviews
       ? {
           heading: "What Clients Say About Working With Us",
