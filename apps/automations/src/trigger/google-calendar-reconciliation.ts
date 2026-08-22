@@ -3,6 +3,7 @@ import {
   idempotencyKeys,
   logger,
   queue,
+  retry,
   schedules,
   schemaTask,
   wait,
@@ -18,6 +19,7 @@ import {
   reconcileSalesAppointment,
   selectEligibleSalesAppointments,
 } from "./calendar-reconciliation.js";
+import { refreshGoogleRescheduleLink } from "./calendar-reschedule-link.js";
 import { processFunnelEventTask } from "./process-funnel-event.js";
 import { sendReliabilityAlert } from "./reliability-alerts.js";
 import { createTwentySalesAppointmentAdapter } from "./twenty-sales-appointment-adapter.js";
@@ -27,6 +29,11 @@ const CAL_REFERENCES_API_VERSION = "2024-08-13";
 
 const googleCalendarReconciliationQueue = queue({
   name: "google-calendar-reconciliation",
+  concurrencyLimit: 1,
+});
+
+const googleCalendarDescriptionWriteQueue = queue({
+  name: "google-calendar-description-writes",
   concurrencyLimit: 1,
 });
 
@@ -149,6 +156,7 @@ const getGoogleEvent = async (
     sequence?: number;
     status?: string;
     start?: { dateTime?: string };
+    description?: string;
   }>(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
     {
@@ -177,7 +185,44 @@ const getGoogleEvent = async (
     sequence: result.sequence,
     status: result.status === "cancelled" ? "cancelled" : "confirmed",
     start: new Date(result.start.dateTime).toISOString(),
+    ...(result.description ? { description: result.description } : {}),
   };
+};
+
+export const patchGoogleEventDescription = async (
+  input: {
+    calendarId: string;
+    eventId: string;
+    etag: string;
+    description: string;
+  },
+  environment: CalendarReconciliationEnvironment,
+  fetcher: typeof fetch,
+) => {
+  const configuredCalendarId = required(
+    environment.GOOGLE_CALENDAR_ID,
+    "GOOGLE_CALENDAR_ID",
+  );
+  if (input.calendarId !== configuredCalendarId) {
+    throw new Error(
+      "Google mapping does not belong to the designated calendar",
+    );
+  }
+  await jsonRequest(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId)}?sendUpdates=none`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${await googleAccessToken(environment, fetcher)}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "If-Match": input.etag,
+      },
+      body: JSON.stringify({ description: input.description }),
+    },
+    fetcher,
+    "Google Calendar event description update",
+  );
 };
 
 const calHeaders = (
@@ -486,6 +531,92 @@ export const createCalendarReconciliationAdapters = (
     now: () => new Date(),
   };
 };
+
+const rescheduleLinkPayloadSchema = z.object({
+  submissionId: z.string().uuid(),
+  lifecycleEventId: z.string().min(1).max(500),
+  previousBookingUid: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/u),
+  replacementBookingUid: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/u),
+});
+
+export const refreshGoogleCalendarRescheduleLinkTask = schemaTask({
+  id: "refresh-google-calendar-reschedule-link",
+  queue: googleCalendarDescriptionWriteQueue,
+  schema: rescheduleLinkPayloadSchema,
+  retry: { maxAttempts: 1 },
+  run: async (payload, { ctx }) => {
+    const environment: CalendarReconciliationEnvironment = {
+      CAL_API_KEY: process.env.CAL_API_KEY,
+      GOOGLE_CALENDAR_CLIENT_ID: process.env.GOOGLE_CALENDAR_CLIENT_ID,
+      GOOGLE_CALENDAR_CLIENT_SECRET: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+      GOOGLE_CALENDAR_REFRESH_TOKEN: process.env.GOOGLE_CALENDAR_REFRESH_TOKEN,
+      GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID,
+      SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+    };
+    try {
+      const result = await retry.onThrow(
+        () =>
+          refreshGoogleRescheduleLink(payload, {
+            getCalBookingReferences: (bookingUid) =>
+              getCalBookingReferences(bookingUid, environment, fetch),
+            getGoogleEvent: (calendarId, eventId) =>
+              getGoogleEvent(calendarId, eventId, environment, fetch),
+            patchGoogleEventDescription: (input) =>
+              patchGoogleEventDescription(input, environment, fetch),
+          }),
+        {
+          maxAttempts: 3,
+          factor: 2,
+          minTimeoutInMs: 1_000,
+          maxTimeoutInMs: 10_000,
+          randomize: true,
+        },
+      );
+      logger.info("Google Calendar reschedule link refreshed", {
+        submissionId: payload.submissionId,
+        lifecycleEventId: payload.lifecycleEventId,
+        replacementBookingUid: payload.replacementBookingUid,
+        outcome: result.outcome,
+      });
+      return result;
+    } catch (error) {
+      const classification =
+        error instanceof Error ? error.message : "unknown_link_refresh_failure";
+      logger.error("Google Calendar reschedule link refresh failed", {
+        submissionId: payload.submissionId,
+        lifecycleEventId: payload.lifecycleEventId,
+        replacementBookingUid: payload.replacementBookingUid,
+        classification,
+      });
+      try {
+        await sendReliabilityAlert(
+          {
+            token: required(process.env.SLACK_BOT_TOKEN, "SLACK_BOT_TOKEN"),
+            text: [
+              ":rotating_light: *Google Calendar reschedule link needs attention*",
+              `Lead Journey: \`${payload.submissionId}\``,
+              `Previous Cal UID: \`${payload.previousBookingUid}\``,
+              `Current Cal UID: \`${payload.replacementBookingUid}\``,
+              `Classification: \`${classification}\``,
+              `Trigger run: <https://cloud.trigger.dev/projects/v3/${encodeURIComponent(ctx.project.ref)}/runs/${encodeURIComponent(ctx.run.id)}|${ctx.run.id}>`,
+              "The rescheduled meeting time remains canonical. Update the event description link manually if needed.",
+            ].join("\n"),
+          },
+          fetch,
+        );
+      } catch (alertError) {
+        logger.error("Google reschedule link failure alert delivery failed", {
+          submissionId: payload.submissionId,
+          classification:
+            alertError instanceof Error
+              ? alertError.message
+              : "unknown_slack_failure",
+        });
+      }
+      return { outcome: "needs_attention" as const, classification };
+    }
+  },
+});
 
 const reconciliationPayloadSchema = z.object({
   salesAppointmentId: z.string().uuid(),

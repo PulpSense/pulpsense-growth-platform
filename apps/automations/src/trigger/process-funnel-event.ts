@@ -8,7 +8,13 @@ import {
   type ContactSubmittedEvent,
   type FunnelEvent,
 } from "@pulpsense/contracts";
-import { logger, retry, schemaTask } from "@trigger.dev/sdk";
+import {
+  idempotencyKeys,
+  logger,
+  retry,
+  schemaTask,
+  tasks,
+} from "@trigger.dev/sdk";
 
 import {
   postSlackBooking,
@@ -34,6 +40,7 @@ import {
 } from "./sales-appointment-ledger.js";
 import type { SalesAppointmentAutomationGuard } from "./sales-appointment-automation-guard.js";
 import { createTwentySalesAppointmentAdapter } from "./twenty-sales-appointment-adapter.js";
+import type { refreshGoogleCalendarRescheduleLinkTask } from "./google-calendar-reconciliation.js";
 
 type AdapterDestination = "twenty" | "meta" | "slack" | "brevo" | "trigger";
 
@@ -49,6 +56,7 @@ type AdapterOperation =
   | "deliver_slack_booking"
   | "publish_brevo_lifecycle"
   | "schedule_meeting_reminders"
+  | "refresh_google_reschedule_link"
   | "alert_twenty_failure"
   | "alert_destination_failure";
 
@@ -89,6 +97,7 @@ const displayOperation = (operation: AdapterOperation) =>
     deliver_slack_booking: "Post booking",
     publish_brevo_lifecycle: "Sync lifecycle",
     schedule_meeting_reminders: "Schedule reminders",
+    refresh_google_reschedule_link: "Refresh Google reschedule link",
     alert_twenty_failure: "Post failure alert",
     alert_destination_failure: "Post failure alert",
   })[operation];
@@ -153,6 +162,9 @@ type ProcessorDependencies = {
   ): Promise<unknown>;
   schedulePrecallSequence?(
     event: BookingCompletedEvent | BookingRescheduledEvent,
+  ): Promise<unknown>;
+  refreshGoogleRescheduleLink?(
+    event: BookingRescheduledEvent,
   ): Promise<unknown>;
   capturePostHogLifecycle?(event: FunnelEvent): Promise<void>;
   capturePostHogPersonLink?(
@@ -435,6 +447,8 @@ export async function processFunnelEvent(
       gmailReminders,
       smsReminders,
       salesAppointment: Promise.resolve(salesAppointment),
+      googleRescheduleLink:
+        dependencies.refreshGoogleRescheduleLink?.(event) ?? Promise.resolve(),
       measurement: deliveryPolicy.capturePostHog(),
     });
     await dependencies.schedulePrecallSequence?.(event);
@@ -1834,6 +1848,31 @@ export function createProcessorDependencies(
           },
         }
       : {}),
+    refreshGoogleRescheduleLink: (event: BookingRescheduledEvent) =>
+      executeWithRetry(
+        {
+          destination: "trigger",
+          operation: "refresh_google_reschedule_link",
+        },
+        async () =>
+          tasks.trigger<typeof refreshGoogleCalendarRescheduleLinkTask>(
+            "refresh-google-calendar-reschedule-link",
+            {
+              submissionId: event.submissionId,
+              lifecycleEventId: event.eventId,
+              previousBookingUid: event.payload.booking.previousUid,
+              replacementBookingUid: event.payload.booking.uid,
+            },
+            {
+              idempotencyKey: await idempotencyKeys.create(
+                `google-reschedule-link:${event.eventId}`,
+                { scope: "global" },
+              ),
+              idempotencyKeyTTL: "1y",
+              concurrencyKey: event.payload.booking.uid,
+            },
+          ),
+      ),
     executeAdapter: executeWithRetry,
     alertTwentyFailure,
     ...(capturePostHogLifecycle ? { capturePostHogLifecycle } : {}),
