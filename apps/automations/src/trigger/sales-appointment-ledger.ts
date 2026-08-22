@@ -37,7 +37,7 @@ export type SalesAppointmentRecord = {
   funnelId?: BookingLifecycleEvent["funnelId"];
   environment?: BookingLifecycleEvent["environment"];
   prospectId?: string;
-  personId?: string;
+  personId: string;
   opportunityId: string;
   googleCalendarId?: string | null;
   googleEventId?: string | null;

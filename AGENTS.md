@@ -57,6 +57,14 @@ Use `santi@go.pulpsense.com` as the sender and reply-to address for all
 funnel-originated email. Keep funnel email paths on the shared configured
 sender instead of introducing message-specific sender variables.
 
+### Slack notifications
+
+All new Slack messages must follow
+[`docs/slack-notification-standard.md`](docs/slack-notification-standard.md).
+Use the shared formatter in
+`apps/automations/src/trigger/slack-notifications.ts` instead of assembling
+message text inside a task, and keep link unfurls disabled.
+
 ## Code standards
 
 - ESLint with TypeScript configs
@@ -66,7 +74,9 @@ sender instead of introducing message-specific sender variables.
 - Preserve the small event-enqueue interface between the two apps; add `packages/contracts` only when both apps consume the schema
 
 <!-- TRIGGER.DEV SKILLS START -->
+
 ## Trigger.dev agent skills
 
 This project has Trigger.dev agent skills installed in `.agents/skills/`. Before writing or changing Trigger.dev code (background tasks, scheduled tasks, realtime, or chat.agent AI agents), load the most relevant skill: `trigger-authoring-tasks`, `trigger-cost-savings`, `trigger-getting-started`, `trigger-realtime-and-frontend`.
+
 <!-- TRIGGER.DEV SKILLS END -->
