@@ -1,0 +1,19 @@
+---
+import LandingPersonalizationPreview from "@/funnels/ai-seo/components/personalization-preview/LandingPersonalizationPreview.astro";
+import "@/funnels/ai-seo/styles/funnel.css";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="Funnel Personalization Preview | PulpSense"
+  description="Internal visual reference for funnel personalization slots."
+>
+  <link
+    slot="head"
+    rel="preconnect"
+    href="https://fast.wistia.com"
+    crossorigin
+  />
+
+  <LandingPersonalizationPreview />
+</BaseLayout>

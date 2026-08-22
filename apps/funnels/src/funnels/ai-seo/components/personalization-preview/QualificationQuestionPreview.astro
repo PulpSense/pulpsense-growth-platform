@@ -1,0 +1,51 @@
+---
+type Props = {
+  step: number;
+  question: string;
+  choices: readonly string[];
+  backHref?: string;
+};
+
+const { step, question, choices, backHref } = Astro.props;
+const totalSteps = 4;
+---
+
+<div class="pr-tf">
+  <div class="pr-tf-progress">
+    <span class="pr-tf-progress-label">Step {step} of {totalSteps}</span>
+    <div class="pr-tf-progress-bar">
+      <div
+        class="pr-tf-progress-fill"
+        style={`width: ${(step / totalSteps) * 100}%`}
+      >
+      </div>
+    </div>
+  </div>
+  <div class="pr-tf-card">
+    <div class="pr-tf-step is-active">
+      <p class="pr-tf-q">{question}</p>
+      <div class="pr-tf-choices">
+        {
+          choices.map((choice) => (
+            <button type="button" class="pr-tf-choice">
+              {choice}
+            </button>
+          ))
+        }
+      </div>
+      <div class="pr-tf-actions">
+        {
+          backHref ? (
+            <a class="pr-tf-back" href={backHref}>
+              ← Back
+            </a>
+          ) : (
+            <button type="button" class="pr-tf-back">
+              ← Back
+            </button>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</div>

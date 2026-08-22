@@ -1,0 +1,77 @@
+---
+import DisclosureFooter from "../DisclosureFooter.astro";
+import { sharedApplicationContent } from "../../campaign-config/shared-content";
+
+import QualificationQuestionPreview from "./QualificationQuestionPreview.astro";
+
+const placeholder = "PERSONALIZATION";
+---
+
+<div id="pr-funnel" class="pr-application-page">
+  <main class="pr-main">
+    <section class="pr-section pr-section-gray" id="pr-funnel-form">
+      <div class="pr-container pr-center">
+        <header class="pr-application-intro">
+          <div class="pr-badge">
+            <span class="pr-stars" aria-hidden="true">★★★★★</span>
+            <span class="pr-badge-copy">
+              {sharedApplicationContent.badge}
+            </span>
+          </div>
+          <h1 class="pr-h2" style="font-size: clamp(1.65rem, 4vw, 2.75rem)">
+            <span style="color: var(--pr-blue)">{placeholder}</span> in
+            <span style="color: var(--pr-blue)"> 90 Days</span>. Or We Work Free
+            Until You Do.
+          </h1>
+          <p class="pr-sub pr-form-intro">
+            Enter your details, then answer two quick questions to see if your
+            {placeholder} qualifies for the guarantee.
+          </p>
+        </header>
+
+        <div class="pr-funnel-layout">
+          <div style="display: grid; gap: 1.25rem">
+            <QualificationQuestionPreview
+              step={2}
+              question={`Are you the owner or primary decision-maker for the ${placeholder}?`}
+              choices={["Yes", "No"]}
+              backHref="/personalization-preview/"
+            />
+            <QualificationQuestionPreview
+              step={3}
+              question={`What monthly marketing budget have you set aside to generate more qualified ${placeholder}?`}
+              choices={[
+                "$1,500+/month",
+                "$500–$1,500/month",
+                "Under $500/month or not set yet",
+              ]}
+            />
+          </div>
+
+          <aside class="pr-expect">
+            <h2 class="pr-expect-title">Qualification constraints</h2>
+            <ul class="pr-expect-list">
+              <li class="pr-expect-item">
+                <span class="pr-expect-check" aria-hidden="true">✓</span>
+                <p>Contact capture remains exactly the same.</p>
+              </li>
+              <li class="pr-expect-item">
+                <span class="pr-expect-check" aria-hidden="true">✓</span>
+                <p>Owner and budget intent stays exactly the same.</p>
+              </li>
+              <li class="pr-expect-item">
+                <span class="pr-expect-check" aria-hidden="true">✓</span>
+                <p>Only the niche nouns inside each question change.</p>
+              </li>
+              <li class="pr-expect-item">
+                <span class="pr-expect-check" aria-hidden="true">✓</span>
+                <p>No additional qualification question is introduced.</p>
+              </li>
+            </ul>
+          </aside>
+        </div>
+      </div>
+    </section>
+  </main>
+  <DisclosureFooter />
+</div>

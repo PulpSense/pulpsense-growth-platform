@@ -1,7 +1,10 @@
-import { LAW_FIRM_GROWTH_CONSTRAINTS } from "@pulpsense/contracts";
-
 import { defineAiSeoCampaign } from "./define";
 import { validateLawFirmCampaignPresentation } from "./law-firm-policy";
+import {
+  sharedApplicationContent,
+  sharedLandingContent,
+  sharedThankYouContent,
+} from "./shared-content";
 import type { GuaranteeTermsContent } from "./types";
 
 const lawFirmGuaranteeTerms = {
@@ -27,177 +30,154 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
     landingTitle:
       "45 Qualified New-Client Inquiries in 90 Days for Law Firms | PulpSense",
     landingDescription:
-      "See whether your law firm qualifies for a source-to-signature growth program with Google and AI diagnostics and a 45 qualified new-client inquiry guarantee.",
-    thankYouTitle: "Your Law-Firm Growth Audit Is Booked | PulpSense",
+      "Help your law firm generate qualified new-client inquiries by improving visibility across Google and AI search.",
+    thankYouTitle: "Your Law-Firm Visibility Audit Is Booked | PulpSense",
     thankYouDescription:
-      "Prepare the source-to-signature numbers for your PulpSense law-firm growth audit.",
+      "Confirm your appointment and prepare for your PulpSense law-firm visibility audit.",
   },
   landing: {
+    ...sharedLandingContent,
     hero: {
-      callout: "⚖️ Law-firm pilot for approved US firms",
-      badge: null,
+      ...sharedLandingContent.hero,
+      callout: "⚖️ Proudly serving law firms nationwide",
       promise: "45 Qualified New-Client Inquiries",
-      timeframePrefix: "in",
-      timeframe: "90 Days",
-      titleSeparator: "—",
-      titleSuffix: "or Get Fully Refunded and Keep Everything We Build.",
-      lead: "For consumer and local-service law firms with the capacity, data access, and intake discipline to turn qualified demand into signed matters. We connect marketing activity to intake, consultations, and signed matters before recommending more spend.",
-      ctaLabel: "See If Your Firm Qualifies",
-      note: {
-        emphasis: "Approved applicants only.",
-        after:
-          " One agreed practice area and market; the 90-day period begins after tracking is live and the baseline is approved.",
-      },
-      showDeck: false,
-      logoLabel: null,
+      lead: "Get found when potential clients in your market are ready to call. No ad spend. No shared leads. Results guaranteed, or you get fully refunded and keep everything we build.",
     },
     benefits: {
-      heading: "Your Partners Care About Signed Matters—Not Raw Call Volume",
+      heading: "Why Law Firms Are Moving Beyond Traditional Marketing",
       intro:
-        "The pilot measures the full path from first inquiry to signed matter, so you can see whether the constraint is demand, response, qualification, consultation, or attribution.",
+        "Potential clients aren't navigating through ten search results anymore. They ask, and they call the firm they're given.",
       cards: [
         {
+          icon: "📞",
+          title: "More High-Intent Inquiries",
+          body: "Appear when potential clients in your market are actively comparing law firms and ready to speak with one.",
+        },
+        sharedLandingContent.benefits.cards[1],
+        {
           icon: "🎯",
-          title: "Lead Quality Before Volume",
-          body: "Define the practice area, geography, case type, timing, and payment or case-value screen before an inquiry counts toward the guarantee.",
-        },
-        {
-          icon: "🔗",
-          title: "Source-to-Signature Visibility",
-          body: "Connect calls and forms to intake dispositions, consultations, and signed matters instead of stopping the report at leads.",
-        },
-        {
-          icon: "🔍",
-          title: "Fix Leakage Before Adding Spend",
-          body: "Find the highest-value break in the current funnel, then decide whether the next move is better demand capture, faster response, stronger qualification, or cleaner measurement.",
+          title: "New-Client Demand You Own",
+          body: "These are direct inquiries to your firm, not shared leads sold to several competing firms as with traditional agencies.",
         },
       ],
     },
     marketShift: {
-      heading: "See Where Qualified Demand Stops Becoming Signed Matters",
+      heading:
+        "Your Next Client Is Asking Google and AI Which Law Firm to Trust",
       intro:
-        "A healthy top-line inquiry count can hide missed responses, poor-fit prospects, consultation no-shows, and attribution gaps.",
+        "They search, compare a short list, and contact the most credible firm. If you're missing from that list, they call another firm.",
       stats: [
         {
-          value: "Inquiry",
+          value: "200M+",
           label:
-            "Was the prospect unique, attributable, and inside the agreed screen?",
+            "People use ChatGPT every week to decide which providers to trust",
         },
         {
-          value: "Consultation",
-          label:
-            "Did intake respond, qualify, schedule, and record the outcome?",
+          value: "Top 3",
+          label: "The positions that receive most Google & AI inquiries",
         },
         {
-          value: "Signed Matter",
-          label: "Can the firm trace the retained client back to the source?",
+          value: "14 Days",
+          label: "To start climbing in Google & AI search",
         },
       ],
-      note: "The audit uses your definitions and source systems; it does not assume universal conversion benchmarks.",
+      note: "Establish your firm's authority early before AI recommendations get more competitive.",
     },
     comparison: {
-      heading: "Raw Lead Reporting vs. Source-to-Signature Visibility",
-      intro:
-        "The goal is not a prettier lead dashboard. It is a shared operating view of what arrived, what qualified, what progressed, and where value leaked.",
-      headings: ["Question", "Raw lead reporting", "PulpSense pilot"],
-      rows: [
-        {
-          feature: "What counts?",
-          alternative: "Calls and forms",
-          pulpsense: "Written qualified-inquiry definition",
-        },
-        {
-          feature: "Where did it come from?",
-          alternative: "Platform-reported source",
-          pulpsense:
-            "Call, form, recorded attribution, or prospect self-report",
-        },
-        {
-          feature: "What happened next?",
-          alternative: "Usually unknown",
-          pulpsense: "Disposition, consultation, and signed-matter status",
-        },
-        {
-          feature: "What gets fixed first?",
-          alternative: "More traffic",
-          pulpsense: "The highest-value measurable leak",
-        },
-        {
-          feature: "Who owns the work?",
-          alternative: "Often vendor-dependent",
-          pulpsense: "The firm keeps transferable assets we build",
-        },
-      ],
+      ...sharedLandingContent.comparison,
+      rows: sharedLandingContent.comparison.rows.map((row) =>
+        row.feature === "Guarantee"
+          ? {
+              ...row,
+              pulpsense: "45 qualified inquiries or a full refund",
+            }
+          : row,
+      ),
     },
     education: {
-      heading: "What Counts as a Qualified New-Client Inquiry?",
+      heading: "This Isn't Traditional Law-Firm SEO. This Isn't Ads.",
       intro:
-        "The definition is agreed in writing before the baseline is approved, then applied consistently during the initial 90-day program.",
+        "Getting your firm recommended by AI is a different game, and most firms in your market aren't playing it yet.",
       items: [
         {
-          title: "A Real Potential New Client",
-          body: "One unique prospective client in the agreed practice area and geography who meets the written case-type, timing, and payment or case-value screen.",
+          title: "AI Pulls From Sources Most Agencies Ignore",
+          body: "ChatGPT and AI Overviews don't just read your website. They pull from map data, legal directories, citations, and review profiles, the exact sources most SEO shops never touch.",
         },
         {
-          title: "Attributable to the Program",
-          body: "The inquiry is connected through call tracking, a tracked form, recorded attribution, or the prospect's own source report.",
+          title: "It's About Trust Signals, Not Keywords",
+          body: "The law firms AI recommends have consistent listings, strong review profiles, structured data, and clean citations across the web. We build every one of those signals for you.",
         },
         {
-          title: "Noise Is Excluded",
-          body: "Spam, vendors, duplicates, misdials, directions or general-information requests, and known disqualifying conflicts where reasonably determinable do not count.",
+          title: "Being a Large Firm Doesn't Make You Visible",
+          body: "Plenty of established firms are completely invisible in AI search because nobody optimized for it. This isn't about firm size, it's about whether you've been set up for AI specifically.",
         },
       ],
     },
-    results: null,
+    results: sharedLandingContent.results
+      ? {
+          ...sharedLandingContent.results,
+          heading: "Real Google and AI Visibility Results",
+          intro:
+            "These examples come from other local-service businesses and show what happened when they put our visibility system to work.",
+        }
+      : null,
     process: {
-      heading: "Start With the Funnel You Already Have",
+      heading: "How It Works for Your Firm",
       intro:
-        "The first working session establishes the definitions, evidence, and priorities required for a measured pilot.",
+        "Your roadmap from invisible to recommended. Your team invests about 30 minutes, we handle the rest.",
       steps: [
         {
-          title: "Approve the Baseline and Tracking",
-          body: "Agree on one primary practice area and market, the qualified-inquiry screen, declared intake coverage, attribution sources, and starting numbers.",
+          title: "We Audit Your Firm's Visibility (Day 1)",
+          body: "We check where your firm stands on Google Maps, AI Overviews, and ChatGPT, live, on a 15-minute call. You'll see exactly what's costing you inquiries.",
         },
         {
-          title: "Map the Source-to-Signature Funnel",
-          body: "Review the last 60–90 days of spend, inquiries, consultations, signed matters, fee or value range, intake coverage, and available source-system data.",
+          title: "We Build Your Foundation (Weeks 1–3)",
+          body: "Structured data so AI can read your firm, listings on the map and legal-directory sources AI pulls from, Google Business Profile optimization, and content that matches what potential clients ask.",
         },
         {
-          title: "Prioritize the 90-Day Test Plan",
-          body: "Use one practice-area economics model, one Google and AI visibility sample, and three priority gaps to decide what to test after prerequisites are confirmed.",
+          title: "We Keep Your Firm Visible (Ongoing)",
+          body: "Monthly re-audits, citation monitoring, profile management, and a simple report showing exactly what moved and how many qualified inquiries you're getting.",
         },
       ],
     },
     offer: {
-      heading: "Map My Firm's Lost-Matter Funnel",
+      heading: "Everything Your Firm Needs to Rank Across Google and AI",
       intro:
-        "The live audit turns your existing numbers into a practical source-to-signature working session.",
+        "The scope is built around your practice areas, markets, current visibility, and competition. We handle the implementation.",
       items: [
         {
-          emphasis: "Current source-to-signature funnel map",
-          after: ", from inquiry through consultation and signed matter",
-        },
-        {
-          emphasis: "One-practice-area economics model",
-          after: ", using your fee or value range and current funnel inputs",
-        },
-        {
-          emphasis: "One Google and AI visibility sample",
+          emphasis: "Google Business Profile optimization",
           after:
-            ", a dated diagnostic of observable results and sources, not a ranking promise",
+            ', built around the exact "money keywords" potential clients search',
         },
         {
-          emphasis: "Three priority measurement or conversion gaps",
-          after: ", ranked by evidence and likely operational impact",
-        },
-        {
-          emphasis: "Conditional 90-day test plan",
+          emphasis: "Listings on 50+ directories AI cross-checks",
           after:
-            ", finalized only after access, baseline, and dependencies are confirmed",
+            ", including the trust signals ChatGPT and AI Overviews pull from",
+        },
+        {
+          emphasis: "Review system built for your firm",
+          after:
+            ", turns your 5-star reviews into ranking fuel, not just stars",
+        },
+        {
+          emphasis: "Ongoing profile activity & management",
+          after:
+            ", so Google never marks your firm inactive while competitors post",
+        },
+        {
+          emphasis: "AI-ready practice-area content",
+          after:
+            ", structured so Google and AI can understand and recommend your firm",
+        },
+        {
+          emphasis: "Monthly re-audits + a simple report",
+          after:
+            ", what moved, where you rank, and how many qualified inquiries came in",
         },
       ],
-      ctaLabel: "Map My Firm's Lost-Matter Funnel",
-      note: "This is a law-firm pilot for approved applicants. The guarantee's eligibility, measurement, intake, and attribution terms are shown directly below.",
+      ctaLabel: sharedLandingContent.offer.ctaLabel,
+      note: "We work with one firm per agreed practice area in each market.",
     },
     guarantee: {
       promise: "45 Qualified New-Client Inquiries",
@@ -218,9 +198,14 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
       heading: "Frequently Asked Questions",
       items: [
         {
-          question: "How are the 45 inquiries measured?",
+          question: "How much time does my team need to put in?",
           answer:
-            "The 90-day period begins only after tracking is live and the baseline is approved. An inquiry must be attributable through call tracking, a tracked form, recorded attribution, or the prospect's own source report, then recorded against the agreed definition.",
+            "About 30 minutes during onboarding, then about 30 minutes each month to review results and align on strategy. We handle implementation between calls.",
+        },
+        {
+          question: "How do you measure Google and AI visibility?",
+          answer:
+            "We benchmark your firm's presence across Google, organic search, AI Overviews, ChatGPT, and the sources those systems use for recommendations.",
         },
         {
           question: "What counts as a qualified new-client inquiry?",
@@ -228,119 +213,113 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
             "One unique prospective client in the agreed primary practice area and geography who meets the written case-type, timing, and payment or case-value screen established before the program begins.",
         },
         {
-          question: "What does not count?",
+          question: "What if we already have an SEO agency?",
           answer:
-            "Spam, vendors, duplicate inquiries, misdials, directions or general-information requests, and known disqualifying conflicts where reasonably determinable are excluded.",
+            "We can complement existing SEO work by focusing on AI recommendations, business profiles, citations, reputation signals, and attribution.",
         },
         {
-          question: "What is our intake team's responsibility?",
+          question: "Does this work across multiple offices or locations?",
           answer:
-            "Your firm provides required access and approvals, maintains the agreed intake coverage, returns missed inquiries within 15 minutes during declared coverage hours, and records dispositions within two business days.",
+            "Yes. The scope is built around the practice area, markets, offices, and competition that matter to your firm.",
         },
         {
-          question: "Which systems do you need access to?",
+          question: "How is this different from traditional paid advertising?",
           answer:
-            "Access depends on your current stack and may include call tracking, website forms, analytics and search tools, CRM or intake software, case-management dispositions, business profiles, and other agreed source systems. We confirm the minimum access before approving the baseline.",
-        },
-        {
-          question: "What happens during the live audit?",
-          answer:
-            "We map the current source-to-signature funnel, build one practice-area economics model, review one Google and AI visibility sample, identify three priority gaps, and outline a 90-day test plan subject to access and dependencies.",
+            "Paid ads stop when the budget stops. This system builds visibility across Google and AI that keeps sending prospective clients directly to your firm.",
         },
         {
           question: "How quickly should we expect movement?",
           answer:
-            "The guarantee window starts after tracking is live and the baseline is approved. The sequence and timing of specific changes depend on your market, current assets, approvals, intake readiness, and the gaps confirmed during the audit.",
-        },
-        {
-          question: "Do you guarantee Google or AI rankings?",
-          answer:
-            "No. Google, map products, LSAs, AI assistants, and their cited sources are dynamic third-party systems. We audit dated observable outputs and improve eligible digital evidence; we do not promise placement or control recommendations.",
-        },
-        {
-          question: "Who owns the work and data?",
-          answer:
-            "Your firm keeps its data and the transferable content, profiles, schema, citations, and tracking assets PulpSense builds for the initial program. Access and transfer details are confirmed during onboarding.",
+            "We establish your baseline first, then prioritize the changes most likely to improve visibility. Early movement can happen within weeks, but stronger results depend on your starting point, market, competition, and the work required.",
         },
         {
           question:
-            "What happens if the program produces fewer than 45 qualified inquiries?",
+            "What happens if we receive fewer than 45 qualified inquiries?",
           answer:
-            "For an approved applicant that meets the agreed access, approval, intake, response, and disposition requirements, PulpSense refunds the service fees paid for the initial 90-day program. This does not guarantee retainers, case outcomes, collected fees, revenue, ROI, or rankings.",
+            "For an approved applicant that meets the agreed access, approval, intake, response, and disposition requirements, PulpSense refunds the service fees paid for the initial 90-day program. The firm keeps the transferable assets we built.",
+        },
+        {
+          question: "Can you work with our website, CRM, and intake systems?",
+          answer:
+            "Yes. We review your website, CRM, intake, and existing marketing systems during onboarding, then coordinate implementation around the access and information available to us.",
+        },
+        {
+          question: "Do you work with competing firms in the same market?",
+          answer:
+            "We work with one firm per agreed practice area in each market.",
         },
       ],
     },
-    reviews: null,
-    stickyCta: { label: "See If Your Firm Qualifies" },
+    reviews: sharedLandingContent.reviews
+      ? {
+          heading: "What Clients Say About Working With Us",
+        }
+      : null,
   },
   application: {
-    pageTitle: "See If Your Law Firm Qualifies | PulpSense",
+    ...sharedApplicationContent,
+    pageTitle: "Get Your Law-Firm Visibility Audit | PulpSense",
     pageDescription:
-      "Share your details and one quick answer before booking a law-firm growth audit.",
-    badge: null,
+      "Share your details and two quick answers before booking a law-firm visibility audit.",
     promise: "45 Qualified New-Client Inquiries",
-    timeframe: "90 Days",
     titleSeparator: "—",
     titleSuffix: "or Get Fully Refunded and Keep Everything We Build.",
     intro:
-      "Enter your details, then answer one quick question about what is holding back signed-matter growth. Final guarantee eligibility and baseline terms are approved in writing.",
-    expectationHeading: "What to prepare for the live audit",
+      "Enter your details, then answer two quick questions to see if your law firm qualifies for the guarantee.",
     expectations: [
+      sharedApplicationContent.expectations[0],
       {
-        emphasis: "Last 60–90 days of channel and program spend",
-        after: ", separated by source where available",
-      },
-      {
-        emphasis: "Inquiry and consultation counts",
-        after: ", including dispositions, response coverage, and show outcomes",
-      },
-      {
-        emphasis: "Signed-matter count and fee or value range",
+        before: "We ",
+        emphasis: "pull up your firm's live rankings",
         after:
-          ", without confidential client facts, case merits, or legal-advice details",
+          " on the call and show you exactly where you stand against the firms ranking above you in Google Maps, AI Overviews, and ChatGPT.",
       },
       {
-        emphasis: "Source-system and intake access",
-        after:
-          ", so we can assess attribution, response, qualification, and measurement gaps",
+        before: "We estimate ",
+        emphasis: "how many inquiries you're losing every month",
+        after: " to the firms potential clients are finding first.",
+      },
+      {
+        before:
+          "We map the exact 3 signals (Google Business Profile, Maps & AI search citations) that move your firm into the ",
+        emphasis: "Top 3",
+        after: ".",
       },
     ],
     callout:
-      "The audit produces a current funnel map, one-practice-area economics model, one dated Google and AI visibility sample, three priority gaps, and a conditional 90-day test plan. AI visibility is diagnostic; no search or AI placement is guaranteed.",
+      "Many established firms have no idea their next client just went to a competitor that Google or ChatGPT recommended first. On the call, you'll see exactly who's getting picked ahead of you, and what it's costing your firm.",
     guaranteeTerms: lawFirmGuaranteeTerms,
-    proofRating: null,
-    proofLabel: null,
     qualification: {
-      kind: "single-select",
-      question:
-        "What is currently stopping your firm from signing more matters?",
-      analyticsField: "growth_constraint",
-      submissionField: "growthConstraint",
-      formVersion: "2026-08-22",
-      options: LAW_FIRM_GROWTH_CONSTRAINTS,
+      kind: "owner-budget",
+      ownerQuestion:
+        "Are you the owner or primary decision-maker for the firm?",
+      budgetQuestion:
+        "What monthly marketing budget have you set aside to generate more qualified new-client inquiries?",
     },
   },
   thankYou: {
+    ...sharedThankYouContent,
     confirmation: {
-      heading: "Your law-firm source-to-signature audit is booked",
+      ...sharedThankYouContent.confirmation,
       intro:
-        "Bring the last 60–90 days of spend, new-client inquiries, consultations, signed matters, fee or value range, intake coverage, and available source-system reports. Do not send confidential client facts or case details.",
-      showDeck: false,
+        "Review this quick briefing before your Law-Firm Visibility Audit. 45 qualified new-client inquiries in 90 days. No ad spend. No shared leads. Results guaranteed, or you get fully refunded and keep everything we build.",
     },
     calendar: {
-      stepLabel: "Required step",
-      heading: "Confirm your calendar invite",
+      ...sharedThankYouContent.calendar,
       beforeConfirmation:
-        "Search your inbox and spam for the Law-Firm Source-to-Signature Audit invitation. Open it and click ",
-      confirmationLabel: '"Yes"',
-      afterConfirmation:
-        " so we know the time is confirmed and can prepare the working session.",
-      imageSrc: "/ai-seo/images/calendar-confirmation.webp",
-      imageAlt:
-        "Google Calendar invitation email: tap Yes to confirm your law-firm growth audit",
+        "Search your inbox and spam for your Law-Firm Visibility Audit invitation. Open it and click ",
     },
-    videos: null,
-    reviews: null,
+    videos: sharedThankYouContent.videos
+      ? {
+          ...sharedThankYouContent.videos,
+          heading: "Step 2: Hear From Businesses We've Helped",
+        }
+      : null,
+    reviews: sharedThankYouContent.reviews
+      ? {
+          heading: "What Clients Say About Working With Us",
+        }
+      : null,
   },
 });
 
