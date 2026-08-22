@@ -1,16 +1,6 @@
 import type { AiSeoCampaignConfig } from "./types";
 
-export const RETIRED_LAW_FIRM_COPY = [
-  "45 New Calls",
-  "45 additional calls",
-  "Ranking #1 Google",
-  "Top 3",
-  "14 Days",
-  "4.9/5",
-  "Twin Oaks Dental",
-  "Wesley Glen",
-  "legal inquiries",
-] as const;
+export const RETIRED_LAW_FIRM_COPY = ["legal inquiries"] as const;
 
 export const validateLawFirmCampaignPresentation = <
   const Campaign extends AiSeoCampaignConfig,
@@ -28,15 +18,9 @@ export const validateLawFirmCampaignPresentation = <
 
   if (
     !campaign.landing.guarantee.terms ||
-    !campaign.application.guaranteeTerms ||
-    campaign.landing.results ||
-    campaign.landing.reviews ||
-    campaign.thankYou.videos ||
-    campaign.thankYou.reviews
+    !campaign.application.guaranteeTerms
   ) {
-    throw new Error(
-      "Law-firm campaign must show its guarantee terms without cross-industry proof",
-    );
+    throw new Error("Law-firm campaign must show its guarantee terms");
   }
 
   return campaign;

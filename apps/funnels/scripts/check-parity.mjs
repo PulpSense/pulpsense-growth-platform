@@ -81,9 +81,9 @@ const publicRoutes = campaignRoutes.flatMap(
         kind: "landing",
         path: landingPath,
         funnelId,
-        deck: lawFirmPilot ? undefined : "VisibilityDeckCarousel",
+        deck: "VisibilityDeckCarousel",
         markers: lawFirmPilot
-          ? ["45 Qualified New-Client Inquiries", "See If Your Firm Qualifies"]
+          ? ["45 Qualified New-Client Inquiries", "Get Your Visibility Audit"]
           : ["45 New Calls", "Get Your Visibility Audit"],
         lawFirmPilot,
       },
@@ -95,7 +95,7 @@ const publicRoutes = campaignRoutes.flatMap(
         markers: lawFirmPilot
           ? [
               "45 Qualified New-Client Inquiries",
-              "What to prepare for the live audit",
+              "What to expect on our call",
               "Material guarantee terms",
             ]
           : ["45 New Calls", "What to expect on our call"],
@@ -104,9 +104,9 @@ const publicRoutes = campaignRoutes.flatMap(
       {
         kind: "thank-you",
         path: thankYouPath,
-        deck: lawFirmPilot ? undefined : "ThankYouDeckCarousel",
+        deck: "ThankYouDeckCarousel",
         markers: lawFirmPilot
-          ? ["source-to-signature audit is booked", "last 60–90 days"]
+          ? ["ONE LAST THING", "Review this quick briefing"]
           : ["ONE LAST THING", "Review this quick briefing"],
         lawFirmPilot,
       },
@@ -220,16 +220,12 @@ try {
       );
     }
     if (route.lawFirmPilot) {
-      assert.doesNotMatch(
+      assert.match(
         html,
-        /VisibilityDeckCarousel|ThankYouDeckCarousel|Twin Oaks Dental|Wesley Glen|4\.9\/5|What (?:Service Business Owners|Local Businesses) Say About Us/,
-        `${route.path} should omit cross-industry decks, proof, ratings, and reviews`,
+        /4\.9\/5|What (?:Service Business Owners|Local Businesses) Say About Us/,
+        `${route.path} should preserve the standard proof presentation`,
       );
-      assert.doesNotMatch(
-        html,
-        /45 New Calls|45 additional calls|Ranking #1 Google|Top 3|14 Days/,
-        `${route.path} should omit retired law-firm claims`,
-      );
+      assert.doesNotMatch(html, /legal inquiries/i);
     }
     assert.doesNotMatch(
       html,

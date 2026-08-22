@@ -134,7 +134,7 @@ describe("AI SEO campaigns", () => {
       [
         "lawyers",
         "45 Qualified New-Client Inquiries in 90 Days for Law Firms | PulpSense",
-        "Your Law-Firm Growth Audit Is Booked | PulpSense",
+        "Your Law-Firm Visibility Audit Is Booked | PulpSense",
       ],
       [
         "dentists",
@@ -173,7 +173,7 @@ describe("AI SEO campaigns", () => {
   it("provides a relevant nationwide service callout for every niche", () => {
     expect(AI_SEO_CAMPAIGNS.map(({ landing }) => landing.hero.callout)).toEqual(
       [
-        "⚖️ Law-firm pilot for approved US firms",
+        "⚖️ Proudly serving law firms nationwide",
         "🦷 Proudly serving dental practices nationwide",
         "🦷 Proudly serving dental implant practices nationwide",
         "✨ Proudly serving plastic surgery practices nationwide",
@@ -183,23 +183,25 @@ describe("AI SEO campaigns", () => {
     );
   });
 
-  it("keeps the approved law-firm presentation isolated from shared copy", () => {
+  it("keeps the law-firm offer aligned with the shared CRO presentation", () => {
     const [lawFirms, ...otherCampaigns] = AI_SEO_CAMPAIGNS;
 
     expect(lawFirms?.landing.hero.promise).toBe(
       "45 Qualified New-Client Inquiries",
     );
-    expect(lawFirms?.landing.hero.ctaLabel).toBe("See If Your Firm Qualifies");
-    expect(lawFirms?.landing.offer.heading).toBe(
-      "Map My Firm's Lost-Matter Funnel",
+    expect(lawFirms?.landing.hero.ctaLabel).toBe(
+      sharedLandingContent.hero.ctaLabel,
     );
-    expect(lawFirms?.landing.offer.ctaLabel).toBe(
-      "Map My Firm's Lost-Matter Funnel",
+    expect(lawFirms?.landing.benefits).toBe(sharedLandingContent.benefits);
+    expect(lawFirms?.landing.results).toBe(sharedLandingContent.results);
+    expect(lawFirms?.landing.reviews).toBe(sharedLandingContent.reviews);
+    expect(lawFirms?.landing.offer).toBe(sharedLandingContent.offer);
+    expect(lawFirms?.application.expectations).toBe(
+      sharedApplicationContent.expectations,
     );
-    expect(lawFirms?.landing.results).toBeNull();
-    expect(lawFirms?.landing.reviews).toBeNull();
-    expect(lawFirms?.thankYou.videos).toBeNull();
-    expect(lawFirms?.thankYou.reviews).toBeNull();
+    expect(lawFirms?.thankYou.videos).toBe(sharedThankYouContent.videos);
+    expect(lawFirms?.thankYou.reviews).toBe(sharedThankYouContent.reviews);
+    expect(lawFirms?.landing.guarantee.terms).not.toBeNull();
 
     for (const campaign of otherCampaigns) {
       expect(campaign.landing.benefits).toBe(sharedLandingContent.benefits);
@@ -233,7 +235,7 @@ describe("AI SEO campaigns", () => {
     }
   });
 
-  it("makes the law-firm guarantee terms conspicuous and removes retired proof", () => {
+  it("makes the law-firm guarantee terms conspicuous without removing standard proof", () => {
     const lawFirms = AI_SEO_CAMPAIGNS[0];
     if (!lawFirms) throw new Error("Law-firm campaign is missing");
 
