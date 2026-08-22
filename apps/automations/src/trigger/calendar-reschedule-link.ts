@@ -42,10 +42,20 @@ const rescheduleUidPattern = (bookingUid: string) =>
     "gu",
   );
 
+const bookingUidPathPattern = (bookingUid: string) =>
+  new RegExp(
+    `(/booking/)${escapeRegularExpression(bookingUid)}(?=([?#]|$))`,
+    "gu",
+  );
+
 const countRecognizedUidLinks = (description: string, bookingUid: string) => {
-  const pattern = rescheduleUidPattern(bookingUid);
+  const queryPattern = rescheduleUidPattern(bookingUid);
+  const pathPattern = bookingUidPathPattern(bookingUid);
   return [...description.matchAll(recognizedCalUrl)].reduce(
-    (count, match) => count + [...match[0].matchAll(pattern)].length,
+    (count, match) =>
+      count +
+      [...match[0].matchAll(queryPattern)].length +
+      [...match[0].matchAll(pathPattern)].length,
     0,
   );
 };
@@ -70,12 +80,18 @@ export const replaceCalRescheduleUid = (
     throw new Error("google_reschedule_link_not_uniquely_recognized");
   }
 
-  const pattern = rescheduleUidPattern(previousBookingUid);
+  const queryPattern = rescheduleUidPattern(previousBookingUid);
+  const pathPattern = bookingUidPathPattern(previousBookingUid);
   const updated = description.replace(recognizedCalUrl, (url) =>
-    url.replace(
-      pattern,
-      (_match, prefix: string) => `${prefix}${replacementBookingUid}`,
-    ),
+    url
+      .replace(
+        queryPattern,
+        (_match, prefix: string) => `${prefix}${replacementBookingUid}`,
+      )
+      .replace(
+        pathPattern,
+        (_match, prefix: string) => `${prefix}${replacementBookingUid}`,
+      ),
   );
   if (
     countRecognizedUidLinks(updated, previousBookingUid) !== 0 ||

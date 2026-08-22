@@ -40,6 +40,25 @@ describe("replaceCalRescheduleUid", () => {
     ).toEqual({ outcome: "already_current", description: current });
   });
 
+  it("changes Cal's booking-path reschedule link format", () => {
+    const description = `<a href="https://cal.com/booking/${previousUid}?changes=true">Reschedule</a>`;
+
+    expect(
+      replaceCalRescheduleUid(description, previousUid, replacementUid),
+    ).toEqual({
+      outcome: "updated",
+      description: description.replace(previousUid, replacementUid),
+    });
+  });
+
+  it("recognizes Cal's current booking-path link without writing", () => {
+    const description = `<a href="https://cal.com/booking/${replacementUid}?changes=true">Reschedule</a>`;
+
+    expect(
+      replaceCalRescheduleUid(description, previousUid, replacementUid),
+    ).toEqual({ outcome: "already_current", description });
+  });
+
   it("refuses unrelated hosts and ambiguous descriptions", () => {
     expect(() =>
       replaceCalRescheduleUid(
