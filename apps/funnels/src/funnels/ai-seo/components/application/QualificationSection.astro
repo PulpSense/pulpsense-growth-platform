@@ -44,18 +44,6 @@ const {
       <p class="pr-sub pr-form-intro">
         {content.intro}
       </p>
-      {
-        content.guaranteeTerms && (
-          <div class="pr-application-guarantee-terms">
-            <h2>{content.guaranteeTerms.heading}</h2>
-            <ul>
-              {content.guaranteeTerms.items.map((term) => (
-                <li>{term}</li>
-              ))}
-            </ul>
-          </div>
-        )
-      }
     </header>
     <div class="pr-funnel-layout">
       <AiSeoQualificationForm

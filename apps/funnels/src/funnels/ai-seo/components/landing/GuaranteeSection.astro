@@ -26,18 +26,6 @@ const { content } = Astro.props;
           ))
         }
       </div>
-      {
-        content.terms && (
-          <div class="pr-guarantee-terms">
-            <h3>{content.terms.heading}</h3>
-            <ul>
-              {content.terms.items.map((term) => (
-                <li>{term}</li>
-              ))}
-            </ul>
-          </div>
-        )
-      }
     </div>
   </div>
 </section>

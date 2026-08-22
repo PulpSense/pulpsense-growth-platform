@@ -11,6 +11,7 @@ const lawFirmGuaranteeTerms = {
   heading: "Material guarantee terms",
   items: [
     "Available only to approved applicants with agreed spend or growth capacity, source-system access, and decision-maker or operational-owner participation.",
+    "If an approved firm receives fewer than 45 qualified new-client inquiries in the initial 90-day program while meeting the agreed requirements, PulpSense continues the agreed services at no service fee until the target is reached.",
     "A qualified inquiry is one unique prospective client in the agreed practice area and geography who meets the written case-type, timing, and payment or case-value screen.",
     "The inquiry must be attributable through call tracking, a tracked form, recorded attribution, or prospect self-report. Spam, vendors, duplicates, misdials, directions or general-information requests, and known disqualifying conflicts where reasonably determinable are excluded.",
     "The firm must provide required access and approvals, maintain agreed intake coverage, return missed inquiries within 15 minutes during declared coverage hours, and record dispositions within two business days.",
@@ -41,7 +42,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
       ...sharedLandingContent.hero,
       callout: "⚖️ Proudly serving law firms nationwide",
       promise: "45 Qualified New-Client Inquiries",
-      lead: "Get found when potential clients in your market are ready to call. No ad spend. No shared leads. Results guaranteed, or you get fully refunded and keep everything we build.",
+      lead: "Get found when potential clients in your market are ready to call. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
     },
     benefits: {
       heading: "Why Law Firms Are Moving Beyond Traditional Marketing",
@@ -89,7 +90,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
         row.feature === "Guarantee"
           ? {
               ...row,
-              pulpsense: "45 qualified inquiries or a full refund",
+              pulpsense: "45 qualified inquiries or we work free",
             }
           : row,
       ),
@@ -183,14 +184,14 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
       promise: "45 Qualified New-Client Inquiries",
       promiseSeparator: " ",
       timeframe: "in 90 Days",
-      titleSeparator: "—",
-      titleSuffix: "or Get Fully Refunded and Keep Everything We Build.",
-      body: "If an approved firm receives fewer than 45 qualified new-client inquiries during the initial 90-day program, PulpSense refunds the service fees paid for that program. The firm keeps the transferable content, profiles, schema, citations, and tracking assets we built.",
+      titleSeparator: ". ",
+      titleSuffix: "Or We Work Free Until You Do.",
+      body: "We build the system that gets your firm recommended across Google Maps, organic search, AI Overviews, and ChatGPT. If you do not receive 45 qualified new-client inquiries in 90 days, we work free until you do.",
       pills: [
-        "One agreed practice area + market",
-        "90 days after tracking and baseline approval",
-        "Full refund of initial program service fees",
-        "Transferable assets stay with your firm",
+        "✅ 45 qualified new-client inquiries in 90 days",
+        "✅ We continue free if we miss the target",
+        "✅ No paid advertising required",
+        "✅ Baseline agreed during onboarding",
       ],
       terms: lawFirmGuaranteeTerms,
     },
@@ -236,7 +237,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
           question:
             "What happens if we receive fewer than 45 qualified inquiries?",
           answer:
-            "For an approved applicant that meets the agreed access, approval, intake, response, and disposition requirements, PulpSense refunds the service fees paid for the initial 90-day program. The firm keeps the transferable assets we built.",
+            "For an approved applicant that meets the agreed access, approval, intake, response, and disposition requirements, we continue the agreed services at no service fee until the firm receives 45 qualified new-client inquiries.",
         },
         {
           question: "Can you work with our website, CRM, and intake systems?",
@@ -262,8 +263,8 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
     pageDescription:
       "Share your details and two quick answers before booking a law-firm visibility audit.",
     promise: "45 Qualified New-Client Inquiries",
-    titleSeparator: "—",
-    titleSuffix: "or Get Fully Refunded and Keep Everything We Build.",
+    titleSeparator: ". ",
+    titleSuffix: "Or We Work Free Until You Do.",
     intro:
       "Enter your details, then answer two quick questions to see if your law firm qualifies for the guarantee.",
     expectations: [
@@ -302,7 +303,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
     confirmation: {
       ...sharedThankYouContent.confirmation,
       intro:
-        "Review this quick briefing before your Law-Firm Visibility Audit. 45 qualified new-client inquiries in 90 days. No ad spend. No shared leads. Results guaranteed, or you get fully refunded and keep everything we build.",
+        "Review this quick briefing before your Law-Firm Visibility Audit. 45 qualified new-client inquiries in 90 days. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
     },
     calendar: {
       ...sharedThankYouContent.calendar,

@@ -249,6 +249,12 @@ try {
       );
       assert.doesNotMatch(html, /legal inquiries/i);
       assert.doesNotMatch(html, /45 calls or free/i);
+      assert.doesNotMatch(html, /fully refunded|full refund/i);
+      assert.ok(
+        html.indexOf("Material guarantee terms") >
+          html.indexOf('class="pr-footer"'),
+        `${route.path} should place material guarantee terms in the footer disclosure`,
+      );
     }
     assert.doesNotMatch(
       html,

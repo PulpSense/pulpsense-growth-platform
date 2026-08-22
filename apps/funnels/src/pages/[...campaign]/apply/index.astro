@@ -68,6 +68,6 @@ const cal = resolveCalConfig({
         turnstileSiteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY}
       />
     </main>
-    <DisclosureFooter />
+    <DisclosureFooter guaranteeTerms={campaign.application.guaranteeTerms} />
   </div>
 </BaseLayout>

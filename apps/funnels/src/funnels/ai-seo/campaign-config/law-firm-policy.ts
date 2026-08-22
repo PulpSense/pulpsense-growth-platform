@@ -3,6 +3,8 @@ import type { AiSeoCampaignConfig } from "./types";
 export const RETIRED_LAW_FIRM_COPY = [
   "legal inquiries",
   "45 calls or free",
+  "fully refunded",
+  "full refund",
   "Why Regional Service Businesses Are Moving Beyond Traditional Marketing",
 ] as const;
 

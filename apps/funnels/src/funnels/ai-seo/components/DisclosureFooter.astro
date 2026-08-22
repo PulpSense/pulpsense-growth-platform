@@ -1,5 +1,25 @@
+---
+import type { GuaranteeTermsContent } from "../campaign-config/types";
+
+type Props = { guaranteeTerms?: GuaranteeTermsContent | null };
+
+const { guaranteeTerms } = Astro.props;
+---
+
 <section class="pr-footer">
   <div class="pr-container pr-container-md">
+    {
+      guaranteeTerms && (
+        <div style="margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--pr-border);">
+          <strong>{guaranteeTerms.heading}</strong>
+          <ul style="margin: 0.5rem 0 0; padding-left: 1.25rem;">
+            {guaranteeTerms.items.map((term) => (
+              <li style="margin-top: 0.35rem;">{term}</li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
     <div>
       <strong>Important Disclosures</strong>
       <p style="margin: 0.25rem 0 0">
