@@ -1,78 +1,7 @@
 ---
-import DisclosureFooter from "@/funnels/ai-seo/components/DisclosureFooter.astro";
-import BenefitsSection from "@/funnels/ai-seo/components/landing/BenefitsSection.astro";
-import ComparisonSection from "@/funnels/ai-seo/components/landing/ComparisonSection.astro";
-import EducationSection from "@/funnels/ai-seo/components/landing/EducationSection.astro";
-import FaqSection from "@/funnels/ai-seo/components/landing/FaqSection.astro";
-import GuaranteeSection from "@/funnels/ai-seo/components/landing/GuaranteeSection.astro";
-import HeroSection from "@/funnels/ai-seo/components/landing/HeroSection.astro";
-import LandingInteractions from "@/funnels/ai-seo/components/landing/LandingInteractions.astro";
-import MarketShiftSection from "@/funnels/ai-seo/components/landing/MarketShiftSection.astro";
-import OfferStackSection from "@/funnels/ai-seo/components/landing/OfferStackSection.astro";
-import ProcessSection from "@/funnels/ai-seo/components/landing/ProcessSection.astro";
-import ResultsSection from "@/funnels/ai-seo/components/landing/ResultsSection.astro";
-import ReviewsSection from "@/funnels/ai-seo/components/landing/ReviewsSection.astro";
-import StickyCta from "@/funnels/ai-seo/components/landing/StickyCta.astro";
-import type { LandingContent } from "@/funnels/ai-seo/campaign-config";
-import { sharedLandingContent } from "@/funnels/ai-seo/campaign-config/shared-content";
+import LandingPersonalizationPreview from "@/funnels/ai-seo/components/personalization-preview/LandingPersonalizationPreview.astro";
 import "@/funnels/ai-seo/styles/funnel.css";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-
-const placeholder = "PERSONALIZATION";
-const content = {
-  ...sharedLandingContent,
-  hero: {
-    ...sharedLandingContent.hero,
-    callout: placeholder,
-    promise: placeholder,
-    lead: placeholder,
-  },
-  benefits: {
-    ...sharedLandingContent.benefits,
-    heading: placeholder,
-    intro: placeholder,
-    cards: [
-      {
-        ...sharedLandingContent.benefits.cards[0],
-        title: placeholder,
-        body: placeholder,
-      },
-      sharedLandingContent.benefits.cards[1],
-      {
-        ...sharedLandingContent.benefits.cards[2],
-        title: placeholder,
-        body: placeholder,
-      },
-    ],
-  },
-  marketShift: {
-    ...sharedLandingContent.marketShift,
-    heading: placeholder,
-    intro: placeholder,
-  },
-  offer: {
-    ...sharedLandingContent.offer,
-    heading: placeholder,
-    intro: placeholder,
-    note: placeholder,
-  },
-  guarantee: {
-    ...sharedLandingContent.guarantee,
-    promise: placeholder,
-    body: placeholder,
-    pills: [placeholder, placeholder, placeholder, placeholder],
-  },
-  faq: {
-    ...sharedLandingContent.faq,
-    items: sharedLandingContent.faq.items.map((item, index) =>
-      [2, 4, 7, 9].includes(index)
-        ? { question: placeholder, answer: placeholder }
-        : item,
-    ),
-  },
-} satisfies LandingContent;
-
-const ctaPath = "/personalization-preview/apply/";
 ---
 
 <BaseLayout
@@ -86,23 +15,5 @@ const ctaPath = "/personalization-preview/apply/";
     crossorigin
   />
 
-  <div id="pr-funnel">
-    <main class="pr-main">
-      <HeroSection content={content.hero} {ctaPath} />
-      <BenefitsSection content={content.benefits} />
-      <MarketShiftSection content={content.marketShift} />
-      <ComparisonSection content={content.comparison} />
-      <EducationSection content={content.education} />
-      {content.results && <ResultsSection content={content.results} />}
-      <ProcessSection content={content.process} />
-      <OfferStackSection content={content.offer} {ctaPath} />
-      <GuaranteeSection content={content.guarantee} />
-      <FaqSection content={content.faq} />
-      {content.reviews && <ReviewsSection content={content.reviews} />}
-    </main>
-
-    <DisclosureFooter />
-    <StickyCta content={content.stickyCta} {ctaPath} />
-  </div>
-  <LandingInteractions />
+  <LandingPersonalizationPreview />
 </BaseLayout>

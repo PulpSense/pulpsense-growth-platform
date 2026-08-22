@@ -1,6 +1,10 @@
 import type { AiSeoCampaignConfig } from "./types";
 
-export const RETIRED_LAW_FIRM_COPY = ["legal inquiries"] as const;
+export const RETIRED_LAW_FIRM_COPY = [
+  "legal inquiries",
+  "45 calls or free",
+  "Why Regional Service Businesses Are Moving Beyond Traditional Marketing",
+] as const;
 
 export const validateLawFirmCampaignPresentation = <
   const Campaign extends AiSeoCampaignConfig,

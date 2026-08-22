@@ -183,7 +183,7 @@ describe("AI SEO campaigns", () => {
     );
   });
 
-  it("keeps the law-firm offer aligned with the shared CRO presentation", () => {
+  it("personalizes law-firm copy without changing the shared CRO structure", () => {
     const [lawFirms, ...otherCampaigns] = AI_SEO_CAMPAIGNS;
 
     expect(lawFirms?.landing.hero.promise).toBe(
@@ -192,15 +192,39 @@ describe("AI SEO campaigns", () => {
     expect(lawFirms?.landing.hero.ctaLabel).toBe(
       sharedLandingContent.hero.ctaLabel,
     );
-    expect(lawFirms?.landing.benefits).toBe(sharedLandingContent.benefits);
-    expect(lawFirms?.landing.results).toBe(sharedLandingContent.results);
-    expect(lawFirms?.landing.reviews).toBe(sharedLandingContent.reviews);
-    expect(lawFirms?.landing.offer).toBe(sharedLandingContent.offer);
-    expect(lawFirms?.application.expectations).toBe(
-      sharedApplicationContent.expectations,
+    expect(lawFirms?.landing.benefits.heading).toBe(
+      "Why Law Firms Are Moving Beyond Traditional Marketing",
     );
-    expect(lawFirms?.thankYou.videos).toBe(sharedThankYouContent.videos);
-    expect(lawFirms?.thankYou.reviews).toBe(sharedThankYouContent.reviews);
+    expect(lawFirms?.landing.benefits.cards).toHaveLength(
+      sharedLandingContent.benefits.cards.length,
+    );
+    expect(lawFirms?.landing.comparison.heading).toBe(
+      sharedLandingContent.comparison.heading,
+    );
+    expect(lawFirms?.landing.comparison.intro).toBe(
+      sharedLandingContent.comparison.intro,
+    );
+    expect(lawFirms?.landing.comparison.rows).toHaveLength(
+      sharedLandingContent.comparison.rows.length,
+    );
+    expect(
+      lawFirms?.landing.comparison.rows.find(
+        ({ feature }) => feature === "Guarantee",
+      )?.pulpsense,
+    ).toBe("45 qualified inquiries or a full refund");
+    expect(lawFirms?.landing.results?.items).toBe(
+      sharedLandingContent.results?.items,
+    );
+    expect(lawFirms?.landing.offer.items).toHaveLength(
+      sharedLandingContent.offer.items.length,
+    );
+    expect(lawFirms?.application.expectations).toHaveLength(
+      sharedApplicationContent.expectations.length,
+    );
+    expect(lawFirms?.thankYou.videos?.items).toBe(
+      sharedThankYouContent.videos?.items,
+    );
+    expect(lawFirms?.thankYou.confirmation.intro.split(". ")).toHaveLength(5);
     expect(lawFirms?.landing.guarantee.terms).not.toBeNull();
     expect(lawFirms?.application.qualification).toEqual({
       kind: "owner-budget",

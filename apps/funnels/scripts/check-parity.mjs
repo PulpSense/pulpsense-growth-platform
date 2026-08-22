@@ -71,7 +71,7 @@ const campaignRoutes = [
   },
 ];
 
-const publicRoutes = campaignRoutes.flatMap(
+const campaignPublicRoutes = campaignRoutes.flatMap(
   ({ slug, funnelId, lawFirmPilot = false }) => {
     const landingPath = `/${slug}/`;
     const applicationPath = `${landingPath}apply/`;
@@ -113,6 +113,28 @@ const publicRoutes = campaignRoutes.flatMap(
     ];
   },
 );
+const personalizationPreviewRoutes = [
+  {
+    kind: "reference",
+    path: "/personalization-preview/",
+    markers: [
+      "PERSONALIZATION",
+      "Traditional Paid Ads vs. AI Search",
+      "Get Your Visibility Audit",
+    ],
+  },
+  {
+    kind: "reference",
+    path: "/personalization-preview/apply/",
+    markers: [
+      "PERSONALIZATION",
+      "Step 2 of 4",
+      "Step 3 of 4",
+      "No additional qualification question is introduced",
+    ],
+  },
+];
+const publicRoutes = [...campaignPublicRoutes, ...personalizationPreviewRoutes];
 const applicationHtmlByFunnelId = new Map();
 
 async function postJson(path, body) {
@@ -222,10 +244,11 @@ try {
     if (route.lawFirmPilot) {
       assert.match(
         html,
-        /4\.9\/5|What (?:Service Business Owners|Local Businesses) Say About Us/,
+        /4\.9\/5|What (?:Service Business Owners|Local Businesses) Say About Us|What Clients Say About Working With Us/,
         `${route.path} should preserve the standard proof presentation`,
       );
       assert.doesNotMatch(html, /legal inquiries/i);
+      assert.doesNotMatch(html, /45 calls or free/i);
     }
     assert.doesNotMatch(
       html,
