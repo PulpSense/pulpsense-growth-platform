@@ -268,6 +268,35 @@ describe("Sales Appointment lifecycle projection", () => {
     expect(memory.versions).toHaveLength(2);
   });
 
+  it("treats a delayed historical reschedule as a duplicate after lineage advances", async () => {
+    const memory = memoryAdapter();
+    await createInitial(memory);
+    await projectSalesAppointmentLifecycle(rescheduled, {}, memory.adapter);
+    await projectSalesAppointmentLifecycle(
+      {
+        ...rescheduled,
+        eventId: "booking_rescheduled:cal-3",
+        payload: {
+          ...rescheduled.payload,
+          booking: {
+            ...rescheduled.payload.booking,
+            uid: "cal-3",
+            previousUid: "cal-2",
+            startTime: "2026-08-13T16:00:00.000Z",
+            endTime: "2026-08-13T16:30:00.000Z",
+          },
+        },
+      },
+      {},
+      memory.adapter,
+    );
+
+    await expect(
+      projectSalesAppointmentLifecycle(rescheduled, {}, memory.adapter),
+    ).resolves.toMatchObject({ outcome: "duplicate" });
+    expect(memory.versions).toHaveLength(3);
+  });
+
   it("treats a delayed original completion as a no-op after rescheduling", async () => {
     const memory = memoryAdapter();
     const initial = await createInitial(memory);
