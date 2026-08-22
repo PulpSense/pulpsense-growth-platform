@@ -13,6 +13,7 @@ export default tseslint.config(
   {
     ignores: [
       '**/.astro/**',
+      '**/.trigger/**',
       '**/.wrangler/**',
       '**/dist/**',
       '**/node_modules/**',
