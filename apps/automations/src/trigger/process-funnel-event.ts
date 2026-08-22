@@ -71,6 +71,8 @@ type TwentyFailureContext = {
   operation: AdapterOperation;
 };
 
+type InternalCanaryRecordOptions = { internalCanary: boolean };
+
 const triggerRunLink = (url: string | undefined, fallback: string) =>
   url ? `<${url}|Open in Trigger>` : fallback;
 
@@ -126,7 +128,7 @@ type ProcessorDependencies = {
   recordTwentyApplication?(
     event: ApplicationSubmittedEvent,
     personId: string,
-    options?: { internalCanary: boolean },
+    options?: InternalCanaryRecordOptions,
   ): Promise<{ activityId: string; opportunityId?: string }>;
   sendMetaApplication?(
     event: ApplicationSubmittedEvent,
@@ -134,7 +136,7 @@ type ProcessorDependencies = {
   recordTwentyBooking?(
     event: BookingCompletedEvent,
     personId: string,
-    options?: { internalCanary: boolean },
+    options?: InternalCanaryRecordOptions,
   ): Promise<{ salesAppointmentId: string; opportunityId: string }>;
   projectSalesAppointment?(
     event: BookingRescheduledEvent | BookingCancelledEvent,
@@ -191,8 +193,7 @@ const isInternalCanaryEvent = (
 ) =>
   Boolean(
     configuration?.submissionIds.has(event.submissionId) &&
-      event.payload.email.trim().toLowerCase() ===
-        configuration.attendeeEmail,
+    event.payload.email.trim().toLowerCase() === configuration.attendeeEmail,
   );
 
 export const isInternalTestLead = (event: FunnelEvent) =>
@@ -316,6 +317,39 @@ const capturePostHogPersonLinkSafely = async (
   );
 };
 
+const createInternalCanaryDeliveryPolicy = (
+  internalCanary: boolean,
+  event: FunnelEvent,
+  dependencies: ProcessorDependencies,
+) => ({
+  missingRequiredCommercialAdapter: (adapter: unknown) =>
+    !internalCanary && !adapter,
+  recordInTwenty: <Result>(
+    operation: () => Promise<Result>,
+    internalCanaryOperation: (
+      options: InternalCanaryRecordOptions,
+    ) => Promise<Result>,
+  ) =>
+    internalCanary
+      ? internalCanaryOperation({ internalCanary: true })
+      : operation(),
+  captureMeta: (operation: () => Promise<{ eventsReceived: number }>) =>
+    internalCanary ? Promise.resolve({ eventsReceived: 0 }) : operation(),
+  commercialDestination: (operation?: () => Promise<unknown>) =>
+    internalCanary || !operation ? Promise.resolve() : operation(),
+  capturePostHog: () =>
+    internalCanary
+      ? Promise.resolve()
+      : capturePostHogSafely(event, dependencies),
+  capturePostHogPersonLink: (personId: string) =>
+    internalCanary
+      ? Promise.resolve()
+      : capturePostHogPersonLinkSafely(event, personId, dependencies),
+  resultMetadata: internalCanary
+    ? { internalCanary: true as const }
+    : { metaEventId: event.eventId },
+});
+
 const precallPayloadFromBooking = (
   event: BookingCompletedEvent | BookingRescheduledEvent,
   guard?: SalesAppointmentAutomationGuard,
@@ -355,6 +389,11 @@ export async function processFunnelEvent(
     });
     return { ok: true as const, skipped: "internal_test_lead" as const };
   }
+  const deliveryPolicy = createInternalCanaryDeliveryPolicy(
+    internalCanary,
+    event,
+    dependencies,
+  );
   if (event.eventType === "booking_rescheduled") {
     dependencies.log.info("Processing verified booking reschedule", {
       submissionId: event.submissionId,
@@ -396,9 +435,7 @@ export async function processFunnelEvent(
       gmailReminders,
       smsReminders,
       salesAppointment: Promise.resolve(salesAppointment),
-      measurement: internalCanary
-        ? Promise.resolve()
-        : capturePostHogSafely(event, dependencies),
+      measurement: deliveryPolicy.capturePostHog(),
     });
     await dependencies.schedulePrecallSequence?.(event);
     return { ok: true as const, bookingUid: event.payload.booking.uid };
@@ -418,9 +455,7 @@ export async function processFunnelEvent(
           )
         : Promise.resolve(),
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
-      measurement: internalCanary
-        ? Promise.resolve()
-        : capturePostHogSafely(event, dependencies),
+      measurement: deliveryPolicy.capturePostHog(),
     });
     return { ok: true as const, bookingUid: event.payload.booking.uid };
   }
@@ -428,7 +463,9 @@ export async function processFunnelEvent(
   if (event.eventType === "booking_completed") {
     if (
       !dependencies.recordTwentyBooking ||
-      (!internalCanary && !dependencies.sendMetaSchedule)
+      deliveryPolicy.missingRequiredCommercialAdapter(
+        dependencies.sendMetaSchedule,
+      )
     ) {
       throw new Error("Booking processing is not configured");
     }
@@ -465,19 +502,19 @@ export async function processFunnelEvent(
             dependencies,
             "record_booking",
             () =>
-              internalCanary
-                ? dependencies.recordTwentyBooking!(event, personId, {
-                    internalCanary: true,
-                  })
-                : dependencies.recordTwentyBooking!(event, personId),
+              deliveryPolicy.recordInTwenty(
+                () => dependencies.recordTwentyBooking!(event, personId),
+                (options) =>
+                  dependencies.recordTwentyBooking!(event, personId, options),
+              ),
           );
-          const { eventsReceived } = internalCanary
-            ? { eventsReceived: 0 }
-            : await executeAdapter(
-                dependencies,
-                { destination: "meta", operation: "deliver_schedule" },
-                () => dependencies.sendMetaSchedule!(event),
-              );
+          const { eventsReceived } = await deliveryPolicy.captureMeta(() =>
+            executeAdapter(
+              dependencies,
+              { destination: "meta", operation: "deliver_schedule" },
+              () => dependencies.sendMetaSchedule!(event),
+            ),
+          );
           return { personId, booking, eventsReceived };
         })();
         const [result] = await Promise.all([
@@ -486,19 +523,17 @@ export async function processFunnelEvent(
         ]);
         return result;
       })(),
-      slack: internalCanary
-        ? Promise.resolve()
-        : (dependencies.postSlackBooking?.(event) ?? Promise.resolve()),
+      slack: deliveryPolicy.commercialDestination(
+        dependencies.postSlackBooking
+          ? () => dependencies.postSlackBooking!(event)
+          : undefined,
+      ),
       brevo: dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve(),
       gmailReminders,
-      measurement: internalCanary
-        ? Promise.resolve()
-        : capturePostHogSafely(event, dependencies),
+      measurement: deliveryPolicy.capturePostHog(),
     });
     const { personId, booking, eventsReceived } = destinations.core;
-    if (!internalCanary) {
-      await capturePostHogPersonLinkSafely(event, personId, dependencies);
-    }
+    await deliveryPolicy.capturePostHogPersonLink(personId);
 
     dependencies.log.info("Processed verified funnel booking", {
       submissionId: event.submissionId,
@@ -515,16 +550,16 @@ export async function processFunnelEvent(
       personId,
       salesAppointmentId: booking.salesAppointmentId,
       opportunityId: booking.opportunityId,
-      ...(internalCanary
-        ? { internalCanary: true as const }
-        : { metaEventId: event.eventId }),
+      ...deliveryPolicy.resultMetadata,
     };
   }
 
   if (event.eventType === "application_submitted") {
     if (
       !dependencies.recordTwentyApplication ||
-      (!internalCanary && !dependencies.sendMetaApplication)
+      deliveryPolicy.missingRequiredCommercialAdapter(
+        dependencies.sendMetaApplication,
+      )
     ) {
       throw new Error("Application processing is not configured");
     }
@@ -549,32 +584,30 @@ export async function processFunnelEvent(
           dependencies,
           "record_application",
           () =>
-            internalCanary
-              ? dependencies.recordTwentyApplication!(event, personId, {
-                  internalCanary: true,
-                })
-              : dependencies.recordTwentyApplication!(event, personId),
+            deliveryPolicy.recordInTwenty(
+              () => dependencies.recordTwentyApplication!(event, personId),
+              (options) =>
+                dependencies.recordTwentyApplication!(event, personId, options),
+            ),
         );
-        const { eventsReceived } = internalCanary
-          ? { eventsReceived: 0 }
-          : await executeAdapter(
-              dependencies,
-              { destination: "meta", operation: "deliver_application" },
-              () => dependencies.sendMetaApplication!(event),
-            );
+        const { eventsReceived } = await deliveryPolicy.captureMeta(() =>
+          executeAdapter(
+            dependencies,
+            { destination: "meta", operation: "deliver_application" },
+            () => dependencies.sendMetaApplication!(event),
+          ),
+        );
         return { personId, application, eventsReceived };
       })(),
-      brevo: internalCanary
-        ? Promise.resolve()
-        : (dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve()),
-      measurement: internalCanary
-        ? Promise.resolve()
-        : capturePostHogSafely(event, dependencies),
+      brevo: deliveryPolicy.commercialDestination(
+        dependencies.publishBrevoLifecycle
+          ? () => dependencies.publishBrevoLifecycle!(event)
+          : undefined,
+      ),
+      measurement: deliveryPolicy.capturePostHog(),
     });
     const { personId, application, eventsReceived } = destinations.core;
-    if (!internalCanary) {
-      await capturePostHogPersonLinkSafely(event, personId, dependencies);
-    }
+    await deliveryPolicy.capturePostHogPersonLink(personId);
 
     dependencies.log.info("Processed funnel application", {
       submissionId: event.submissionId,
@@ -594,9 +627,7 @@ export async function processFunnelEvent(
       ...(application.opportunityId
         ? { opportunityId: application.opportunityId }
         : {}),
-      ...(internalCanary
-        ? { internalCanary: true as const }
-        : { metaEventId: event.eventId }),
+      ...deliveryPolicy.resultMetadata,
     };
   }
 
@@ -616,29 +647,29 @@ export async function processFunnelEvent(
         "upsert_person",
         () => dependencies.upsertTwentyPerson(event),
       );
-      const { eventsReceived } = internalCanary
-        ? { eventsReceived: 0 }
-        : await executeAdapter(
-            dependencies,
-            { destination: "meta", operation: "deliver_lead" },
-            () => dependencies.sendMetaLead(event),
-          );
+      const { eventsReceived } = await deliveryPolicy.captureMeta(() =>
+        executeAdapter(
+          dependencies,
+          { destination: "meta", operation: "deliver_lead" },
+          () => dependencies.sendMetaLead(event),
+        ),
+      );
       return { personId, eventsReceived };
     })(),
-    slack: internalCanary
-      ? Promise.resolve()
-      : (dependencies.postSlackLead?.(event) ?? Promise.resolve()),
-    brevo: internalCanary
-      ? Promise.resolve()
-      : (dependencies.publishBrevoLifecycle?.(event) ?? Promise.resolve()),
-    measurement: internalCanary
-      ? Promise.resolve()
-      : capturePostHogSafely(event, dependencies),
+    slack: deliveryPolicy.commercialDestination(
+      dependencies.postSlackLead
+        ? () => dependencies.postSlackLead!(event)
+        : undefined,
+    ),
+    brevo: deliveryPolicy.commercialDestination(
+      dependencies.publishBrevoLifecycle
+        ? () => dependencies.publishBrevoLifecycle!(event)
+        : undefined,
+    ),
+    measurement: deliveryPolicy.capturePostHog(),
   });
   const { personId, eventsReceived } = destinations.core;
-  if (!internalCanary) {
-    await capturePostHogPersonLinkSafely(event, personId, dependencies);
-  }
+  await deliveryPolicy.capturePostHogPersonLink(personId);
 
   dependencies.log.info("Processed funnel contact", {
     submissionId: event.submissionId,
@@ -650,9 +681,7 @@ export async function processFunnelEvent(
   return {
     ok: true as const,
     personId,
-    ...(internalCanary
-      ? { internalCanary: true as const }
-      : { metaEventId: event.eventId }),
+    ...deliveryPolicy.resultMetadata,
   };
 }
 
@@ -1863,8 +1892,7 @@ export const processFunnelEventTask = schemaTask({
           PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS:
             process.env.PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS,
           GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL:
-            process.env
-              .GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL,
+            process.env.GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL,
           PULPSENSE_AUTOMATION_ENVIRONMENT: process.env
             .PULPSENSE_AUTOMATION_ENVIRONMENT as
             | FunnelEvent["environment"]
