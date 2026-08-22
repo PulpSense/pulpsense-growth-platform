@@ -431,7 +431,7 @@ export const createCalendarReconciliationAdapters = (
       getCalBookingReferences(uid, environment, fetcher),
     rescheduleCalBooking: (input) =>
       rescheduleCalBooking(input, environment, fetcher),
-    waitForStability: () => wait.for({ seconds: 60 }).then(() => undefined),
+    waitForStability: () => wait.for({ minutes: 5 }).then(() => undefined),
     waitForRetry: (attempt) =>
       wait.for({ seconds: 2 ** attempt }).then(() => undefined),
     waitForCanonicalWebhook: () =>
