@@ -1,0 +1,93 @@
+---
+import DisclosureFooter from "@/funnels/ai-seo/components/DisclosureFooter.astro";
+import { sharedApplicationContent } from "@/funnels/ai-seo/campaign-config/shared-content";
+import "@/funnels/ai-seo/styles/funnel.css";
+import "@/funnels/ai-seo/styles/application.css";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const placeholder = "PERSONALIZATION";
+---
+
+<BaseLayout
+  title="Qualification Personalization Preview | PulpSense"
+  description="Internal visual reference for the niche-specific qualification question."
+>
+  <div id="pr-funnel" class="pr-application-page">
+    <main class="pr-main">
+      <section class="pr-section pr-section-gray" id="pr-funnel-form">
+        <div class="pr-container pr-center">
+          <header class="pr-application-intro">
+            <div class="pr-badge">
+              <span class="pr-stars" aria-hidden="true">★★★★★</span>
+              <span class="pr-badge-copy">
+                {sharedApplicationContent.badge}
+              </span>
+            </div>
+            <h1 class="pr-h2" style="font-size: clamp(1.65rem, 4vw, 2.75rem)">
+              <span style="color: var(--pr-blue)">{placeholder}</span> in
+              <span style="color: var(--pr-blue)"> 90 Days</span>. Or We Work
+              Free Until You Do.
+            </h1>
+            <p class="pr-sub pr-form-intro">
+              Enter your details, then answer one niche-specific question.
+            </p>
+          </header>
+
+          <div class="pr-funnel-layout">
+            <div class="pr-tf">
+              <div class="pr-tf-progress">
+                <span class="pr-tf-progress-label">Step 2 of 2</span>
+                <div class="pr-tf-progress-bar">
+                  <div class="pr-tf-progress-fill" style="width: 100%"></div>
+                </div>
+              </div>
+              <div class="pr-tf-card">
+                <div class="pr-tf-step is-active">
+                  <p class="pr-tf-q">{placeholder}</p>
+                  <div class="pr-tf-choices">
+                    <button type="button" class="pr-tf-choice">
+                      {placeholder}
+                    </button>
+                    <button type="button" class="pr-tf-choice">
+                      {placeholder}
+                    </button>
+                    <button type="button" class="pr-tf-choice">
+                      {placeholder}
+                    </button>
+                    <button type="button" class="pr-tf-choice">
+                      {placeholder}
+                    </button>
+                  </div>
+                  <div class="pr-tf-actions">
+                    <a class="pr-tf-back" href="/personalization-preview/">
+                      ← Back
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <aside class="pr-expect">
+              <h2 class="pr-expect-title">Qualification-question constraint</h2>
+              <ul class="pr-expect-list">
+                <li class="pr-expect-item">
+                  <span class="pr-expect-check" aria-hidden="true">✓</span>
+                  <p>One question tied directly to the niche.</p>
+                </li>
+                <li class="pr-expect-item">
+                  <span class="pr-expect-check" aria-hidden="true">✓</span>
+                  <p>Maximum four or five concise answer options.</p>
+                </li>
+                <li class="pr-expect-item">
+                  <span class="pr-expect-check" aria-hidden="true">✓</span>
+                  <p>Same step, card, and interaction structure.</p>
+                </li>
+              </ul>
+            </aside>
+          </div>
+        </div>
+      </section>
+    </main>
+    <DisclosureFooter />
+  </div>
+</BaseLayout>
