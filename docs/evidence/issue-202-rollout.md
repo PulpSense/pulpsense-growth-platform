@@ -127,14 +127,63 @@ with the same appointment title, and an August 21 event retitled as onboarding.
 The latter two still retained the original appointment description and Cal
 link. No event was deleted or edited.
 
-This fails the duplicate-event safety invariant and invalidates the original
-claim that provider verification was complete. Production reconciliation was
-immediately rolled back to `GOOGLE_CALENDAR_RECONCILIATION_MODE=off`, and issue
-#202 was reopened. Scheduled poll `run_06g2iu1dk9qoq3ic4si73as201` then read
-back mode `off`, selected zero appointments, and dispatched no children.
-General reconciliation must not be restored until an operator explains the two
-additional entries, completes any manual provider repair without automatic
-deletion, and repeats the direct Cal/Google/Twenty read-back.
+With no explanation yet available, this initially failed the duplicate-event
+safety invariant and invalidated the original claim that provider verification
+was complete. Production reconciliation was immediately rolled back to
+`GOOGLE_CALENDAR_RECONCILIATION_MODE=off`, and issue #202 was reopened.
+Scheduled poll `run_06g2iu1dk9qoq3ic4si73as201` then read back mode `off`,
+selected zero appointments, and dispatched no children.
+
+### Operator classification
+
+The operator subsequently confirmed that the August 20 entry was an
+intentional next-day follow-up with the original booker and the August 21 entry
+was that same booker's onboarding meeting. Their Cal UID/link matched only
+because Google duplicated the original event description. They are distinct
+meetings, not duplicate active appointment events; exactly one Google event
+remains the canonical mapped Sales Appointment. No provider event needed to be
+deleted or edited, and the exact mapping, Cal booking, and Google event ID
+remained unchanged.
+
+The copied link remains stale metadata: it still points at the original Cal
+booking. Future manually duplicated follow-up/onboarding events should remove
+the original reschedule/cancel link after the title and time are changed. The
+operator classification resolves the rollout invariant; controlled re-enable
+still requires a fresh direct Cal/Google/Twenty read-back and observation.
+
+### Controlled re-enable after classification
+
+After direct Twenty read-back confirmed all four canonical appointments still
+`SYNCHRONIZED` with unchanged UIDs and generations, production mode was
+restored to `reconcile` at 12:47:13 UTC. The canary-only state, exact canary
+allowlist, credentials, schedule, and provider records were not changed.
+
+The post-restore observation ran through 12:57:16 UTC and covered two
+consecutive scheduled cycles:
+
+| Schedule timestamp | Poll run                         | Selected | Child runs | Result                    |
+| ------------------ | -------------------------------- | -------: | ---------: | ------------------------- |
+| 12:50 UTC          | `run_06g2j1fd2l3r3lutikq4k49001` |        4 |          4 | All completed `unchanged` |
+| 12:55 UTC          | `run_06g2j2j2e8jvupv7l8498fci01` |        4 |          4 | All completed `unchanged` |
+
+Every dispatched child was inspected:
+
+- first cycle: `run_06g2j1hco076ggefosakq63j01`,
+  `run_06g2j1hchckklgkhamdjdagl01`,
+  `run_06g2j1hc9nn67a9l2mhcngtf01`, and
+  `run_06g2j1hbtaisk7b49703qtui01`;
+- second cycle: `run_06g2j2m0cvthfuofso1o6uu601`,
+  `run_06g2j2m05nob7rfo0u23hnue01`,
+  `run_06g2j2lvsl5p63siuh7urnfv01`, and
+  `run_06g2j2lvfrv1lqo54enfh2qf01`.
+
+The mapped Google revision fingerprints were identical across both cycles and
+matched the pre-rollback values. Final Twenty read-back again showed all four
+canonical rows `SYNCHRONIZED` with unchanged lineage/generation. The direct Cal
+and exact-UID Google inspection remained the corrective audit recorded above;
+no provider event changed during the rollback or re-enable. Slack channel
+`C09FTA0TEEN` contained no calendar, reconciliation, or appointment alert during
+the observation window.
 
 ## Validation
 
