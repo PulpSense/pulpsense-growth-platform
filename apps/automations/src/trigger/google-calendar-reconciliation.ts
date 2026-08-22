@@ -59,6 +59,7 @@ type CalendarReconciliationEnvironment = {
   GOOGLE_CALENDAR_RECONCILIATION_UID_ALLOWLIST?: string;
   GOOGLE_CALENDAR_RECONCILIATION_CANARY_ONLY?: string;
   GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL?: string;
+  GOOGLE_CALENDAR_RECONCILIATION_SIMULATED_CAL_FAILURE_UID?: string;
   SLACK_BOT_TOKEN?: string;
   PULPSENSE_AUTOMATION_ENVIRONMENT?: string;
 };
@@ -613,8 +614,20 @@ export const createCalendarReconciliationAdapters = (
     getCalBooking: (uid) => getCalBooking(uid, environment, fetcher),
     getCalBookingReferences: (uid) =>
       getCalBookingReferences(uid, environment, fetcher),
-    rescheduleCalBooking: (input) =>
-      rescheduleCalBooking(input, environment, fetcher),
+    async rescheduleCalBooking(input) {
+      if (
+        parseCanaryOnly(
+          environment.GOOGLE_CALENDAR_RECONCILIATION_CANARY_ONLY,
+        ) &&
+        environment.GOOGLE_CALENDAR_RECONCILIATION_SIMULATED_CAL_FAILURE_UID ===
+          input.bookingUid
+      ) {
+        const error = new Error("Simulated Cal reschedule failure (503)");
+        Object.assign(error, { status: 503 });
+        throw error;
+      }
+      return rescheduleCalBooking(input, environment, fetcher);
+    },
     waitForStability: () => wait.for({ minutes: 5 }).then(() => undefined),
     waitForRetry: (attempt) =>
       wait.for({ seconds: 2 ** attempt }).then(() => undefined),
@@ -892,6 +905,9 @@ export const reconcileGoogleCalendarSalesAppointmentTask = schemaTask({
         process.env.GOOGLE_CALENDAR_RECONCILIATION_CANARY_ONLY,
       GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL:
         process.env.GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL,
+      GOOGLE_CALENDAR_RECONCILIATION_SIMULATED_CAL_FAILURE_UID:
+        process.env
+          .GOOGLE_CALENDAR_RECONCILIATION_SIMULATED_CAL_FAILURE_UID,
       SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
       PULPSENSE_AUTOMATION_ENVIRONMENT:
         process.env.PULPSENSE_AUTOMATION_ENVIRONMENT,
