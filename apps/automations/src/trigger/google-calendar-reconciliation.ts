@@ -3,6 +3,7 @@ import {
   idempotencyKeys,
   logger,
   queue,
+  retry,
   schedules,
   schemaTask,
   wait,
@@ -15,18 +16,33 @@ import {
   type CalendarReconciliationAdapters,
   type CalendarReconciliationMode,
   type GoogleCalendarEvent,
+  type ReconciliationAlert,
   reconcileSalesAppointment,
   selectEligibleSalesAppointments,
 } from "./calendar-reconciliation.js";
+import { refreshGoogleRescheduleLink } from "./calendar-reschedule-link.js";
 import { processFunnelEventTask } from "./process-funnel-event.js";
 import { sendReliabilityAlert } from "./reliability-alerts.js";
+import {
+  formatSlackNotification,
+  slackDate,
+  slackIdentifierFooter,
+  slackLink,
+  slackText,
+} from "./slack-notifications.js";
 import { createTwentySalesAppointmentAdapter } from "./twenty-sales-appointment-adapter.js";
+import { triggerRunUrl } from "./trigger-dashboard.js";
 
 const CAL_API_VERSION = "2026-02-25";
 const CAL_REFERENCES_API_VERSION = "2024-08-13";
 
 const googleCalendarReconciliationQueue = queue({
   name: "google-calendar-reconciliation",
+  concurrencyLimit: 1,
+});
+
+const googleCalendarDescriptionWriteQueue = queue({
+  name: "google-calendar-description-writes",
   concurrencyLimit: 1,
 });
 
@@ -44,11 +60,21 @@ type CalendarReconciliationEnvironment = {
   GOOGLE_CALENDAR_RECONCILIATION_CANARY_ONLY?: string;
   GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL?: string;
   SLACK_BOT_TOKEN?: string;
+  PULPSENSE_AUTOMATION_ENVIRONMENT?: string;
 };
 
 const required = (value: string | undefined, name: string) => {
   if (!value) throw new Error(`${name} is not configured`);
   return value;
+};
+
+export const parseAutomationEnvironment = (value: string | undefined) => {
+  if (value === "local" || value === "preview" || value === "production") {
+    return value;
+  }
+  throw new Error(
+    "PULPSENSE_AUTOMATION_ENVIRONMENT must be local, preview, or production",
+  );
 };
 
 export const parseReconciliationMode = (
@@ -149,6 +175,7 @@ const getGoogleEvent = async (
     sequence?: number;
     status?: string;
     start?: { dateTime?: string };
+    description?: string;
   }>(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(eventId)}`,
     {
@@ -177,7 +204,44 @@ const getGoogleEvent = async (
     sequence: result.sequence,
     status: result.status === "cancelled" ? "cancelled" : "confirmed",
     start: new Date(result.start.dateTime).toISOString(),
+    ...(result.description ? { description: result.description } : {}),
   };
+};
+
+export const patchGoogleEventDescription = async (
+  input: {
+    calendarId: string;
+    eventId: string;
+    etag: string;
+    description: string;
+  },
+  environment: CalendarReconciliationEnvironment,
+  fetcher: typeof fetch,
+) => {
+  const configuredCalendarId = required(
+    environment.GOOGLE_CALENDAR_ID,
+    "GOOGLE_CALENDAR_ID",
+  );
+  if (input.calendarId !== configuredCalendarId) {
+    throw new Error(
+      "Google mapping does not belong to the designated calendar",
+    );
+  }
+  await jsonRequest(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(input.calendarId)}/events/${encodeURIComponent(input.eventId)}?sendUpdates=none`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${await googleAccessToken(environment, fetcher)}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "If-Match": input.etag,
+      },
+      body: JSON.stringify({ description: input.description }),
+    },
+    fetcher,
+    "Google Calendar event description update",
+  );
 };
 
 const calHeaders = (
@@ -302,7 +366,6 @@ const rescheduleCalBooking = async (
       body: JSON.stringify({
         start: input.start,
         rescheduledBy: input.rescheduledBy,
-        reschedulingReason: input.reschedulingReason,
         rescheduleWithSameHost: input.rescheduleWithSameHost,
         allowConflicts: input.allowConflicts,
         allowBookingOutOfBounds: input.allowBookingOutOfBounds,
@@ -388,9 +451,130 @@ const repairEvent = (
   };
 };
 
+export const formatCalendarReconciliationAlert = (
+  input: ReconciliationAlert,
+  context: {
+    subject: string;
+    timeZone?: string;
+    environment?: string;
+    links: ReturnType<typeof slackLink>[];
+    runId?: string;
+  },
+) => {
+  const problem =
+    (
+      {
+        mapping_lookup_failed:
+          "The Cal booking could not be matched to a Google Calendar event.",
+        google_event_missing:
+          "The mapped Google Calendar event could not be found.",
+        cal_preflight_read_failed:
+          "The current Cal booking could not be verified before reconciliation.",
+        manual_repair_detected:
+          "A manual calendar repair changed the expected appointment state.",
+        host_assertion_failed:
+          "The booking host does not match the designated reconciliation host.",
+        canary_attendee_assertion_failed:
+          "The booking attendee is outside the configured reconciliation canary.",
+        google_stability_read_failed:
+          "Google Calendar could not be read twice to confirm a stable revision.",
+        cal_reschedule_retry:
+          "Cal did not accept the reschedule attempt, so reconciliation will retry automatically.",
+        past_time_candidate:
+          "The intended Google Calendar time is already in the past, so the booking was not changed.",
+        replacement_google_reference_missing:
+          "The replacement Cal booking does not have a Google Calendar reference.",
+        replacement_google_event_invalid:
+          "The replacement Google Calendar event is missing, cancelled, or at the wrong time.",
+        two_active_google_events:
+          "Both the previous and replacement Google Calendar events are active.",
+        cal_reschedule_omitted_booking:
+          "Cal accepted the reconciliation request without returning a replacement booking.",
+        preflight_appointment_missing:
+          "The Sales Appointment disappeared before reconciliation could continue.",
+        preflight_terminal:
+          "The Sales Appointment became completed or cancelled before reconciliation could continue.",
+        preflight_google_advanced:
+          "The Google Calendar event changed again before reconciliation could continue.",
+        preflight_cal_missing:
+          "The current Cal booking disappeared before reconciliation could continue.",
+      } as Record<string, string>
+    )[input.classification] ??
+    (input.classification.startsWith("preflight_")
+      ? "A final safety check found that the appointment changed before reconciliation could continue."
+      : "Calendar reconciliation stopped because an unexpected provider error occurred.");
+  const sameTime =
+    new Date(input.oldStart).getTime() ===
+    new Date(input.intendedStart).getTime();
+  const retrying = input.classification === "cal_reschedule_retry";
+  return formatSlackNotification({
+    tone: input.recovered ? "success" : retrying ? "warning" : "failure",
+    title: input.recovered
+      ? `Calendar reconciliation recovered for ${context.subject}`
+      : retrying
+        ? `Calendar reconciliation retrying for ${context.subject}`
+        : input.classification === "mapping_lookup_failed"
+          ? `Calendar mapping missing for ${context.subject}'s appointment`
+          : `Calendar reconciliation needs attention for ${context.subject}`,
+    environment: context.environment,
+    fields: input.recovered
+      ? [
+          {
+            label: "Call",
+            value: slackDate(input.intendedStart, {
+              timeZone: context.timeZone,
+            }),
+          },
+          {
+            label: "Status",
+            value: slackText(
+              "The appointment is mapped and synchronized again.",
+            ),
+          },
+        ]
+      : [
+          {
+            label: "Call",
+            value: slackDate(input.intendedStart, {
+              timeZone: context.timeZone,
+            }),
+          },
+          { label: "Problem", value: slackText(problem) },
+          {
+            label: "Impact",
+            value: slackText(
+              retrying
+                ? "The call time is not synchronized yet while automatic retries continue."
+                : "Calendar changes cannot be reconciled safely until this is resolved.",
+            ),
+          },
+          { label: "Retry", value: slackText(input.retryState) },
+          { label: "Action", value: slackText(input.repairAction) },
+          ...(!sameTime
+            ? [
+                {
+                  label: "Previous Cal time",
+                  value: slackDate(input.oldStart, {
+                    timeZone: context.timeZone,
+                  }),
+                },
+              ]
+            : []),
+        ],
+    links: context.links,
+    note: slackIdentifierFooter([
+      ["Journey", input.salesAppointment.originatingLeadJourneyId],
+      ["Booking", input.salesAppointment.currentCalBookingUid],
+      ["Person", input.salesAppointment.personId],
+      ["Run", context.runId],
+    ]),
+  });
+};
+
 export const createCalendarReconciliationAdapters = (
   environment: CalendarReconciliationEnvironment,
   fetcher: typeof fetch,
+  run?: { id: string; url: string },
 ): CalendarReconciliationAdapters => {
   const twenty = createTwentySalesAppointmentAdapter({
     fetch: fetcher,
@@ -431,7 +615,7 @@ export const createCalendarReconciliationAdapters = (
       getCalBookingReferences(uid, environment, fetcher),
     rescheduleCalBooking: (input) =>
       rescheduleCalBooking(input, environment, fetcher),
-    waitForStability: () => wait.for({ seconds: 60 }).then(() => undefined),
+    waitForStability: () => wait.for({ minutes: 5 }).then(() => undefined),
     waitForRetry: (attempt) =>
       wait.for({ seconds: 2 ** attempt }).then(() => undefined),
     waitForCanonicalWebhook: () =>
@@ -455,25 +639,41 @@ export const createCalendarReconciliationAdapters = (
     },
     async sendAlert(input) {
       const token = required(environment.SLACK_BOT_TOKEN, "SLACK_BOT_TOKEN");
+      const automationEnvironment = parseAutomationEnvironment(
+        environment.PULPSENSE_AUTOMATION_ENVIRONMENT,
+      );
       const twentyOrigin = required(
         environment.TWENTY_API_ORIGIN,
         "TWENTY_API_ORIGIN",
       ).replace(/\/+$/u, "");
-      const personReference = input.salesAppointment.personId
-        ? `<${twentyOrigin}/object/person/${encodeURIComponent(input.salesAppointment.personId)}|Open Person>`
-        : "Person: unavailable";
-      const appointmentReference = `<${twentyOrigin}/object/salesAppointment/${encodeURIComponent(input.salesAppointment.id)}|Open Sales Appointment>`;
-      const text = [
-        input.recovered
-          ? ":white_check_mark: *Calendar reconciliation recovered*"
-          : ":rotating_light: *Calendar reconciliation needs attention*",
-        `${appointmentReference} · ${personReference}`,
-        `Old Cal time: ${input.oldStart}`,
-        `Intended Google time: ${input.intendedStart}`,
-        `Classification: \`${input.classification}\``,
-        `Retry state: ${input.retryState}`,
-        `Repair: ${input.repairAction}`,
-      ].join("\n");
+      const links = [
+        slackLink(
+          "Open Sales Appointment",
+          `${twentyOrigin}/object/salesAppointment/${encodeURIComponent(input.salesAppointment.id)}`,
+        ),
+        slackLink(
+          "Open Person",
+          `${twentyOrigin}/object/person/${encodeURIComponent(input.salesAppointment.personId)}`,
+        ),
+        ...(run ? [slackLink("Open in Trigger", run.url)] : []),
+      ];
+      const booking = await getCalBooking(
+        input.salesAppointment.currentCalBookingUid,
+        environment,
+        fetcher,
+      ).catch(() => undefined);
+      const attendee = booking?.attendees[0];
+      const personName = await twenty
+        .getPersonDisplayName(input.salesAppointment.personId)
+        .catch(() => undefined);
+      const subject = attendee?.name ?? personName ?? "the affected person";
+      const text = formatCalendarReconciliationAlert(input, {
+        subject,
+        ...(attendee?.timeZone ? { timeZone: attendee.timeZone } : {}),
+        environment: automationEnvironment,
+        links,
+        runId: run?.id,
+      });
       return sendReliabilityAlert(
         {
           token,
@@ -487,6 +687,184 @@ export const createCalendarReconciliationAdapters = (
   };
 };
 
+export const rescheduleLinkPayloadSchema = z.object({
+  submissionId: z.string().uuid(),
+  lifecycleEventId: z.string().min(1).max(500),
+  salesAppointmentId: z.string().min(1).max(200).optional(),
+  personId: z.string().min(1).max(200).optional(),
+  oldStart: z.string().datetime({ offset: true }).optional(),
+  intendedStart: z.string().datetime({ offset: true }).optional(),
+  firstName: z.string().trim().min(1).max(100).optional(),
+  lastName: z.string().trim().max(100).optional(),
+  previousBookingUid: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/u),
+  replacementBookingUid: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/u),
+});
+
+type RescheduleLinkPayload = z.infer<typeof rescheduleLinkPayloadSchema>;
+
+export const formatGoogleRescheduleLinkFailureAlert = (
+  payload: RescheduleLinkPayload,
+  context: {
+    environment: "local" | "preview" | "production";
+    twentyOrigin?: string;
+    runUrl: string;
+    runId: string;
+  },
+) => {
+  const personName =
+    [payload.firstName, payload.lastName].filter(Boolean).join(" ") ||
+    "the affected person";
+  const twentyOrigin = context.twentyOrigin?.replace(/\/+$/u, "");
+  const links = [
+    ...(twentyOrigin && payload.salesAppointmentId
+      ? [
+          slackLink(
+            "Open Sales Appointment",
+            `${twentyOrigin}/object/salesAppointment/${encodeURIComponent(payload.salesAppointmentId)}`,
+          ),
+        ]
+      : []),
+    ...(twentyOrigin && payload.personId
+      ? [
+          slackLink(
+            "Open Person",
+            `${twentyOrigin}/object/person/${encodeURIComponent(payload.personId)}`,
+          ),
+        ]
+      : []),
+    slackLink("Open in Trigger", context.runUrl),
+  ];
+
+  return formatSlackNotification({
+    tone: "failure",
+    title: `Couldn't refresh ${personName}'s calendar reschedule link`,
+    environment: context.environment,
+    fields: [
+      ...(payload.intendedStart
+        ? [{ label: "Call", value: slackDate(payload.intendedStart) }]
+        : []),
+      ...(payload.oldStart &&
+      payload.intendedStart &&
+      new Date(payload.oldStart).getTime() !==
+        new Date(payload.intendedStart).getTime()
+        ? [{ label: "Previous time", value: slackDate(payload.oldStart) }]
+        : []),
+      {
+        label: "Failed step",
+        value: slackText(
+          "Update the Google Calendar event description with the current Cal reschedule link",
+        ),
+      },
+      {
+        label: "Impact",
+        value: slackText(
+          "The meeting time remains correct, but the Google Calendar event may still open the previous reschedule page.",
+        ),
+      },
+      {
+        label: "Retry",
+        value: slackText("Exhausted — manual investigation required"),
+      },
+      {
+        label: "Action",
+        value: slackText(
+          "Open the run, verify the current Cal booking, and update the calendar description link manually.",
+        ),
+      },
+    ],
+    links,
+    note: slackIdentifierFooter([
+      ["Journey", payload.submissionId],
+      ["Previous booking", payload.previousBookingUid],
+      ["Booking", payload.replacementBookingUid],
+      ["Sales Appointment", payload.salesAppointmentId],
+      ["Person", payload.personId],
+      ["Run", context.runId],
+    ]),
+  });
+};
+
+export const refreshGoogleCalendarRescheduleLinkTask = schemaTask({
+  id: "refresh-google-calendar-reschedule-link",
+  queue: googleCalendarDescriptionWriteQueue,
+  schema: rescheduleLinkPayloadSchema,
+  retry: { maxAttempts: 1 },
+  run: async (payload, { ctx }) => {
+    const environment: CalendarReconciliationEnvironment = {
+      CAL_API_KEY: process.env.CAL_API_KEY,
+      GOOGLE_CALENDAR_CLIENT_ID: process.env.GOOGLE_CALENDAR_CLIENT_ID,
+      GOOGLE_CALENDAR_CLIENT_SECRET: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
+      GOOGLE_CALENDAR_REFRESH_TOKEN: process.env.GOOGLE_CALENDAR_REFRESH_TOKEN,
+      GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID,
+      TWENTY_API_ORIGIN: process.env.TWENTY_API_ORIGIN,
+      SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+      PULPSENSE_AUTOMATION_ENVIRONMENT:
+        process.env.PULPSENSE_AUTOMATION_ENVIRONMENT,
+    };
+    try {
+      const result = await retry.onThrow(
+        () =>
+          refreshGoogleRescheduleLink(payload, {
+            getCalBookingReferences: (bookingUid) =>
+              getCalBookingReferences(bookingUid, environment, fetch),
+            getGoogleEvent: (calendarId, eventId) =>
+              getGoogleEvent(calendarId, eventId, environment, fetch),
+            patchGoogleEventDescription: (input) =>
+              patchGoogleEventDescription(input, environment, fetch),
+          }),
+        {
+          maxAttempts: 3,
+          factor: 2,
+          minTimeoutInMs: 1_000,
+          maxTimeoutInMs: 10_000,
+          randomize: true,
+        },
+      );
+      logger.info("Google Calendar reschedule link refreshed", {
+        submissionId: payload.submissionId,
+        lifecycleEventId: payload.lifecycleEventId,
+        replacementBookingUid: payload.replacementBookingUid,
+        outcome: result.outcome,
+      });
+      return { outcome: result.outcome };
+    } catch (error) {
+      const classification =
+        error instanceof Error ? error.message : "unknown_link_refresh_failure";
+      logger.error("Google Calendar reschedule link refresh failed", {
+        submissionId: payload.submissionId,
+        lifecycleEventId: payload.lifecycleEventId,
+        replacementBookingUid: payload.replacementBookingUid,
+        classification,
+      });
+      await retry.onThrow(
+        () =>
+          sendReliabilityAlert(
+            {
+              token: required(process.env.SLACK_BOT_TOKEN, "SLACK_BOT_TOKEN"),
+              text: formatGoogleRescheduleLinkFailureAlert(payload, {
+                environment: parseAutomationEnvironment(
+                  environment.PULPSENSE_AUTOMATION_ENVIRONMENT,
+                ),
+                twentyOrigin: environment.TWENTY_API_ORIGIN,
+                runUrl: triggerRunUrl(ctx.environment.slug, ctx.run.id),
+                runId: ctx.run.id,
+              }),
+            },
+            fetch,
+          ),
+        {
+          maxAttempts: 3,
+          factor: 2,
+          minTimeoutInMs: 1_000,
+          maxTimeoutInMs: 10_000,
+          randomize: true,
+        },
+      );
+      return { outcome: "needs_attention" as const, classification };
+    }
+  },
+});
+
 const reconciliationPayloadSchema = z.object({
   salesAppointmentId: z.string().uuid(),
 });
@@ -496,7 +874,7 @@ export const reconcileGoogleCalendarSalesAppointmentTask = schemaTask({
   queue: googleCalendarReconciliationQueue,
   schema: reconciliationPayloadSchema,
   retry: { maxAttempts: 1 },
-  run: async ({ salesAppointmentId }) => {
+  run: async ({ salesAppointmentId }, { ctx }) => {
     const environment: CalendarReconciliationEnvironment = {
       TWENTY_API_ORIGIN: process.env.TWENTY_API_ORIGIN,
       TWENTY_API_KEY: process.env.TWENTY_API_KEY,
@@ -515,6 +893,8 @@ export const reconcileGoogleCalendarSalesAppointmentTask = schemaTask({
       GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL:
         process.env.GOOGLE_CALENDAR_RECONCILIATION_CANARY_ATTENDEE_EMAIL,
       SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
+      PULPSENSE_AUTOMATION_ENVIRONMENT:
+        process.env.PULPSENSE_AUTOMATION_ENVIRONMENT,
     };
     const mode = parseReconciliationMode(
       environment.GOOGLE_CALENDAR_RECONCILIATION_MODE,
@@ -537,7 +917,10 @@ export const reconcileGoogleCalendarSalesAppointmentTask = schemaTask({
           "CAL_RECONCILIATION_HOST_EMAIL",
         ),
       },
-      createCalendarReconciliationAdapters(environment, fetch),
+      createCalendarReconciliationAdapters(environment, fetch, {
+        id: ctx.run.id,
+        url: triggerRunUrl(ctx.environment.slug, ctx.run.id),
+      }),
     );
     logger.info("Google Calendar Sales Appointment reconciliation classified", {
       salesAppointmentId,

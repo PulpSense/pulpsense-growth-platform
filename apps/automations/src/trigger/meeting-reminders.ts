@@ -7,6 +7,14 @@ import { z } from "zod";
 
 import { triggerRunUrl } from "./trigger-dashboard.js";
 import {
+  formatSlackNotification,
+  slackDate,
+  slackDeliveryOptions,
+  slackIdentifierFooter,
+  slackLink,
+  slackText,
+} from "./slack-notifications.js";
+import {
   salesAppointmentAutomationGuardShape,
   type SalesAppointmentAutomationGuard,
   verifySalesAppointmentAutomationGuard,
@@ -31,6 +39,7 @@ export const meetingReminderPayloadSchema = z
     submissionId: z.string().uuid(),
     personId: z.string().uuid().optional(),
     firstName: z.string().trim().min(1).max(100),
+    lastName: z.string().trim().max(100).optional(),
     phone: z.string().trim().min(7).max(40).optional(),
     channel: reminderChannelSchema.default("gmail"),
     bookingUid: z.string().trim().min(1).max(200),
@@ -119,6 +128,7 @@ export const scheduleMeetingReminders = async (
       submissionId: event.submissionId,
       ...(target.channel === "sms" ? { personId: target.personId } : {}),
       firstName: event.payload.firstName,
+      lastName: event.payload.lastName,
       channel: definition.channel,
       bookingUid: event.payload.booking.uid,
       ...(guard ?? {}),
@@ -438,21 +448,71 @@ const sendTwentySmsReminder = async (
   }
 };
 
+export const formatMeetingReminderFailureAlert = (
+  payload: MeetingReminderPayload,
+  environment: ReminderEnvironment,
+  runUrl: string,
+  runId?: string,
+) => {
+  const channel = payload.channel === "gmail" ? "Email" : "SMS";
+  const name = [payload.firstName, payload.lastName].filter(Boolean).join(" ");
+  const links = [
+    ...(payload.salesAppointmentId && environment.TWENTY_API_ORIGIN
+      ? [
+          slackLink(
+            "Open appointment",
+            `${environment.TWENTY_API_ORIGIN.replace(/\/+$/u, "")}/object/salesAppointment/${encodeURIComponent(payload.salesAppointmentId)}`,
+          ),
+        ]
+      : []),
+    slackLink("Open in Trigger", runUrl),
+  ];
+  return formatSlackNotification({
+    tone: "failure",
+    title: `${name}'s ${payload.threshold} ${channel.toLowerCase()} reminder was not sent`,
+    environment: payload.environment,
+    fields: [
+      { label: "Channel", value: slackText(channel) },
+      { label: "Call", value: slackDate(payload.expectedStartTime) },
+      {
+        label: "Impact",
+        value: slackText(
+          "This reminder was not delivered; verify the appointment status before following up manually.",
+        ),
+      },
+      { label: "Retry", value: slackText("Exhausted") },
+    ],
+    links,
+    note: slackIdentifierFooter([
+      ["Journey", payload.submissionId],
+      ["Booking", payload.bookingUid],
+      ["Run", runId],
+    ]),
+  });
+};
+
 const alertReminderFailure = async (
   payload: MeetingReminderPayload,
-  webhookUrl: string,
+  environment: ReminderEnvironment,
   runUrl: string,
+  runId: string,
   fetcher: typeof fetch,
 ) => {
+  const webhookUrl = required(
+    environment.SLACK_FAILURE_WEBHOOK_URL,
+    "SLACK_FAILURE_WEBHOOK_URL",
+  );
   const response = await fetcher(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      text: [
-        `:rotating_light: *Meeting reminder failed* — ${payload.environment}`,
-        `${payload.threshold} reminder · Journey: \`${payload.submissionId}\` · Booking: \`${payload.bookingUid}\``,
-        `<${runUrl}|Open in Trigger>`,
-      ].join("\n"),
+      text: formatMeetingReminderFailureAlert(
+        payload,
+        environment,
+        runUrl,
+        runId,
+      ),
+      ...slackDeliveryOptions,
     }),
   });
   if (!response.ok) {
@@ -595,8 +655,9 @@ export const sendMeetingReminderTask = schemaTask({
         try {
           await alertReminderFailure(
             payload,
-            webhookUrl,
+            environment,
             triggerRunUrl(ctx.environment.slug, ctx.run.id),
+            ctx.run.id,
             fetch,
           );
         } catch {

@@ -13,6 +13,7 @@ export type TwentySalesAppointmentClient = {
 export type TwentySalesAppointmentCalendarAdapter =
   SalesAppointmentLedgerAdapter & {
     listSalesAppointments(): Promise<SalesAppointmentRecord[]>;
+    getPersonDisplayName(personId: string): Promise<string | undefined>;
   };
 
 const headers = (apiKey: string) => ({
@@ -22,7 +23,22 @@ const headers = (apiKey: string) => ({
 
 const unwrap = <T>(result: unknown, key: string): T | undefined => {
   const data = (result as { data?: Record<string, unknown> })?.data;
-  return (data?.[key] ?? result) as T | undefined;
+  const root = result as Record<string, unknown> | undefined;
+  return (data?.[key] ?? root?.[key] ?? result) as T | undefined;
+};
+
+const parseSalesAppointmentRecord = (value: unknown) => {
+  if (!value || typeof value !== "object") {
+    throw new Error("Twenty Sales Appointment response is invalid");
+  }
+  const record = value as Partial<SalesAppointmentRecord>;
+  if (typeof record.id !== "string" || !record.id.trim()) {
+    throw new Error("Twenty Sales Appointment omitted its ID");
+  }
+  if (typeof record.personId !== "string" || !record.personId.trim()) {
+    throw new Error("Twenty Sales Appointment omitted its Person ID");
+  }
+  return record as SalesAppointmentRecord;
 };
 
 const request = async (
@@ -81,7 +97,7 @@ export const createTwentySalesAppointmentAdapter = (
       const page = result as {
         data?: {
           salesAppointments?: {
-            edges?: Array<{ node?: SalesAppointmentRecord }>;
+            edges?: Array<{ node?: unknown }>;
             pageInfo?: { hasNextPage?: boolean; endCursor?: string };
           };
         };
@@ -92,7 +108,7 @@ export const createTwentySalesAppointmentAdapter = (
       }
       appointments.push(
         ...(page.data?.salesAppointments?.edges?.flatMap(({ node }) =>
-          node ? [node] : [],
+          node ? [parseSalesAppointmentRecord(node)] : [],
         ) ?? []),
       );
       const pageInfo = page.data?.salesAppointments?.pageInfo;
@@ -102,6 +118,24 @@ export const createTwentySalesAppointmentAdapter = (
       }
     } while (after);
     return appointments;
+  },
+  async getPersonDisplayName(personId) {
+    const result = await request(
+      client,
+      `/rest/people/${encodeURIComponent(personId)}`,
+      undefined,
+      true,
+    );
+    if (!result || (result as { duplicate?: boolean }).duplicate) {
+      return undefined;
+    }
+    const person = unwrap<{
+      name?: { firstName?: string; lastName?: string };
+    }>(result, "person");
+    const displayName = [person?.name?.firstName, person?.name?.lastName]
+      .filter(Boolean)
+      .join(" ");
+    return displayName || undefined;
   },
   async findBookingVersion(calBookingUid) {
     const result = await request(client, "/graphql", {
@@ -140,7 +174,8 @@ export const createTwentySalesAppointmentAdapter = (
     );
     if (!result || (result as { duplicate?: boolean }).duplicate)
       return undefined;
-    return unwrap<SalesAppointmentRecord>(result, "salesAppointment");
+    const appointment = unwrap<unknown>(result, "salesAppointment");
+    return appointment ? parseSalesAppointmentRecord(appointment) : undefined;
   },
   async createSalesAppointment(input) {
     await request(client, "/rest/salesAppointments", {

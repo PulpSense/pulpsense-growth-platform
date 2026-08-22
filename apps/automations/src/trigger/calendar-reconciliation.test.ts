@@ -310,7 +310,6 @@ describe("reconcileSalesAppointment", () => {
       bookingUid: "cal-old",
       start: intendedStart,
       rescheduledBy: "host@pulpsense.com",
-      reschedulingReason: "Host moved the Sales Appointment in Google Calendar",
       rescheduleWithSameHost: true,
       allowConflicts: true,
       allowBookingOutOfBounds: true,

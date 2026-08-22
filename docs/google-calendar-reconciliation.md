@@ -14,7 +14,7 @@ booking ledger.
 - The direct Google event `id` is the lookup key. `iCalUID` is stored only as
   corroborating lineage.
 - Only the event start instant is compared. Other event edits are ignored.
-- A changed start is persisted as an observation, then reread after a 60-second
+- A changed start is persisted as an observation, then reread after a five-minute
   durable debounce. Only a stable revision increments `automationGeneration`
   and invalidates old reminder and nurture work.
 - The reconciler rereads Twenty, Google, and Cal before each of at most three
@@ -24,6 +24,17 @@ booking ledger.
 - The signed Cal webhook remains canonical. After ten minutes without it, the
   worker emits the same `booking_rescheduled:<replacement UID>` event identity,
   so later webhook delivery deduplicates.
+- Every canonical signed reschedule queues an idempotent description repair for
+  the directly referenced Google event. It changes only a uniquely recognized
+  Cal.com reschedule target—either a `rescheduleUid` query parameter or a
+  `/booking/{UID}` path—from the previous booking UID to the replacement UID,
+  uses the event etag as a write precondition, requests no guest updates, and
+  verifies the updated description by reading it back.
+- Missing, ambiguous, rejected, or unverifiable description repairs never
+  change the canonical meeting time. They retry three times and then alert the
+  error Slack channel with a manual repair path. Slack delivery itself retries
+  three times and leaves the Trigger run failed if the alert remains
+  undeliverable.
 - Cancelled and completed appointments are terminal. A future reschedule of a
   `NO_SHOW` is returned to `SCHEDULED` by the canonical lifecycle projector.
 - The worker never reverts a Google edit or deletes duplicate events. Past-time
@@ -42,10 +53,15 @@ pnpm --filter @pulpsense/automations google-calendar:authorize
 ```
 
 Open the printed URL as the single designated Google user. The utility requests
-offline access only to
-`https://www.googleapis.com/auth/calendar.events.readonly`, receives the
-callback on localhost, prints the refresh token once, and never writes it to
-disk. Store the client secret and refresh token directly in Trigger.dev.
+offline `https://www.googleapis.com/auth/calendar.events.owned` access. This is
+the narrowest Google scope that can both poll events and repair the expired Cal
+reschedule link on calendars the user owns. The utility receives the callback
+on localhost, prints the refresh token once, and never writes it to disk. Store
+the client secret and refresh token directly in Trigger.dev.
+
+Changing from the former read-only grant requires running the utility again and
+replacing `GOOGLE_CALENDAR_REFRESH_TOKEN`; an existing refresh token does not
+gain the new permission automatically.
 
 ## Configuration
 
@@ -93,5 +109,7 @@ Rollout controls:
    otherwise eligible Sales Appointments. Retain the exact UID allowlist as the
    audit record of the canary set.
 
-Provider-owned Google and Cal emails may both be delivered. This integration
-does not send an additional reschedule-confirmation message.
+Provider-owned Google and Cal emails may both be delivered. The description
+patch sets `sendUpdates=none`, but Google notes that some messages may still be
+sent even when updates are disabled. This integration does not send an
+additional reschedule-confirmation message.

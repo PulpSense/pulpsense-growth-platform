@@ -12,6 +12,7 @@ export type GoogleCalendarEvent = {
   sequence: number;
   status: "confirmed" | "cancelled";
   start: string;
+  description?: string;
 };
 
 export type CalBooking = {
@@ -46,7 +47,6 @@ export type RescheduleInput = {
   bookingUid: string;
   start: string;
   rescheduledBy: string;
-  reschedulingReason: string;
   rescheduleWithSameHost: true;
   allowConflicts: true;
   allowBookingOutOfBounds: true;
@@ -676,8 +676,6 @@ export const reconcileSalesAppointment = async (
           bookingUid: checked.cal.uid,
           start: stable.start,
           rescheduledBy: options.hostEmail,
-          reschedulingReason:
-            "Host moved the Sales Appointment in Google Calendar",
           rescheduleWithSameHost: true,
           allowConflicts: true,
           allowBookingOutOfBounds: true,

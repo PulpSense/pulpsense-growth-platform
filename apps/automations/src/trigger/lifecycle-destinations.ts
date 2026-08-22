@@ -6,6 +6,15 @@ import type {
   ContactSubmittedEvent,
 } from "@pulpsense/contracts";
 
+import {
+  formatSlackNotification,
+  slackDate,
+  slackDeliveryOptions,
+  slackIdentifierFooter,
+  slackLink,
+  slackText,
+} from "./slack-notifications.js";
+
 type Fetcher = typeof fetch;
 
 type SlackConfig = {
@@ -54,35 +63,41 @@ const slackApi = async (
   return result;
 };
 
-const escapeSlack = (value: string) =>
-  value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;");
+type LeadNotificationEvent = Pick<
+  ContactSubmittedEvent,
+  "payload" | "attribution" | "funnelId"
+>;
 
-const attributionLine = (event: ContactSubmittedEvent) => {
+const attributionLine = (event: LeadNotificationEvent) => {
   const touch = event.attribution.lastTouch;
   return [touch.utmSource, touch.utmMedium, touch.utmCampaign]
     .filter(Boolean)
-    .map((value) => escapeSlack(value!))
+    .map((value) => value!)
     .join(" / ");
 };
 
 const companyDomainFromEmail = (email: string) =>
   email.trim().toLowerCase().split("@").at(-1) ?? "unknown";
 
-const leadDetails = (event: ContactSubmittedEvent) => {
-  const fullName = [event.payload.firstName, event.payload.lastName]
-    .filter(Boolean)
-    .join(" ");
+const leadName = (event: {
+  payload: { firstName: string; lastName: string };
+}) =>
+  [event.payload.firstName, event.payload.lastName].filter(Boolean).join(" ");
+
+const leadFields = (event: LeadNotificationEvent) => {
   const attribution = attributionLine(event);
   return [
-    `*Name:* ${escapeSlack(fullName)}`,
-    `*Email:* ${escapeSlack(event.payload.email)}`,
-    `*Phone:* ${escapeSlack(event.payload.phone)}`,
-    `*Company:* ${escapeSlack(companyDomainFromEmail(event.payload.email))}`,
-    `*Funnel:* ${escapeSlack(event.funnelId)}`,
-    ...(attribution ? [`*Attribution:* ${attribution}`] : []),
+    { label: "Email", value: slackText(event.payload.email) },
+    { label: "Phone", value: slackText(event.payload.phone) },
+    {
+      label: "Company",
+      value: slackText(companyDomainFromEmail(event.payload.email)),
+    },
+    { label: "Funnel", value: slackText(event.funnelId) },
+    {
+      label: "Source",
+      value: slackText(attribution || "Direct / unknown"),
+    },
   ];
 };
 
@@ -138,21 +153,24 @@ export const postSlackLead = async (
 
   const result = await slackApi(config, fetcher, "chat.postMessage", {
     channel: config.channelId,
-    text: [
-      ":bust_in_silhouette: *New funnel lead*",
-      ...leadDetails(event),
-    ].join("\n"),
-    unfurl_links: false,
-    unfurl_media: false,
+    text: formatSlackNotification({
+      tone: "info",
+      title: `New funnel lead: ${leadName(event)}`,
+      environment: event.environment,
+      fields: leadFields(event),
+      note: slackIdentifierFooter([["Journey", event.submissionId]]),
+    }),
+    ...slackDeliveryOptions,
     metadata: rootMetadata(event),
   });
   if (!result.ts) throw new Error("Slack lead message omitted timestamp");
   return { threadTs: result.ts, created: true as const };
 };
 
-const bookingLines = (
+const bookingNotification = (
   event: BookingCompletedEvent,
   internalBookingBaseUrl?: string,
+  options?: { includeLeadDetails?: boolean },
 ) => {
   const booking = event.payload.booking;
   const durationMinutes = Math.round(
@@ -165,14 +183,28 @@ const bookingLines = (
     (internalBookingBaseUrl
       ? `${internalBookingBaseUrl.replace(/\/+$/u, "")}/${encodeURIComponent(booking.uid)}`
       : undefined);
-  return [
-    ":white_check_mark: *Booked*",
-    `*Meeting:* ${escapeSlack(booking.title)}`,
-    `*Starts:* ${escapeSlack(booking.startTime)} (${escapeSlack(booking.attendeeTimeZone)})`,
-    `*Duration:* ${durationMinutes} minutes`,
-    `*Cal UID:* ${escapeSlack(booking.uid)}`,
-    ...(internalUrl ? [`*Cal record:* <${internalUrl}|Open booking>`] : []),
-  ];
+  return formatSlackNotification({
+    tone: "success",
+    title: `${leadName(event)} booked a sales call`,
+    environment: event.environment,
+    fields: [
+      ...(options?.includeLeadDetails ? leadFields(event) : []),
+      {
+        label: "When",
+        value: slackDate(booking.startTime, {
+          timeZone: booking.attendeeTimeZone,
+        }),
+      },
+      { label: "Meeting", value: slackText(booking.title) },
+      { label: "Duration", value: slackText(`${durationMinutes} minutes`) },
+      { label: "Timezone", value: slackText(booking.attendeeTimeZone) },
+    ],
+    links: internalUrl ? [slackLink("Open booking", internalUrl)] : undefined,
+    note: slackIdentifierFooter([
+      ["Journey", event.submissionId],
+      ["Booking", booking.uid],
+    ]),
+  });
 };
 
 const hasSlackBookingReply = async (
@@ -228,14 +260,10 @@ export const postSlackBooking = async (
   if (!root) {
     const result = await slackApi(config, fetcher, "chat.postMessage", {
       channel: config.channelId,
-      text: [
-        ":bust_in_silhouette: *New funnel lead — booked*",
-        ...leadDetails(contactEvent),
-        "",
-        ...bookingLines(event, config.internalBookingBaseUrl),
-      ].join("\n"),
-      unfurl_links: false,
-      unfurl_media: false,
+      text: bookingNotification(event, config.internalBookingBaseUrl, {
+        includeLeadDetails: true,
+      }),
+      ...slackDeliveryOptions,
       metadata: rootMetadata(contactEvent, event.eventId),
     });
     if (!result.ts) throw new Error("Slack fallback root omitted timestamp");
@@ -259,9 +287,8 @@ export const postSlackBooking = async (
   await slackApi(config, fetcher, "chat.postMessage", {
     channel: config.channelId,
     thread_ts: root,
-    text: bookingLines(event, config.internalBookingBaseUrl).join("\n"),
-    unfurl_links: false,
-    unfurl_media: false,
+    text: bookingNotification(event, config.internalBookingBaseUrl),
+    ...slackDeliveryOptions,
     metadata,
   });
   return { threadTs: root, fallbackRoot: false as const, duplicate: false };

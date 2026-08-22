@@ -10,7 +10,7 @@ This document records the shared lifecycle decisions and ordered implementation 
 - The initial Slack message contains the lead's full name, business email, phone number, company domain, funnel name, and available source, medium, and campaign attribution.
 - The initial Slack message excludes IP addresses, user agents, ad-click identifiers, analytics identifiers, signed tokens, and raw request data.
 - Lead Journey threads must be posted only to the dedicated private Slack channel `C0AR39DFA4S`, with limited membership.
-- When the Lead Journey books, its Slack thread receives one reply containing a Booked status, meeting title, start date and time with timezone, duration, Cal booking UID, and a link to the internal Cal.com booking record. The reply does not repeat the Lead Contact Details.
+- When the Lead Journey books, its Slack thread receives one reply containing the person's name, a Booked status, meeting title, start date and time with timezone, duration, Cal booking UID, and a link to the internal Cal.com booking record. The reply does not repeat the person's email, phone, company, or attribution details.
 - If the initial Slack message exhausts its retries and the Lead Journey later books, the booking event creates a fallback root message containing the original Lead Contact Details and booking status. That message becomes the journey's Slack thread.
 - A lead enters the **Qualified but Unbooked** flow when the server accepts the qualified application and issues booking eligibility.
 - A verified booking ends the **Qualified but Unbooked** state and creates a one-way Sales Handoff.
@@ -25,12 +25,12 @@ This document records the shared lifecycle decisions and ordered implementation 
 - Rescheduling cancels the old pending Meeting Reminders and schedules replacements from the new start time. Cancellation stops all pending Meeting Reminders.
 - A Meeting Reminder may be delivered only if the Sales Appointment is still active and its current start time matches the schedule used to create that reminder.
 - Immediately before Gmail delivery, Trigger.dev confirms the booking is still active and its start time is unchanged through the Cal.com booking API. This final check protects against delayed cancellation or reschedule webhooks.
-- If Cal.com cannot confirm the appointment, the reminder is not sent. The status check retries only within that reminder's expiry window and emits a redacted reliability alert if confirmation never succeeds.
+- If Cal.com cannot confirm the appointment, the reminder is not sent. The status check retries only within that reminder's expiry window and emits a privacy-limited reliability alert if confirmation never succeeds.
 - Meeting Reminder thresholds already in the past when a booking or reschedule is processed are skipped. The immediate Trigger-owned Brevo Booking Confirmation provides acknowledgement; only future 24-hour, 2-hour, and 15-minute reminder thresholds are scheduled.
 - A failed 24-hour reminder may retry only until the 2-hour threshold; a failed 2-hour reminder may retry only until the 15-minute threshold; a failed 15-minute reminder may retry only until the Sales Appointment starts. Expired reminders are skipped rather than delivered late.
 - Meeting Reminder subject lines and plain-text bodies are approved below. Delivery personalizes the first name, attendee-local meeting time and daypart, and current meeting join link.
 - Replies to Meeting Reminders go directly to the authenticated personal Gmail inbox and are handled manually as sales correspondence. Trigger.dev does not ingest, classify, or respond to replies.
-- Exhausted Brevo and Gmail delivery failures use the existing reliability Slack webhook rather than the PII-bearing lead channel. Alerts include environment, operation, Lead Journey ID, relevant Cal UID, and Trigger.dev run link, but exclude contact PII and message content.
+- Exhausted Brevo and Gmail delivery failures use the existing private reliability Slack destination rather than the PII-bearing lead channel. Alerts name the affected person when that context is available, describe the failed operation and impact, include Lead Journey ID, relevant Cal UID, and Trigger.dev run link, and exclude email addresses, phone numbers, message content, tokens, raw payloads, and request metadata. Production labels are omitted; non-production environments remain visible.
 - Trigger.dev owns lifecycle entry and exit plus the Pre-call Nurture message count, selection, timing, cadence, waits, idempotency, cancellation, rescheduling, and send-time eligibility checks.
 - Brevo's Transactional Email API sends pre-call messages when Trigger.dev requests them. Brevo Automations own evergreen newsletter, welcome, and lead-magnet programs.
 - Brevo suppression state remains authoritative. Trigger.dev checks that state before optional pre-call sends and never silently reverses an unsubscribe, complaint, hard bounce, or block.
@@ -241,20 +241,20 @@ Acceptance criteria:
 - Ensure replies land in the authenticated personal Gmail inbox.
 - Supply only the current appointment time, attendee timezone, meeting join URL, and later-approved template content.
 - Keep Gmail behind a replaceable delivery interface so the reminder provider can change later without changing reminder scheduling.
-- Exclude email bodies and recipient PII from routine logs and failure alerts.
+- Exclude email addresses, phone numbers, message content, tokens, raw payloads, and request metadata from routine logs and failure alerts. The private reliability channel may include the affected person's name when it is necessary to act.
 
 Acceptance criteria:
 
 - Sends originate from the selected personal Gmail identity and replies return to its inbox.
 - Duplicate task delivery does not send duplicate reminders.
-- Gmail failure follows reminder expiry rules and produces a redacted exhausted-retry alert.
+- Gmail failure follows reminder expiry rules and produces a privacy-limited exhausted-retry alert.
 
 ### 9. Extend independent retries and reliability alerts
 
 - Add independently retryable Slack, Brevo, Cal-status, and Gmail adapter operations without replaying already successful destinations.
 - Send exhausted Brevo and Gmail failures through the existing reliability Slack webhook.
-- Include environment, operation, Lead Journey ID, relevant Cal UID, and Trigger.dev run link.
-- Exclude names, email addresses, phone numbers, message bodies, and raw vendor responses from routine alerts.
+- Include the affected person's name when available, operation, impact, Lead Journey ID, relevant Cal UID, and Trigger.dev run link. Include environment only outside production.
+- Exclude email addresses, phone numbers, message content, tokens, raw payloads, request metadata, and raw vendor responses from routine alerts.
 
 Acceptance criteria:
 
@@ -299,7 +299,7 @@ Acceptance criteria:
 - Confirm newsletter/welcome/lead-magnet Brevo Automations are active only after approval; deploy Pre-call Nurture through Trigger.dev.
 - Confirm the selected personal Gmail account and sender identity before enabling reminder delivery.
 - Deploy the exact qualified revision and run the non-mutating release checks.
-- Monitor initial production lifecycle runs and redacted reliability alerts without copying lead payloads into tickets or logs.
+- Monitor initial production lifecycle runs and privacy-limited reliability alerts without copying lead payloads into tickets or logs.
 
 Acceptance criteria:
 
