@@ -202,6 +202,13 @@ describe("AI SEO campaigns", () => {
     expect(lawFirms?.thankYou.videos).toBe(sharedThankYouContent.videos);
     expect(lawFirms?.thankYou.reviews).toBe(sharedThankYouContent.reviews);
     expect(lawFirms?.landing.guarantee.terms).not.toBeNull();
+    expect(lawFirms?.application.qualification).toEqual({
+      kind: "owner-budget",
+      ownerQuestion:
+        "Are you the owner or primary decision-maker for the firm?",
+      budgetQuestion:
+        "What monthly marketing budget have you set aside to generate more qualified new-client inquiries?",
+    });
 
     for (const campaign of otherCampaigns) {
       expect(campaign.landing.benefits).toBe(sharedLandingContent.benefits);

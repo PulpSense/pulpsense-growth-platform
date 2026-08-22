@@ -64,6 +64,13 @@ const ownerBudgetQualification = {
   kind: "owner-budget",
 } as const satisfies ApplicationPageContent["qualification"];
 
+const lawFirmOwnerBudgetQualification = {
+  kind: "owner-budget",
+  ownerQuestion: "Are you the owner or primary decision-maker for the firm?",
+  budgetQuestion:
+    "What monthly marketing budget have you set aside to generate more qualified new-client inquiries?",
+} as const satisfies ApplicationPageContent["qualification"];
+
 const enterValue = async (selector: string, value: string) => {
   const input = document.querySelector<HTMLInputElement>(selector);
   expect(input).toBeInstanceOf(HTMLInputElement);
@@ -449,5 +456,43 @@ describe("AiSeoQualificationForm step order", () => {
     expect(document.body.textContent).not.toContain(
       "What is currently stopping your firm from signing more matters?",
     );
+  });
+
+  it("keeps the owner-budget flow while personalizing its question copy", async () => {
+    let issueToken: ((token: string) => void) | undefined;
+    window.turnstile = {
+      render: vi.fn((_element, options) => {
+        issueToken = options.callback;
+        return "widget-id";
+      }),
+      remove: vi.fn(),
+      reset: vi.fn(),
+    };
+    submission.submitContact.mockResolvedValue({
+      accepted: true,
+      eventId: "contact_submitted:submission-id",
+      prospectId: "prospect-id",
+      leadJourneyId: "submission-id",
+    });
+
+    await renderForm(
+      "test-site-key",
+      "ai-seo",
+      lawFirmOwnerBudgetQualification,
+    );
+    await act(async () => issueToken?.("verified-token"));
+    await enterValue("#ai-seo-first", "Santi");
+    await enterValue("#ai-seo-email", "santi@example.com");
+    await enterValue("#ai-seo-phone", "2125551212");
+    await act(async () => getSubmitButton().click());
+
+    expect(document.body.textContent).toContain(
+      "Are you the owner or primary decision-maker for the firm?",
+    );
+    await act(async () => getButton("Yes").click());
+    expect(document.body.textContent).toContain(
+      "What monthly marketing budget have you set aside to generate more qualified new-client inquiries?",
+    );
+    expect(document.querySelectorAll(".pr-tf-choice")).toHaveLength(3);
   });
 });

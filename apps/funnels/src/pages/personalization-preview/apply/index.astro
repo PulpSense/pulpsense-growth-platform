@@ -10,7 +10,7 @@ const placeholder = "PERSONALIZATION";
 
 <BaseLayout
   title="Qualification Personalization Preview | PulpSense"
-  description="Internal visual reference for the niche-specific qualification question."
+  description="Internal visual reference for niche wording inside the standard owner and budget qualification flow."
 >
   <div id="pr-funnel" class="pr-application-page">
     <main class="pr-main">
@@ -29,58 +29,90 @@ const placeholder = "PERSONALIZATION";
               Free Until You Do.
             </h1>
             <p class="pr-sub pr-form-intro">
-              Enter your details, then answer one niche-specific question.
+              Enter your details, then answer two quick questions to see if your
+              {placeholder} qualifies for the guarantee.
             </p>
           </header>
 
           <div class="pr-funnel-layout">
-            <div class="pr-tf">
-              <div class="pr-tf-progress">
-                <span class="pr-tf-progress-label">Step 2 of 2</span>
-                <div class="pr-tf-progress-bar">
-                  <div class="pr-tf-progress-fill" style="width: 100%"></div>
+            <div style="display: grid; gap: 1.25rem">
+              <div class="pr-tf">
+                <div class="pr-tf-progress">
+                  <span class="pr-tf-progress-label">Step 2 of 4</span>
+                  <div class="pr-tf-progress-bar">
+                    <div class="pr-tf-progress-fill" style="width: 50%"></div>
+                  </div>
+                </div>
+                <div class="pr-tf-card">
+                  <div class="pr-tf-step is-active">
+                    <p class="pr-tf-q">
+                      Are you the owner or primary decision-maker for the
+                      <span style="color: var(--pr-blue)">{placeholder}</span>?
+                    </p>
+                    <div class="pr-tf-choices">
+                      <button type="button" class="pr-tf-choice">Yes</button>
+                      <button type="button" class="pr-tf-choice">No</button>
+                    </div>
+                    <div class="pr-tf-actions">
+                      <a class="pr-tf-back" href="/personalization-preview/">
+                        ← Back
+                      </a>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div class="pr-tf-card">
-                <div class="pr-tf-step is-active">
-                  <p class="pr-tf-q">{placeholder}</p>
-                  <div class="pr-tf-choices">
-                    <button type="button" class="pr-tf-choice">
-                      {placeholder}
-                    </button>
-                    <button type="button" class="pr-tf-choice">
-                      {placeholder}
-                    </button>
-                    <button type="button" class="pr-tf-choice">
-                      {placeholder}
-                    </button>
-                    <button type="button" class="pr-tf-choice">
-                      {placeholder}
-                    </button>
+
+              <div class="pr-tf">
+                <div class="pr-tf-progress">
+                  <span class="pr-tf-progress-label">Step 3 of 4</span>
+                  <div class="pr-tf-progress-bar">
+                    <div class="pr-tf-progress-fill" style="width: 75%"></div>
                   </div>
-                  <div class="pr-tf-actions">
-                    <a class="pr-tf-back" href="/personalization-preview/">
-                      ← Back
-                    </a>
+                </div>
+                <div class="pr-tf-card">
+                  <div class="pr-tf-step is-active">
+                    <p class="pr-tf-q">
+                      What monthly marketing budget have you set aside to
+                      generate more qualified
+                      <span style="color: var(--pr-blue)">{placeholder}</span>?
+                    </p>
+                    <div class="pr-tf-choices">
+                      <button type="button" class="pr-tf-choice">
+                        $1,500+/month
+                      </button>
+                      <button type="button" class="pr-tf-choice">
+                        $500–$1,500/month
+                      </button>
+                      <button type="button" class="pr-tf-choice">
+                        Under $500/month or not set yet
+                      </button>
+                    </div>
+                    <div class="pr-tf-actions">
+                      <button type="button" class="pr-tf-back">← Back</button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
             <aside class="pr-expect">
-              <h2 class="pr-expect-title">Qualification-question constraint</h2>
+              <h2 class="pr-expect-title">Qualification constraints</h2>
               <ul class="pr-expect-list">
                 <li class="pr-expect-item">
                   <span class="pr-expect-check" aria-hidden="true">✓</span>
-                  <p>One question tied directly to the niche.</p>
+                  <p>Contact capture remains exactly the same.</p>
                 </li>
                 <li class="pr-expect-item">
                   <span class="pr-expect-check" aria-hidden="true">✓</span>
-                  <p>Maximum four or five concise answer options.</p>
+                  <p>Owner and budget intent stays exactly the same.</p>
                 </li>
                 <li class="pr-expect-item">
                   <span class="pr-expect-check" aria-hidden="true">✓</span>
-                  <p>Same step, card, and interaction structure.</p>
+                  <p>Only the niche nouns inside each question change.</p>
+                </li>
+                <li class="pr-expect-item">
+                  <span class="pr-expect-check" aria-hidden="true">✓</span>
+                  <p>No additional qualification question is introduced.</p>
                 </li>
               </ul>
             </aside>

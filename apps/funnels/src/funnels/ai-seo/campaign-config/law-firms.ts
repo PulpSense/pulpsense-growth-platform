@@ -1,5 +1,3 @@
-import { LAW_FIRM_GROWTH_CONSTRAINTS } from "@pulpsense/contracts";
-
 import { defineAiSeoCampaign } from "./define";
 import { validateLawFirmCampaignPresentation } from "./law-firm-policy";
 import {
@@ -121,21 +119,19 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
     ...sharedApplicationContent,
     pageTitle: "Get Your Law-Firm Visibility Audit | PulpSense",
     pageDescription:
-      "Share your details and one quick answer before booking a law-firm visibility audit.",
+      "Share your details and two quick answers before booking a law-firm visibility audit.",
     promise: "45 Qualified New-Client Inquiries",
     titleSeparator: "—",
     titleSuffix: "or Get Fully Refunded and Keep Everything We Build.",
     intro:
-      "Enter your details, then answer one quick question to see if your law firm qualifies for the guarantee.",
+      "Enter your details, then answer two quick questions to see if your law firm qualifies for the guarantee.",
     guaranteeTerms: lawFirmGuaranteeTerms,
     qualification: {
-      kind: "single-select",
-      question:
-        "What is currently stopping your firm from signing more matters?",
-      analyticsField: "growth_constraint",
-      submissionField: "growthConstraint",
-      formVersion: "2026-08-22",
-      options: LAW_FIRM_GROWTH_CONSTRAINTS,
+      kind: "owner-budget",
+      ownerQuestion:
+        "Are you the owner or primary decision-maker for the firm?",
+      budgetQuestion:
+        "What monthly marketing budget have you set aside to generate more qualified new-client inquiries?",
     },
   },
   thankYou: {

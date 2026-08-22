@@ -146,7 +146,11 @@ export type ApplicationPageContent = {
   proofRating: string | null;
   proofLabel: string | null;
   qualification:
-    | { kind: "owner-budget" }
+    | {
+        kind: "owner-budget";
+        ownerQuestion?: string;
+        budgetQuestion?: string;
+      }
     | {
         kind: "single-select";
         question: string;
