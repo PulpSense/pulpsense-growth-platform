@@ -5,6 +5,10 @@ export const RETIRED_LAW_FIRM_COPY = [
   "45 calls or free",
   "refund",
   "Why Regional Service Businesses Are Moving Beyond Traditional Marketing",
+  "This Isn't Traditional Law-Firm SEO",
+  "Which Law Firm to Trust",
+  "Law-Firm Visibility Audit invitation",
+  "Step 2: Hear From Businesses We've Helped",
 ] as const;
 
 export const validateLawFirmCampaignPresentation = <

@@ -342,6 +342,16 @@ describe("AI SEO campaigns", () => {
     for (const retiredCopy of RETIRED_LAW_FIRM_COPY) {
       expect(serialized).not.toContain(retiredCopy.toLowerCase());
     }
+    const forbiddenLawFirmCopy = [
+      "dental practice",
+      "dental implant",
+      "plastic surgery",
+      "hair restoration",
+      "med spa",
+    ];
+    for (const forbiddenCopy of forbiddenLawFirmCopy) {
+      expect(serialized).not.toContain(forbiddenCopy);
+    }
   });
 
   it("uses one concise guarantee disclosure across every campaign", () => {
