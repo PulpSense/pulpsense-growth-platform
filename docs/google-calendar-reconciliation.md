@@ -86,6 +86,11 @@ Rollout controls:
   attendee email required during canarying. Set canary-only to `false` only
   after the mandatory live scenarios pass; the UID allowlist then stops gating
   general production appointments.
+- `GOOGLE_CALENDAR_RECONCILIATION_SIMULATED_CAL_FAILURE_UID` is an optional,
+  exact booking UID used only while canary-only mode is active. It makes the Cal
+  reschedule adapter return a transient 503 for that booking so the mandatory
+  failure canary can exercise real Twenty and Slack handling without rotating
+  the shared Cal credential. Clear it immediately after the canary.
 - `PULPSENSE_INTERNAL_CANARY_SUBMISSION_IDS` is the comma-separated exact set
   of signed Lead Journey UUIDs allowed to bypass full internal-test suppression.
   Those events create the canonical Twenty prerequisites and appointment as

@@ -101,6 +101,66 @@ describe("Cal reschedule provider", () => {
       skipBookingLimits: true,
     });
   });
+
+  it("simulates a transient Cal failure only for the exact canary booking UID", async () => {
+    const fetcher = vi.fn();
+    const adapters = createCalendarReconciliationAdapters(
+      {
+        ...environment,
+        TWENTY_API_ORIGIN: "https://twenty.example.com",
+        TWENTY_API_KEY: "twenty-key",
+        CAL_API_KEY: "cal-key",
+        GOOGLE_CALENDAR_RECONCILIATION_CANARY_ONLY: "true",
+        GOOGLE_CALENDAR_RECONCILIATION_SIMULATED_CAL_FAILURE_UID: "cal-old",
+      },
+      fetcher as unknown as typeof fetch,
+    );
+
+    await expect(
+      adapters.rescheduleCalBooking({
+        bookingUid: "cal-old",
+        start: calBooking.start,
+        rescheduledBy: "host@pulpsense.com",
+        rescheduleWithSameHost: true,
+        allowConflicts: true,
+        allowBookingOutOfBounds: true,
+        skipBookingLimits: true,
+      }),
+    ).rejects.toMatchObject({ status: 503 });
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it("never injects the canary failure after general reconciliation is enabled", async () => {
+    const fetcher = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ status: "success", data: calBooking }), {
+        status: 201,
+      }),
+    );
+    const adapters = createCalendarReconciliationAdapters(
+      {
+        ...environment,
+        TWENTY_API_ORIGIN: "https://twenty.example.com",
+        TWENTY_API_KEY: "twenty-key",
+        CAL_API_KEY: "cal-key",
+        GOOGLE_CALENDAR_RECONCILIATION_CANARY_ONLY: "false",
+        GOOGLE_CALENDAR_RECONCILIATION_SIMULATED_CAL_FAILURE_UID: "cal-old",
+      },
+      fetcher as unknown as typeof fetch,
+    );
+
+    await expect(
+      adapters.rescheduleCalBooking({
+        bookingUid: "cal-old",
+        start: calBooking.start,
+        rescheduledBy: "host@pulpsense.com",
+        rescheduleWithSameHost: true,
+        allowConflicts: true,
+        allowBookingOutOfBounds: true,
+        skipBookingLimits: true,
+      }),
+    ).resolves.toMatchObject({ uid: "cal-new" });
+    expect(fetcher).toHaveBeenCalledOnce();
+  });
 });
 
 describe("Google Calendar description provider", () => {
