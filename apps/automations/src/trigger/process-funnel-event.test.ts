@@ -556,7 +556,10 @@ describe("process-funnel-event", () => {
     });
     expect(upsertTwentyPerson).toHaveBeenCalledWith(rescheduledEvent);
     expect(projectSalesAppointment).toHaveBeenCalledWith(rescheduledEvent);
-    expect(refreshGoogleRescheduleLink).toHaveBeenCalledWith(rescheduledEvent);
+    expect(refreshGoogleRescheduleLink).toHaveBeenCalledWith(rescheduledEvent, {
+      salesAppointmentId: "appointment_123",
+      personId: "person_123",
+    });
   });
 
   it("projects a verified cancellation before completing lifecycle handling", async () => {

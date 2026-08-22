@@ -74,6 +74,24 @@ describe("replaceCalRescheduleUid", () => {
         replacementUid,
       ),
     ).toThrow("google_reschedule_link_not_uniquely_recognized");
+    const currentDescription = oldDescription.replaceAll(
+      previousUid,
+      replacementUid,
+    );
+    expect(() =>
+      replaceCalRescheduleUid(
+        `${currentDescription}\n${currentDescription}`,
+        previousUid,
+        replacementUid,
+      ),
+    ).toThrow("google_reschedule_link_not_uniquely_recognized");
+    expect(() =>
+      replaceCalRescheduleUid(
+        `${oldDescription}\n${currentDescription}`,
+        previousUid,
+        replacementUid,
+      ),
+    ).toThrow("google_reschedule_link_not_uniquely_recognized");
   });
 });
 

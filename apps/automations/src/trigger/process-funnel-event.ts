@@ -165,6 +165,7 @@ type ProcessorDependencies = {
   ): Promise<unknown>;
   refreshGoogleRescheduleLink?(
     event: BookingRescheduledEvent,
+    context: { salesAppointmentId: string; personId: string },
   ): Promise<unknown>;
   capturePostHogLifecycle?(event: FunnelEvent): Promise<void>;
   capturePostHogPersonLink?(
@@ -425,20 +426,38 @@ export async function processFunnelEvent(
           () => dependencies.projectSalesAppointment!(event),
         )
       : undefined;
+    const person =
+      dependencies.scheduleMeetingReminders ||
+      dependencies.refreshGoogleRescheduleLink
+        ? executeTwenty(event, dependencies, "upsert_person", () =>
+            dependencies.upsertTwentyPerson(event),
+          )
+        : Promise.resolve(undefined);
     const gmailReminders =
       dependencies.scheduleMeetingReminders?.(event, { channel: "gmail" }) ??
       Promise.resolve();
     const smsReminders = dependencies.scheduleMeetingReminders
       ? (async () => {
-          const { personId } = await executeTwenty(
-            event,
-            dependencies,
-            "upsert_person",
-            () => dependencies.upsertTwentyPerson(event),
-          );
+          const personResult = await person;
+          if (!personResult)
+            throw new Error("Twenty Person projection omitted");
           return dependencies.scheduleMeetingReminders!(event, {
             channel: "sms",
-            personId,
+            personId: personResult.personId,
+          });
+        })()
+      : Promise.resolve();
+    const googleRescheduleLink = dependencies.refreshGoogleRescheduleLink
+      ? (async () => {
+          if (!salesAppointment) {
+            throw new Error("Sales Appointment projection omitted");
+          }
+          const personResult = await person;
+          if (!personResult)
+            throw new Error("Twenty Person projection omitted");
+          return dependencies.refreshGoogleRescheduleLink!(event, {
+            salesAppointmentId: salesAppointment.salesAppointmentId,
+            personId: personResult.personId,
           });
         })()
       : Promise.resolve();
@@ -447,8 +466,7 @@ export async function processFunnelEvent(
       gmailReminders,
       smsReminders,
       salesAppointment: Promise.resolve(salesAppointment),
-      googleRescheduleLink:
-        dependencies.refreshGoogleRescheduleLink?.(event) ?? Promise.resolve(),
+      googleRescheduleLink,
       measurement: deliveryPolicy.capturePostHog(),
     });
     await dependencies.schedulePrecallSequence?.(event);
@@ -1848,7 +1866,10 @@ export function createProcessorDependencies(
           },
         }
       : {}),
-    refreshGoogleRescheduleLink: (event: BookingRescheduledEvent) =>
+    refreshGoogleRescheduleLink: (
+      event: BookingRescheduledEvent,
+      context: { salesAppointmentId: string; personId: string },
+    ) =>
       executeWithRetry(
         {
           destination: "trigger",
@@ -1860,6 +1881,10 @@ export function createProcessorDependencies(
             {
               submissionId: event.submissionId,
               lifecycleEventId: event.eventId,
+              salesAppointmentId: context.salesAppointmentId,
+              personId: context.personId,
+              oldStart: event.payload.booking.previousStartTime,
+              intendedStart: event.payload.booking.startTime,
               previousBookingUid: event.payload.booking.previousUid,
               replacementBookingUid: event.payload.booking.uid,
             },

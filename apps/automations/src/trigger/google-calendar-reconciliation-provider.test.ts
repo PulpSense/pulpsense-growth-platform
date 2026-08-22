@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createCalendarReconciliationAdapters,
+  googleRescheduleLinkAlertText,
   patchGoogleEventDescription,
   type CalendarReconciliationEnvironment,
 } from "./google-calendar-reconciliation.js";
@@ -12,6 +13,39 @@ const environment: CalendarReconciliationEnvironment = {
   GOOGLE_CALENDAR_REFRESH_TOKEN: "refresh-token",
   GOOGLE_CALENDAR_ID: "primary",
 };
+
+describe("Google Calendar reschedule-link alert", () => {
+  it("includes the CRM records, appointment times, retry state, and repair action", () => {
+    const text = googleRescheduleLinkAlertText({
+      payload: {
+        submissionId: "14da9f65-0fed-44a7-bc60-92e616cc5405",
+        lifecycleEventId: "booking_rescheduled:cal-new",
+        salesAppointmentId: "appointment/id",
+        personId: "person/id",
+        oldStart: "2026-08-24T10:00:00.000Z",
+        intendedStart: "2026-08-24T11:00:00.000Z",
+        previousBookingUid: "cal-old",
+        replacementBookingUid: "cal-new",
+      },
+      classification: "google_reschedule_link_not_uniquely_recognized",
+      twentyOrigin: "https://twenty.example.com/",
+      projectRef: "proj_example",
+      runId: "run_example",
+      alertAttempt: 2,
+    });
+
+    expect(text).toContain(
+      "https://twenty.example.com/object/salesAppointment/appointment%2Fid",
+    );
+    expect(text).toContain(
+      "https://twenty.example.com/object/person/person%2Fid",
+    );
+    expect(text).toContain("Old Cal time: 2026-08-24T10:00:00.000Z");
+    expect(text).toContain("Intended Google time: 2026-08-24T11:00:00.000Z");
+    expect(text).toContain("Slack delivery attempt 2/3");
+    expect(text).toContain("update the event description link manually");
+  });
+});
 
 const calBooking = {
   uid: "cal-new",

@@ -26,12 +26,15 @@ booking ledger.
   so later webhook delivery deduplicates.
 - Every canonical signed reschedule queues an idempotent description repair for
   the directly referenced Google event. It changes only a uniquely recognized
-  Cal.com `rescheduleUid` query parameter from the previous booking UID to the
-  replacement UID, uses the event etag as a write precondition, requests no
-  guest updates, and verifies the updated description by reading it back.
+  Cal.com reschedule target—either a `rescheduleUid` query parameter or a
+  `/booking/{UID}` path—from the previous booking UID to the replacement UID,
+  uses the event etag as a write precondition, requests no guest updates, and
+  verifies the updated description by reading it back.
 - Missing, ambiguous, rejected, or unverifiable description repairs never
   change the canonical meeting time. They retry three times and then alert the
-  error Slack channel with a manual repair path.
+  error Slack channel with a manual repair path. Slack delivery itself retries
+  three times and leaves the Trigger run failed if the alert remains
+  undeliverable.
 - Cancelled and completed appointments are terminal. A future reschedule of a
   `NO_SHOW` is returned to `SCHEDULED` by the canonical lifecycle projector.
 - The worker never reverts a Google edit or deletes duplicate events. Past-time
