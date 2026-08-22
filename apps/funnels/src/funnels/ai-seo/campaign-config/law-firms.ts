@@ -30,7 +30,7 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
       ...sharedLandingContent.hero,
       callout: "⚖️ Proudly serving law firms nationwide",
       promise: "45 Qualified New-Client Inquiries",
-      lead: "Get found when potential clients in your market are ready to call. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
+      lead: "Get found when clients in your market are ready to call. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
     },
     benefits: {
       heading: "Why Law Firms Are Moving Beyond Traditional Marketing",
