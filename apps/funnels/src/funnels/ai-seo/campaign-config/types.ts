@@ -1,4 +1,4 @@
-import type { FunnelId } from "@pulpsense/contracts";
+import type { FunnelId, LawFirmGrowthConstraint } from "@pulpsense/contracts";
 
 export type AiSeoCampaignKey =
   | "lawyers"
@@ -145,6 +145,16 @@ export type ApplicationPageContent = {
   guaranteeTerms: GuaranteeTermsContent | null;
   proofRating: string | null;
   proofLabel: string | null;
+  qualification:
+    | { kind: "owner-budget" }
+    | {
+        kind: "single-select";
+        question: string;
+        analyticsField: string;
+        submissionField: "growthConstraint";
+        formVersion: string;
+        options: readonly LawFirmGrowthConstraint[];
+      };
 };
 
 export type ThankYouContent = {
