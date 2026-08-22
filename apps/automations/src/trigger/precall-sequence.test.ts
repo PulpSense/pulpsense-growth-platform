@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   accumulatedPrecallSentMask,
   deliverPrecallSequence,
+  formatPrecallFailureAlert,
   type PrecallSequencePayload,
 } from "./precall-sequence.js";
 
@@ -24,6 +25,130 @@ const payload: PrecallSequencePayload = {
 };
 
 describe("pre-call reschedule guards", () => {
+  it("formats the affected lead, failed email, progress, and impact", () => {
+    const text = formatPrecallFailureAlert(
+      {
+        ...payload,
+        salesAppointmentId: "22222222-2222-4222-8222-222222222222",
+      },
+      { TWENTY_API_ORIGIN: "https://pulpsense.twenty.com" },
+      "https://cloud.trigger.dev/runs/run-1",
+      {
+        moduleId: "what-we-will-inspect",
+        delivered: 2,
+        total: 7,
+        operation: "send",
+      },
+      "run-1",
+    );
+
+    expect(text).toContain("*Pre-call nurture stopped for Ada Prospect*");
+    expect(text).toContain("Send what we will inspect email");
+    expect(text).not.toContain("Is this just another SEO audit?");
+    expect(text).toContain("2 of 7 messages delivered in this run");
+    expect(text).toContain("Remaining pre-call nurture messages will not send");
+    expect(text).toContain(
+      "*Retry:* Exhausted — manual investigation required",
+    );
+    expect(text).toContain("Open appointment");
+    expect(text).toContain("Journey 8d13929c");
+    expect(text).toContain("Run run-1");
+    expect(text).not.toContain("`production`");
+  });
+
+  it("distinguishes a delivered email from a failed state update", () => {
+    const text = formatPrecallFailureAlert(
+      payload,
+      {},
+      "https://cloud.trigger.dev/runs/run-1",
+      {
+        moduleId: "what-we-will-inspect",
+        delivered: 3,
+        total: 7,
+        operation: "persist_delivery",
+      },
+    );
+
+    expect(text).toContain("Record delivery of what we will inspect email");
+    expect(text).toContain("3 of 7 messages delivered in this run");
+    expect(text).toContain("The email was delivered");
+  });
+
+  it("labels eligibility failures without claiming an email send failed", () => {
+    const text = formatPrecallFailureAlert(
+      payload,
+      {},
+      "https://cloud.trigger.dev/runs/run-1",
+      {
+        moduleId: "what-we-will-inspect",
+        delivered: 2,
+        total: 7,
+        operation: "verify_eligibility",
+      },
+    );
+
+    expect(text).toContain("Verify eligibility for what we will inspect email");
+    expect(text).not.toContain("*Failed step:* Send");
+  });
+
+  it("reports initial preflight failures with zero delivery progress", () => {
+    const text = formatPrecallFailureAlert(
+      payload,
+      {},
+      "https://cloud.trigger.dev/runs/run-1",
+      { delivered: 0, total: 0, operation: "initial_preflight" },
+    );
+
+    expect(text).toContain(
+      "Verify initial Brevo and Sales Appointment eligibility",
+    );
+    expect(text).toContain("0 messages delivered; schedule not started");
+  });
+
+  it("sets initial preflight before reading provider state", async () => {
+    const onStep = vi.fn();
+    await expect(
+      deliverPrecallSequence(
+        payload,
+        {
+          PULPSENSE_AUTOMATION_ENVIRONMENT: "production",
+          PRECALL_EMAILS_ENABLED: "true",
+          BREVO_API_KEY: "brevo",
+          CAL_API_KEY: "cal",
+        },
+        {
+          fetch: vi.fn<typeof fetch>().mockRejectedValue(new Error("offline")),
+          now: () => new Date("2026-09-01T00:00:00.000Z"),
+          onStep,
+        },
+      ),
+    ).rejects.toThrow("offline");
+    expect(onStep).toHaveBeenCalledWith({
+      delivered: 0,
+      total: 0,
+      operation: "initial_preflight",
+    });
+  });
+
+  it("sets initial preflight before validating the environment", async () => {
+    const onStep = vi.fn();
+    await expect(
+      deliverPrecallSequence(
+        payload,
+        {
+          PULPSENSE_AUTOMATION_ENVIRONMENT: "preview",
+          PRECALL_EMAILS_ENABLED: "true",
+        },
+        { fetch: vi.fn(), onStep },
+      ),
+    ).rejects.toThrow("environment does not match");
+    expect(onStep).toHaveBeenCalledWith({
+      delivered: 0,
+      total: 0,
+      operation: "initial_preflight",
+    });
+  });
+
   it("unions the durable educational mask instead of replaying it", () => {
     expect(accumulatedPrecallSentMask(0b0010, 0b0101)).toBe(0b0111);
   });

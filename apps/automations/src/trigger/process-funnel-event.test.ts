@@ -307,9 +307,7 @@ describe("process-funnel-event", () => {
           "SANTI@PULPSENSE.COM",
       }),
     ).toEqual({
-      submissionIds: new Set([
-        "b0a10d9a-68bb-4d73-95c3-3e03560f8550",
-      ]),
+      submissionIds: new Set(["b0a10d9a-68bb-4d73-95c3-3e03560f8550"]),
       attendeeEmail: "santi@pulpsense.com",
     });
     expect(
@@ -382,7 +380,9 @@ describe("process-funnel-event", () => {
       log: { info: vi.fn() },
     };
 
-    await expect(processFunnelEvent(internalContact, dependencies)).resolves.toMatchObject({
+    await expect(
+      processFunnelEvent(internalContact, dependencies),
+    ).resolves.toMatchObject({
       ok: true,
       internalCanary: true,
       personId: "person_canary",
@@ -394,7 +394,9 @@ describe("process-funnel-event", () => {
       internalCanary: true,
       opportunityId: "opportunity_canary",
     });
-    await expect(processFunnelEvent(internalBooking, dependencies)).resolves.toMatchObject({
+    await expect(
+      processFunnelEvent(internalBooking, dependencies),
+    ).resolves.toMatchObject({
       ok: true,
       internalCanary: true,
       salesAppointmentId: "appointment_canary",
@@ -439,17 +441,26 @@ describe("process-funnel-event", () => {
       formatBrevoFailureAlert(
         bookingEvent,
         "https://cloud.trigger.dev/runs/run_123",
+        "run_123",
       ),
     ).toBe(
       [
-        ":rotating_light: *Brevo lifecycle sync failed* — preview",
-        "Journey: `b0a10d9a-68bb-4d73-95c3-3e03560f8550` · Booking: `cal_booking_123`",
+        ":rotating_light: *Couldn't publish Maya Chen's booking to Brevo* · `preview`",
+        "",
+        "*Failed step:* Publish the booking lifecycle event to Brevo",
+        "*Impact:* Brevo may not start booking confirmation and pre-call lifecycle messaging.",
+        "*Retry:* Exhausted — manual investigation required",
+        "",
         "<https://cloud.trigger.dev/runs/run_123|Open in Trigger>",
+        "",
+        "`Journey b0a10d9a-68bb-4d73-95c3-3e03560f8550 · Booking cal_booking_123 · Run run_123`",
       ].join("\n"),
     );
     expect(
       formatTwentyFailureAlert(
         {
+          firstName: event.payload.firstName,
+          lastName: event.payload.lastName,
           submissionId: event.submissionId,
           eventId: event.eventId,
           eventType: event.eventType,
@@ -458,8 +469,27 @@ describe("process-funnel-event", () => {
           operation: "upsert_person",
         },
         "https://cloud.trigger.dev/runs/run_123",
+        "run_123",
       ),
-    ).toContain(":rotating_light: *Twenty CRM sync failed* — preview");
+    ).toContain(
+      ":rotating_light: *Couldn't sync Maya Chen to Twenty* · `preview`",
+    );
+    expect(
+      formatTwentyFailureAlert(
+        {
+          firstName: event.payload.firstName,
+          lastName: event.payload.lastName,
+          submissionId: event.submissionId,
+          eventId: event.eventId,
+          eventType: event.eventType,
+          funnelId: event.funnelId,
+          environment: event.environment,
+          operation: "upsert_person",
+        },
+        "https://cloud.trigger.dev/runs/run_123",
+        "run_123",
+      ),
+    ).toContain("Run run_123");
   });
 
   it("rejects startup without the required Twenty failure alert destination", () => {
@@ -719,15 +749,19 @@ describe("process-funnel-event", () => {
 
     expect(slackBodies).toHaveLength(1);
     expect(slackAttempts).toBe(2);
+    expect(slackBodies[0]).toMatchObject({
+      unfurl_links: false,
+      unfurl_media: false,
+    });
     const alert = JSON.stringify(slackBodies[0]);
-    expect(alert).toContain("Upsert person");
+    expect(alert).toContain("Create or update the Person in Twenty");
     expect(alert).toContain(event.submissionId);
     expect(alert).not.toContain(event.eventId);
     expect(alert).toContain("run_01recovery");
     expect(alert).toContain("preview");
     expect(alert).not.toContain(event.payload.email);
     expect(alert).not.toContain(event.payload.phone);
-    expect(alert).not.toContain(event.payload.firstName);
+    expect(alert).toContain(event.payload.firstName);
   });
 
   it("replays contact delivery without duplicating the Person or Meta identity", async () => {
@@ -944,6 +978,7 @@ describe("process-funnel-event", () => {
               scheduledStartAt: bookingEvent.payload.booking.startTime,
               scheduledEndAt: bookingEvent.payload.booking.endTime,
               status: "SCHEDULED",
+              personId: "person_existing",
               opportunityId: "opportunity_qualified",
             },
           },
@@ -1094,6 +1129,7 @@ describe("process-funnel-event", () => {
               scheduledStartAt: bookingEvent.payload.booking.startTime,
               scheduledEndAt: bookingEvent.payload.booking.endTime,
               status: "SCHEDULED",
+              personId: "person_existing",
               opportunityId: "opportunity_original",
             },
           },

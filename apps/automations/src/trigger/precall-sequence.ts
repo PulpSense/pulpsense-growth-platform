@@ -21,6 +21,13 @@ import {
   verifySalesAppointmentAutomationGuard,
 } from "./sales-appointment-automation-guard.js";
 import { sendReliabilityAlert } from "./reliability-alerts.js";
+import {
+  formatSlackNotification,
+  slackDate,
+  slackIdentifierFooter,
+  slackLink,
+  slackText,
+} from "./slack-notifications.js";
 
 export const precallSequencePayloadSchema = z
   .object({
@@ -71,10 +78,27 @@ type PrecallEnvironment = {
   SLACK_BOT_TOKEN?: string;
 };
 
+type PrecallAlertStep = {
+  delivered: number;
+  total: number;
+} & (
+  | { operation: "initial_preflight" }
+  | {
+      moduleId: PrecallModuleId;
+      operation:
+        | "wait"
+        | "verify_eligibility"
+        | "prepare"
+        | "send"
+        | "persist_delivery";
+    }
+);
+
 type PrecallRuntime = {
   fetch: typeof fetch;
   now?: () => Date;
   attempt?: <Result>(operation: () => Promise<Result>) => Promise<Result>;
+  onStep?(step: PrecallAlertStep): void;
 };
 
 export const precallRunIdempotencyKey = (sequenceId: string) =>
@@ -226,6 +250,11 @@ export const deliverPrecallSequence = async (
 ) => {
   if (environment.PRECALL_EMAILS_ENABLED !== "true")
     return { skipped: "disabled" as const };
+  runtime.onStep?.({
+    delivered: 0,
+    total: 0,
+    operation: "initial_preflight",
+  });
   if (payload.environment !== environment.PULPSENSE_AUTOMATION_ENVIRONMENT) {
     throw new Error("Pre-call environment does not match destinations");
   }
@@ -291,7 +320,13 @@ export const deliverPrecallSequence = async (
     ),
   }).filter((slot) => payload.isNewBooking || slot.moduleId !== "confirmation");
 
-  for (const slot of schedule) {
+  for (const [index, slot] of schedule.entries()) {
+    runtime.onStep?.({
+      moduleId: slot.moduleId,
+      delivered: index,
+      total: schedule.length,
+      operation: "wait",
+    });
     const sendAt = slot.sendAt;
     const currentTime = runtime.now?.() ?? new Date();
     if (sendAt.getTime() - currentTime.getTime() > 1_000) {
@@ -304,6 +339,12 @@ export const deliverPrecallSequence = async (
         idempotencyKeyTTL: "1y",
       });
     }
+    runtime.onStep?.({
+      moduleId: slot.moduleId,
+      delivered: index,
+      total: schedule.length,
+      operation: "verify_eligibility",
+    });
     const current = await attempt(() =>
       readBrevoState(payload.email, apiKey, runtime.fetch),
     );
@@ -334,6 +375,12 @@ export const deliverPrecallSequence = async (
       return { skipped: "send_guard_failed" as const, moduleId: slot.moduleId };
     }
 
+    runtime.onStep?.({
+      moduleId: slot.moduleId,
+      delivered: index,
+      total: schedule.length,
+      operation: "prepare",
+    });
     const meeting = formatMeeting(
       payload.expectedStartTime,
       payload.attendeeTimeZone,
@@ -356,6 +403,12 @@ export const deliverPrecallSequence = async (
           "BREVO_PRECALL_SENDER_NAME",
         ),
       ),
+    });
+    runtime.onStep?.({
+      moduleId: slot.moduleId,
+      delivered: index,
+      total: schedule.length,
+      operation: "send",
     });
     const transportKey = await idempotencyKeys.create(
       precallSendIdempotencyKey(payload.sequenceId, slot.moduleId),
@@ -386,6 +439,12 @@ export const deliverPrecallSequence = async (
       environment,
       runtime.fetch,
     );
+    runtime.onStep?.({
+      moduleId: slot.moduleId,
+      delivered: index + 1,
+      total: schedule.length,
+      operation: "persist_delivery",
+    });
     const bitMask =
       slot.moduleId === "confirmation" || slot.moduleId === "final-preparation"
         ? 0
@@ -425,6 +484,83 @@ export const deliverPrecallSequence = async (
   return { sent: true as const, sequenceId: payload.sequenceId };
 };
 
+export const formatPrecallFailureAlert = (
+  payload: PrecallSequencePayload,
+  environment: PrecallEnvironment,
+  runUrl: string,
+  activeStep?: PrecallAlertStep,
+  runId?: string,
+) =>
+  formatSlackNotification({
+    tone: "failure",
+    title: `Pre-call nurture stopped for ${[payload.firstName, payload.lastName].filter(Boolean).join(" ")}`,
+    environment: payload.environment,
+    fields: [
+      {
+        label: "Call",
+        value: slackDate(payload.expectedStartTime, {
+          timeZone: payload.attendeeTimeZone,
+        }),
+      },
+      {
+        label: "Failed step",
+        value: slackText(
+          activeStep?.operation === "initial_preflight"
+            ? "Verify initial Brevo and Sales Appointment eligibility"
+            : activeStep
+              ? {
+                  wait: `Wait for ${activeStep.moduleId.replaceAll("-", " ")} email window`,
+                  verify_eligibility: `Verify eligibility for ${activeStep.moduleId.replaceAll("-", " ")} email`,
+                  prepare: `Prepare ${activeStep.moduleId.replaceAll("-", " ")} email`,
+                  send: `Send ${activeStep.moduleId.replaceAll("-", " ")} email`,
+                  persist_delivery: `Record delivery of ${activeStep.moduleId.replaceAll("-", " ")} email`,
+                }[activeStep.operation]
+              : "Prepare the pre-call sequence",
+        ),
+      },
+      ...(activeStep
+        ? [
+            {
+              label: "Progress",
+              value: slackText(
+                activeStep.operation === "initial_preflight"
+                  ? "0 messages delivered; schedule not started"
+                  : `${activeStep.delivered} of ${activeStep.total} messages delivered in this run`,
+              ),
+            },
+          ]
+        : []),
+      {
+        label: "Impact",
+        value: slackText(
+          activeStep?.operation === "persist_delivery"
+            ? "The email was delivered, but its delivery state was not recorded; remaining messages will not send from this run."
+            : "Remaining pre-call nurture messages will not send from this run.",
+        ),
+      },
+      {
+        label: "Retry",
+        value: slackText("Exhausted — manual investigation required"),
+      },
+    ],
+    links: [
+      ...(payload.salesAppointmentId && environment.TWENTY_API_ORIGIN
+        ? [
+            slackLink(
+              "Open appointment",
+              `${environment.TWENTY_API_ORIGIN.replace(/\/+$/u, "")}/object/salesAppointment/${encodeURIComponent(payload.salesAppointmentId)}`,
+            ),
+          ]
+        : []),
+      slackLink("Open in Trigger", runUrl),
+    ],
+    note: slackIdentifierFooter([
+      ["Journey", payload.submissionId],
+      ["Booking", payload.bookingUid],
+      ["Run", runId],
+    ]),
+  });
+
 export const runPrecallSequenceTask = schemaTask({
   id: "run-precall-sequence",
   schema: precallSequencePayloadSchema,
@@ -453,9 +589,13 @@ export const runPrecallSequenceTask = schemaTask({
         process.env.GOOGLE_CALENDAR_RECONCILIATION_CANARY_ONLY,
       SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
     };
+    let activeStep: PrecallAlertStep | undefined;
     try {
       return await deliverPrecallSequence(payload, environment, {
         fetch,
+        onStep: (step) => {
+          activeStep = step;
+        },
         attempt: (operation) =>
           retry.onThrow(operation, {
             maxAttempts: 5,
@@ -476,11 +616,13 @@ export const runPrecallSequenceTask = schemaTask({
           await sendReliabilityAlert(
             {
               token: environment.SLACK_BOT_TOKEN,
-              text: [
-                `:rotating_light: *Pre-call sequence failed* — ${payload.environment}`,
-                `Sales Appointment: \`${payload.salesAppointmentId ?? "legacy-unmapped"}\` · Booking: \`${payload.bookingUid}\``,
-                `<${triggerRunUrl(ctx.environment.slug, ctx.run.id)}|Open in Trigger>`,
-              ].join("\n"),
+              text: formatPrecallFailureAlert(
+                payload,
+                environment,
+                triggerRunUrl(ctx.environment.slug, ctx.run.id),
+                activeStep,
+                ctx.run.id,
+              ),
             },
             fetch,
           );

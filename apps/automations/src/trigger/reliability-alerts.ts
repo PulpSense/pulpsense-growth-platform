@@ -1,3 +1,5 @@
+import { slackDeliveryOptions } from "./slack-notifications.js";
+
 export const ERROR_SLACK_CHANNEL_ID = "C09FTA0TEEN";
 
 export const sendReliabilityAlert = async (
@@ -13,6 +15,7 @@ export const sendReliabilityAlert = async (
     body: JSON.stringify({
       channel: ERROR_SLACK_CHANNEL_ID,
       text: input.text,
+      ...slackDeliveryOptions,
       ...(input.threadTs ? { thread_ts: input.threadTs } : {}),
     }),
   });

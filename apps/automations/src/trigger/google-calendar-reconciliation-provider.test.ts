@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   createCalendarReconciliationAdapters,
-  googleRescheduleLinkAlertText,
+  formatGoogleRescheduleLinkFailureAlert,
   patchGoogleEventDescription,
   type CalendarReconciliationEnvironment,
 } from "./google-calendar-reconciliation.js";
@@ -15,11 +15,13 @@ const environment: CalendarReconciliationEnvironment = {
 };
 
 describe("Google Calendar reschedule-link alert", () => {
-  it("includes the CRM records, appointment times, retry state, and repair action", () => {
-    const text = googleRescheduleLinkAlertText({
-      payload: {
+  it("includes the lead, CRM records, localized times, retry state, and action", () => {
+    const text = formatGoogleRescheduleLinkFailureAlert(
+      {
         submissionId: "14da9f65-0fed-44a7-bc60-92e616cc5405",
         lifecycleEventId: "booking_rescheduled:cal-new",
+        firstName: "Ada",
+        lastName: "Prospect",
         salesAppointmentId: "appointment/id",
         personId: "person/id",
         oldStart: "2026-08-24T10:00:00.000Z",
@@ -27,23 +29,28 @@ describe("Google Calendar reschedule-link alert", () => {
         previousBookingUid: "cal-old",
         replacementBookingUid: "cal-new",
       },
-      classification: "google_reschedule_link_not_uniquely_recognized",
-      twentyOrigin: "https://twenty.example.com/",
-      projectRef: "proj_example",
-      runId: "run_example",
-      alertAttempt: 2,
-    });
+      {
+        environment: "production",
+        twentyOrigin: "https://twenty.example.com/",
+        runUrl: "https://cloud.trigger.dev/runs/run_example",
+        runId: "run_example",
+      },
+    );
 
+    expect(text).toContain("Ada Prospect's calendar reschedule link");
     expect(text).toContain(
       "https://twenty.example.com/object/salesAppointment/appointment%2Fid",
     );
     expect(text).toContain(
       "https://twenty.example.com/object/person/person%2Fid",
     );
-    expect(text).toContain("Old Cal time: 2026-08-24T10:00:00.000Z");
-    expect(text).toContain("Intended Google time: 2026-08-24T11:00:00.000Z");
-    expect(text).toContain("Slack delivery attempt 2/3");
-    expect(text).toContain("update the event description link manually");
+    expect(text).toContain("*Call:* <!date^");
+    expect(text).toContain("*Previous time:* <!date^");
+    expect(text).toContain("*Retry:* Exhausted");
+    expect(text).toContain("update the calendar description link manually");
+    expect(text).toContain("Run run_example");
+    expect(text).not.toContain("2026-08-24T10:00:00.000Z");
+    expect(text).not.toContain("Classification");
   });
 });
 

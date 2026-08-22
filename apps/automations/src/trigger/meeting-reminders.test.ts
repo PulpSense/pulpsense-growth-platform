@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   deliverMeetingReminder,
+  formatMeetingReminderFailureAlert,
   meetingReminderPayloadSchema,
   scheduleMeetingReminders,
   type MeetingReminderPayload,
@@ -44,6 +45,7 @@ const bookingEvent: BookingCompletedEvent = {
 const payload: MeetingReminderPayload = {
   submissionId: bookingEvent.submissionId,
   firstName: bookingEvent.payload.firstName,
+  lastName: bookingEvent.payload.lastName,
   phone: bookingEvent.payload.phone,
   channel: "gmail",
   bookingUid: bookingEvent.payload.booking.uid,
@@ -70,6 +72,31 @@ const salesAppointmentGuard = {
   salesAppointmentId: "22222222-2222-4222-8222-222222222222",
   automationGeneration: 1,
 };
+
+describe("meeting reminder Slack alerts", () => {
+  it("names the lead, channel, call time, impact, and investigation links", () => {
+    const text = formatMeetingReminderFailureAlert(
+      { ...payload, ...salesAppointmentGuard },
+      {
+        ...enabledEnvironment,
+        TWENTY_API_ORIGIN: "https://pulpsense.twenty.com/",
+      },
+      "https://cloud.trigger.dev/runs/run-1",
+      "run-1",
+    );
+
+    expect(text).toContain("*Maya Chen's 2h email reminder was not sent*");
+    expect(text).toContain("*Channel:* Email");
+    expect(text).toContain("*Call:* <!date^");
+    expect(text).toContain("This reminder was not delivered");
+    expect(text).toContain("verify the appointment status");
+    expect(text).not.toContain("appointment is still active");
+    expect(text).toContain("Open appointment");
+    expect(text).toContain("Open in Trigger");
+    expect(text).toContain("Journey b0a10d9a");
+    expect(text).toContain("Run run-1");
+  });
+});
 
 const guardedPayload = { ...payload, ...salesAppointmentGuard };
 
