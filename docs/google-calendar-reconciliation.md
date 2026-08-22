@@ -201,15 +201,23 @@ time and return to `SCHEDULED`. `CANCELLED` remains terminal.
 5. Switch to `reconcile` with only internal test Booking UIDs allowlisted.
 6. Complete the mandatory canary scenarios from issue #196 and retain Trigger,
    Cal, Google, and Twenty read-back evidence.
-7. Add production UIDs deliberately after canary approval. Ordinary successful
-   runs remain in Trigger/Twenty; Slack is reserved for failures and recoveries.
+7. Freeze the UID allowlist as the exact completed-canary set. Do not add
+   production UIDs: general mode ignores the allowlist, and changing it would
+   destroy the canary audit record. Ordinary successful runs remain in
+   Trigger/Twenty; Slack is reserved for failures and recoveries.
 8. After the complete canary passes, set canary-only to `false` to enable all
    otherwise eligible Sales Appointments. Retain the exact UID allowlist as the
    audit record of the canary set.
 9. Observe at least two consecutive five-minute poll cycles. Inspect every
-   dispatched child run, Twenty and provider read-back, and Slack. Immediately
-   set mode to `off` if any duplicate event, unexplained Cal mutation, stale
-   automation, missing mapping, or unexpected alert appears.
+   dispatched child run, Twenty and provider read-back, and Slack. For each
+   eligible appointment, directly open the exact Cal booking UID and verify its
+   status and canonical time. Search the designated Google Calendar by that
+   exact UID/reschedule link, inspect every result, and verify that exactly one
+   active event represents the appointment. An `unchanged` child verifies the
+   mapped Google event and Twenty state, but returns before the Cal read and is
+   not a duplicate-event search. Immediately set mode to `off` if any duplicate
+   event, unexplained Cal mutation, stale automation, missing mapping, or
+   unexpected alert appears.
 
 Provider-owned Google and Cal emails may both be delivered. The description
 patch sets `sendUpdates=none`, but Google notes that some messages may still be
