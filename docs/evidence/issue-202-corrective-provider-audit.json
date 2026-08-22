@@ -1,0 +1,140 @@
+{
+  "auditedAt": "2026-08-22T12:35:00.000Z",
+  "method": {
+    "cal": "Direct signed-in booking read by exact Cal booking UID",
+    "google": "Direct designated-calendar search by exact UID/reschedule link with every result inspected"
+  },
+  "initialResult": "safety-invariant-failed-pending-operator-explanation",
+  "finalClassification": "explained-intentional-derivative-events",
+  "rollback": {
+    "variable": "GOOGLE_CALENDAR_RECONCILIATION_MODE",
+    "value": "off",
+    "applied": true,
+    "verifiedByScheduledRun": "run_06g2iu1dk9qoq3ic4si73as201",
+    "selected": 0
+  },
+  "controlledReEnable": {
+    "appliedAt": "2026-08-22T12:47:13.000Z",
+    "mode": "reconcile",
+    "observationEndedAt": "2026-08-22T12:57:16.000Z",
+    "pollRuns": [
+      "run_06g2j1fd2l3r3lutikq4k49001",
+      "run_06g2j2j2e8jvupv7l8498fci01"
+    ],
+    "inspectedChildRuns": [
+      "run_06g2j1hco076ggefosakq63j01",
+      "run_06g2j1hchckklgkhamdjdagl01",
+      "run_06g2j1hc9nn67a9l2mhcngtf01",
+      "run_06g2j1hbtaisk7b49703qtui01",
+      "run_06g2j2m0cvthfuofso1o6uu601",
+      "run_06g2j2m05nob7rfo0u23hnue01",
+      "run_06g2j2lvsl5p63siuh7urnfv01",
+      "run_06g2j2lvfrv1lqo54enfh2qf01"
+    ],
+    "result": "passed",
+    "slackAlerts": 0
+  },
+  "postClassificationProviderReadBack": {
+    "verifiedAt": "2026-08-22T13:14:42.000Z",
+    "calCanonicalBookingsVerified": 4,
+    "googleExactUidResultCounts": {
+      "qD2mEJtjymvcvHy91svNB6": 1,
+      "2q7BGjgazFSymRksGmy7at": 1,
+      "fwZSmkGJWyp6F8oXRyv5YX": 3,
+      "2s3n7wvT5z1U6rwPS6t3Mp": 1
+    },
+    "lenResultsInspected": [
+      {
+        "purpose": "canonical-appointment",
+        "startAt": "2026-08-19T18:00:00.000Z"
+      },
+      {
+        "purpose": "operator-confirmed-follow-up",
+        "startAt": "2026-08-20T15:00:00.000Z"
+      },
+      {
+        "purpose": "operator-confirmed-onboarding",
+        "startAt": "2026-08-21T14:30:00.000Z"
+      }
+    ],
+    "twentyCanonicalMappings": [
+      {
+        "salesAppointmentId": "0ee60125-7fc7-5553-b391-6cb627ead558",
+        "googleEventId": "_ct46apba75jj8h3o65t4at39e1544j1lcd0k0gr1dgn66rrd",
+        "canonicalStartAt": "2026-09-02T18:00:00.000Z",
+        "synchronizationStatus": "SYNCHRONIZED"
+      },
+      {
+        "salesAppointmentId": "e722a057-dee4-5f69-9c32-4a7f7531b033",
+        "googleEventId": "_69ojegi7d9jm2ui6adsmqkjbed3mqu9nc5q40gr1dgn66rrd",
+        "canonicalStartAt": "2026-08-20T14:00:00.000Z",
+        "synchronizationStatus": "SYNCHRONIZED"
+      },
+      {
+        "salesAppointmentId": "6fe5f210-06bf-5c65-b06f-e3636add37bb",
+        "googleEventId": "_cprlkkrddd3kklrpe0r4ce3fb197ithlb5c40gr1dgn66rrd",
+        "canonicalStartAt": "2026-08-19T18:00:00.000Z",
+        "synchronizationStatus": "SYNCHRONIZED"
+      },
+      {
+        "salesAppointmentId": "65b75482-bb0d-5246-9d3b-cbd200fee179",
+        "googleEventId": "_69pj6rhnetr58dbq65ajcsjna19jct1j9lo40gr1dgn66rrd",
+        "canonicalStartAt": "2026-08-17T17:00:00.000Z",
+        "synchronizationStatus": "SYNCHRONIZED"
+      }
+    ],
+    "subsequentScheduledRun": {
+      "pollRunId": "run_06g2j77icqsr4upanu041eh401",
+      "selected": 4,
+      "childRunIds": [
+        "run_06g2j78j0o7k5ajqdk2d4op601",
+        "run_06g2j78inseb3h6m9uqth2ck01",
+        "run_06g2j78ie7j33pi0brtsi36201",
+        "run_06g2j78i2rdl7vu5ohsei19e01"
+      ],
+      "outcomes": ["unchanged", "unchanged", "unchanged", "unchanged"],
+      "slackAlerts": 0
+    }
+  },
+  "appointments": [
+    {
+      "salesAppointmentId": "0ee60125-7fc7-5553-b391-6cb627ead558",
+      "calBookingUid": "qD2mEJtjymvcvHy91svNB6",
+      "calCanonicalStartAt": "2026-09-02T18:00:00.000Z",
+      "googleEntriesWithCopiedExactUid": 1,
+      "canonicalAppointmentEntries": 1,
+      "invariant": "passed"
+    },
+    {
+      "salesAppointmentId": "e722a057-dee4-5f69-9c32-4a7f7531b033",
+      "calBookingUid": "2q7BGjgazFSymRksGmy7at",
+      "calCanonicalStartAt": "2026-08-20T14:00:00.000Z",
+      "googleEntriesWithCopiedExactUid": 1,
+      "canonicalAppointmentEntries": 1,
+      "invariant": "passed"
+    },
+    {
+      "salesAppointmentId": "6fe5f210-06bf-5c65-b06f-e3636add37bb",
+      "calBookingUid": "fwZSmkGJWyp6F8oXRyv5YX",
+      "calCanonicalStartAt": "2026-08-19T18:00:00.000Z",
+      "googleEntriesWithCopiedExactUid": 3,
+      "canonicalAppointmentEntries": 1,
+      "operatorConfirmedDerivativeEntries": 2,
+      "operatorConfirmedPurposes": ["follow-up", "onboarding"],
+      "googleObservedStartsAt": [
+        "2026-08-19T18:00:00.000Z",
+        "2026-08-20T15:00:00.000Z",
+        "2026-08-21T14:30:00.000Z"
+      ],
+      "invariant": "passed-after-operator-classification"
+    },
+    {
+      "salesAppointmentId": "65b75482-bb0d-5246-9d3b-cbd200fee179",
+      "calBookingUid": "2s3n7wvT5z1U6rwPS6t3Mp",
+      "calCanonicalStartAt": "2026-08-17T17:00:00.000Z",
+      "googleEntriesWithCopiedExactUid": 1,
+      "canonicalAppointmentEntries": 1,
+      "invariant": "passed"
+    }
+  ]
+}

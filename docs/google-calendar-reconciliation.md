@@ -201,13 +201,27 @@ time and return to `SCHEDULED`. `CANCELLED` remains terminal.
 5. Switch to `reconcile` with only internal test Booking UIDs allowlisted.
 6. Complete the mandatory canary scenarios from issue #196 and retain Trigger,
    Cal, Google, and Twenty read-back evidence.
-7. Add production UIDs deliberately after canary approval. Ordinary successful
-   runs remain in Trigger/Twenty; Slack is reserved for failures and recoveries.
+7. Freeze the UID allowlist as the exact completed-canary set. Do not add
+   production UIDs: general mode ignores the allowlist, and changing it would
+   destroy the canary audit record. Ordinary successful runs remain in
+   Trigger/Twenty; Slack is reserved for failures and recoveries.
 8. After the complete canary passes, set canary-only to `false` to enable all
    otherwise eligible Sales Appointments. Retain the exact UID allowlist as the
    audit record of the canary set.
 9. Observe at least two consecutive five-minute poll cycles. Inspect every
-   dispatched child run, Twenty and provider read-back, and Slack. Immediately
+   dispatched child run, Twenty and provider read-back, and Slack. For each
+   eligible appointment, directly open the exact Cal booking UID and verify its
+   status and canonical time. Search the designated Google Calendar by that
+   exact UID/reschedule link and inspect every result. Verify that exactly one
+   event is the canonical mapped appointment. A user may intentionally duplicate
+   the original Google invite for a follow-up or onboarding meeting with the
+   same booker; because Google copies the description, those distinct meetings
+   can retain the original Cal link and appear in the UID search. Treat every
+   additional result as unexplained until the operator confirms its distinct
+   purpose, time, and attendee. For future copies, remove the original Cal
+   reschedule/cancel link because it still controls the canonical booking. An
+   `unchanged` child verifies the mapped Google event and Twenty state, but
+   returns before the Cal read and is not a duplicate-event search. Immediately
    set mode to `off` if any duplicate event, unexplained Cal mutation, stale
    automation, missing mapping, or unexpected alert appears.
 
