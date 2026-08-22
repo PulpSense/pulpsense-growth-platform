@@ -61,15 +61,15 @@ export const medSpasCampaign = defineAiSeoCampaign({
       items: [
         {
           title: "AI Pulls From Sources Most Agencies Ignore",
-          body: "ChatGPT and AI Overviews don't just read your website. They pull from map data, industry directories, citations, and review profiles, the sources many SEO programs overlook.",
+          body: "ChatGPT and AI Overviews don't just read your website. They pull from map data, industry directories, citations, and review profiles, the exact sources most SEO shops never touch.",
         },
         {
           title: "It's About Trust Signals, Not Keywords",
-          body: "The practices AI can confidently surface have consistent listings, strong review profiles, structured data, and clean citations across the web. We build those visibility signals for you.",
+          body: "The practices AI recommends have consistent listings, strong review profiles, structured data, and clean citations across the web. We build every one of those signals for you.",
         },
         {
           title: "Being Established Doesn't Make You Visible",
-          body: "An established practice can still be hard to find in AI search. Visibility depends less on practice size than on whether the right local signals are in place.",
+          body: "Plenty of big practices are completely invisible in AI search because nobody optimized for it. This isn't about size, it's about whether you've been set up for AI specifically.",
         },
       ],
     },
@@ -78,13 +78,13 @@ export const medSpasCampaign = defineAiSeoCampaign({
           ...sharedLandingContent.results,
           heading: "Real Google and AI Visibility Results",
           intro:
-            "These examples come from other local-service businesses and show what happened when they put our visibility system to work.",
+            "Don't take our word for it. See what happened when businesses put our system to work.",
         }
       : null,
     process: {
       heading: "How It Works for Your Practice",
       intro:
-        "Your roadmap from hard to find to recommended. Your team invests about 30 minutes. We handle the rest.",
+        "Your roadmap from invisible to recommended. You invest about 30 minutes, we handle the rest.",
       steps: [
         {
           title: "We Audit Your Visibility (Day 1)",
@@ -104,7 +104,7 @@ export const medSpasCampaign = defineAiSeoCampaign({
       ...sharedLandingContent.offer,
       heading: "Everything You Need to Rank Across Google and AI",
       intro:
-        "The scope is built around your treatments, market, current visibility, and local competition. We handle the implementation.",
+        "The scope is built around your treatments, market, current visibility, and competition. We handle the implementation.",
       note: "We work with one med spa per agreed treatment category in each market.",
     },
     guarantee: {
@@ -200,7 +200,7 @@ export const medSpasCampaign = defineAiSeoCampaign({
     confirmation: {
       ...sharedThankYouContent.confirmation,
       intro:
-        "Review this quick briefing before your Visibility Audit. 45 qualified treatment inquiries in 90 days. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
+        "Review this quick briefing before your Audit. 45 qualified treatment inquiries in 90 days. No ad spend. No shared leads. Results guaranteed, or we work free until you get them.",
     },
     calendar: {
       ...sharedThankYouContent.calendar,
