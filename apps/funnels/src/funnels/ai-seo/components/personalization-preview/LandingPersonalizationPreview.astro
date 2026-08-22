@@ -1,0 +1,117 @@
+---
+import type { LandingContent } from "../../campaign-config";
+import { sharedLandingContent } from "../../campaign-config/shared-content";
+import DisclosureFooter from "../DisclosureFooter.astro";
+import BenefitsSection from "../landing/BenefitsSection.astro";
+import ComparisonSection from "../landing/ComparisonSection.astro";
+import EducationSection from "../landing/EducationSection.astro";
+import FaqSection from "../landing/FaqSection.astro";
+import GuaranteeSection from "../landing/GuaranteeSection.astro";
+import HeroSection from "../landing/HeroSection.astro";
+import LandingInteractions from "../landing/LandingInteractions.astro";
+import MarketShiftSection from "../landing/MarketShiftSection.astro";
+import OfferStackSection from "../landing/OfferStackSection.astro";
+import ProcessSection from "../landing/ProcessSection.astro";
+import ResultsSection from "../landing/ResultsSection.astro";
+import ReviewsSection from "../landing/ReviewsSection.astro";
+import StickyCta from "../landing/StickyCta.astro";
+
+const placeholder = "PERSONALIZATION";
+const placeholderItems = <Item extends object>(items: readonly Item[]) =>
+  items.map((item) => ({ ...item, title: placeholder, body: placeholder }));
+
+const content = {
+  ...sharedLandingContent,
+  hero: {
+    ...sharedLandingContent.hero,
+    callout: placeholder,
+    promise: placeholder,
+    lead: placeholder,
+  },
+  benefits: {
+    ...sharedLandingContent.benefits,
+    heading: placeholder,
+    intro: placeholder,
+    cards: [
+      {
+        ...sharedLandingContent.benefits.cards[0],
+        title: placeholder,
+        body: placeholder,
+      },
+      sharedLandingContent.benefits.cards[1],
+      {
+        ...sharedLandingContent.benefits.cards[2],
+        title: placeholder,
+        body: placeholder,
+      },
+    ],
+  },
+  marketShift: {
+    ...sharedLandingContent.marketShift,
+    heading: placeholder,
+    intro: placeholder,
+  },
+  education: {
+    ...sharedLandingContent.education,
+    heading: placeholder,
+    intro: placeholder,
+    items: placeholderItems(sharedLandingContent.education.items),
+  },
+  results: sharedLandingContent.results
+    ? {
+        ...sharedLandingContent.results,
+        heading: placeholder,
+        intro: placeholder,
+      }
+    : null,
+  process: {
+    ...sharedLandingContent.process,
+    heading: placeholder,
+    intro: placeholder,
+    steps: placeholderItems(sharedLandingContent.process.steps),
+  },
+  offer: {
+    ...sharedLandingContent.offer,
+    heading: placeholder,
+    intro: placeholder,
+    note: placeholder,
+  },
+  guarantee: {
+    ...sharedLandingContent.guarantee,
+    promise: placeholder,
+    body: placeholder,
+    pills: [placeholder, placeholder, placeholder, placeholder],
+  },
+  faq: {
+    ...sharedLandingContent.faq,
+    items: sharedLandingContent.faq.items.map((item, index) =>
+      [2, 4, 7, 9].includes(index)
+        ? { question: placeholder, answer: placeholder }
+        : item,
+    ),
+  },
+  reviews: sharedLandingContent.reviews ? { heading: placeholder } : null,
+} satisfies LandingContent;
+
+const ctaPath = "/personalization-preview/apply/";
+---
+
+<div id="pr-funnel">
+  <main class="pr-main">
+    <HeroSection content={content.hero} {ctaPath} />
+    <BenefitsSection content={content.benefits} />
+    <MarketShiftSection content={content.marketShift} />
+    <ComparisonSection content={content.comparison} />
+    <EducationSection content={content.education} />
+    {content.results && <ResultsSection content={content.results} />}
+    <ProcessSection content={content.process} />
+    <OfferStackSection content={content.offer} {ctaPath} />
+    <GuaranteeSection content={content.guarantee} />
+    <FaqSection content={content.faq} />
+    {content.reviews && <ReviewsSection content={content.reviews} />}
+  </main>
+
+  <DisclosureFooter />
+  <StickyCta content={content.stickyCta} {ctaPath} />
+</div>
+<LandingInteractions />

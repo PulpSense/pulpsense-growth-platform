@@ -100,7 +100,7 @@ const qualificationQuestions = {
   business_owner:
     "Are you the owner or primary decision-maker for the business?",
   marketing_budget:
-    "What monthly marketing budget have you set aside to generate more leads?",
+    "What monthly marketing budget have you set aside to generate more qualified leads?",
 } as const;
 
 const recordQualificationSnapshot = (
@@ -126,6 +126,17 @@ export function AiSeoQualificationForm({
   qualification,
 }: Props) {
   const usesSingleSelectQualification = qualification.kind === "single-select";
+  const ownerBudgetQuestions = {
+    business_owner:
+      qualification.kind === "owner-budget"
+        ? (qualification.ownerQuestion ?? qualificationQuestions.business_owner)
+        : qualificationQuestions.business_owner,
+    marketing_budget:
+      qualification.kind === "owner-budget"
+        ? (qualification.budgetQuestion ??
+          qualificationQuestions.marketing_budget)
+        : qualificationQuestions.marketing_budget,
+  };
   const turnstileSiteKey =
     configuredTurnstileSiteKey ??
     (import.meta.env.DEV ? TURNSTILE_ALWAYS_PASS_SITE_KEY : undefined);
@@ -375,7 +386,11 @@ export function AiSeoQualificationForm({
       setStep("marketing-budget");
     } else {
       trackFunnelEvent("qualification_outcome", { status: "unqualified" });
-      recordQualificationSnapshot("unqualified", { business_owner: "no" });
+      recordQualificationSnapshot(
+        "unqualified",
+        { business_owner: "no" },
+        ownerBudgetQuestions,
+      );
       setStep("not-qualified");
     }
   };
@@ -449,10 +464,14 @@ export function AiSeoQualificationForm({
   ) => {
     if (budget === "under-500-per-month") {
       trackFunnelEvent("qualification_outcome", { status: "unqualified" });
-      recordQualificationSnapshot("unqualified", {
-        business_owner: "yes",
-        marketing_budget: "Under $500/month or not set yet",
-      });
+      recordQualificationSnapshot(
+        "unqualified",
+        {
+          business_owner: "yes",
+          marketing_budget: "Under $500/month or not set yet",
+        },
+        ownerBudgetQuestions,
+      );
       setStep("not-qualified");
       return;
     }
@@ -463,6 +482,7 @@ export function AiSeoQualificationForm({
           business_owner: "yes",
           marketing_budget: budget,
         },
+        questions: ownerBudgetQuestions,
       },
     );
   };
@@ -609,9 +629,7 @@ export function AiSeoQualificationForm({
       <div className="pr-tf-card">
         {step === "owner" && (
           <div className="pr-tf-step is-active">
-            <p className="pr-tf-q">
-              Are you the owner or primary decision-maker for the business?
-            </p>
+            <p className="pr-tf-q">{ownerBudgetQuestions.business_owner}</p>
             <div className="pr-tf-choices">
               <button
                 type="button"
@@ -675,10 +693,7 @@ export function AiSeoQualificationForm({
 
         {step === "marketing-budget" && (
           <div className="pr-tf-step is-active">
-            <p className="pr-tf-q">
-              What monthly marketing budget have you set aside to generate more
-              qualified leads?
-            </p>
+            <p className="pr-tf-q">{ownerBudgetQuestions.marketing_budget}</p>
             <div className="pr-tf-choices">
               <button
                 type="button"
