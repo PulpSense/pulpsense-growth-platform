@@ -347,7 +347,6 @@ const rescheduleCalBooking = async (
       body: JSON.stringify({
         start: input.start,
         rescheduledBy: input.rescheduledBy,
-        reschedulingReason: input.reschedulingReason,
         rescheduleWithSameHost: input.rescheduleWithSameHost,
         allowConflicts: input.allowConflicts,
         allowBookingOutOfBounds: input.allowBookingOutOfBounds,
