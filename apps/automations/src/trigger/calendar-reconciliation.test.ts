@@ -509,4 +509,22 @@ describe("reconcileSalesAppointment", () => {
       }),
     );
   });
+
+  it("does not repair an older reschedule after the canonical lineage advances again", async () => {
+    const { adapters, setStored } = harness();
+    vi.mocked(adapters.waitForCanonicalWebhook).mockImplementation(async () => {
+      setStored(
+        appointment({
+          currentCalBookingUid: "cal-newer",
+          scheduledStartAt: "2026-09-12T16:00:00.000Z",
+          automationGeneration: 5,
+        }),
+      );
+    });
+
+    await expect(
+      reconcileSalesAppointment(appointmentId, options, adapters),
+    ).resolves.toMatchObject({ outcome: "concurrent_cal_change" });
+    expect(adapters.enqueueLifecycleRepair).not.toHaveBeenCalled();
+  });
 });
