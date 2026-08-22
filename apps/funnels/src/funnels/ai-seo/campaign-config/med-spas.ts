@@ -33,43 +33,42 @@ export const medSpasCampaign = defineAiSeoCampaign({
     benefits: {
       heading: "Why Med Spas Are Moving Beyond Traditional Marketing",
       intro:
-        "Prospective patients aren't navigating through ten search results anymore. They ask, compare, and call the med spa they trust.",
+        "Prospective patients aren't navigating through ten search results anymore. They ask, compare, and call the practice they trust.",
       cards: [
         {
           icon: "📞",
           title: "More High-Intent Treatment Inquiries",
-          body: "Appear when prospective patients are comparing local med spas and ready to ask about a treatment.",
+          body: "Appear when prospective patients are comparing local providers and ready to ask about a treatment.",
         },
         sharedLandingContent.benefits.cards[1],
         {
           icon: "🎯",
           title: "Patient Demand You Own",
-          body: "These are direct inquiries to your med spa, not shared leads sold to several local competitors as with traditional agencies.",
+          body: "These are direct inquiries to your practice, not shared leads sold to several local competitors as with traditional agencies.",
         },
       ],
     },
     marketShift: {
       ...sharedLandingContent.marketShift,
-      heading:
-        "Your Next Patient Is Asking Google and AI Which Med Spa to Trust",
+      heading: "Your Next Patient Is Asking Google and AI Who to Trust",
       intro:
-        "They search, compare a short list, and contact the med spa that feels most credible. If you're missing from that list, they call another practice.",
+        "They search, compare a short list, and contact the provider that feels most credible. If you're missing from that list, they choose another practice.",
     },
     education: {
-      heading: "This Isn't Traditional Med-Spa SEO. This Isn't Ads.",
+      heading: "This Isn't Traditional SEO. This Isn't Ads.",
       intro:
-        "Getting your med spa recommended by AI requires a different set of signals than traditional SEO or ads.",
+        "Getting recommended by AI requires a different set of signals than traditional SEO or ads.",
       items: [
         {
           title: "AI Pulls From Sources Most Agencies Ignore",
-          body: "ChatGPT and AI Overviews don't just read your website. They pull from map data, med-spa directories, citations, and review profiles, the sources many traditional SEO programs overlook.",
+          body: "ChatGPT and AI Overviews don't just read your website. They pull from map data, industry directories, citations, and review profiles, the sources many traditional SEO programs overlook.",
         },
         {
           title: "It's About Trust Signals, Not Keywords",
-          body: "The med spas AI can confidently surface have consistent listings, strong review profiles, structured data, and clean citations across the web. We build those visibility signals for you.",
+          body: "The practices AI can confidently surface have consistent listings, strong review profiles, structured data, and clean citations across the web. We build those visibility signals for you.",
         },
         {
-          title: "Being an Established Med Spa Doesn't Make You Visible",
+          title: "Being Established Doesn't Make You Visible",
           body: "An established practice can still be hard to find in AI search. Visibility depends less on practice size than on whether the right local signals are in place.",
         },
       ],
@@ -83,27 +82,27 @@ export const medSpasCampaign = defineAiSeoCampaign({
         }
       : null,
     process: {
-      heading: "How It Works for Your Med Spa",
+      heading: "How It Works for Your Practice",
       intro:
         "Your roadmap from hard to find to recommended. Your team invests about 30 minutes; we handle the rest.",
       steps: [
         {
-          title: "We Audit Your Med Spa's Visibility (Day 1)",
-          body: "We check where your med spa stands on Google Maps, AI Overviews, and ChatGPT, live on a 15-minute call. You'll see where local treatment inquiries may be going instead.",
+          title: "We Audit Your Visibility (Day 1)",
+          body: "We check where you stand on Google Maps, AI Overviews, and ChatGPT, live on a 15-minute call. You'll see where local treatment inquiries may be going instead.",
         },
         {
           title: "We Build Your Foundation (Weeks 1–3)",
-          body: "Structured data so AI can read your med spa, listings on the map and directory sources AI pulls from, Google Business Profile optimization, and content that matches what prospective patients ask about treatments.",
+          body: "Structured data so AI can read your practice, listings on the map and directory sources AI pulls from, Google Business Profile optimization, and content that matches what prospective patients ask about treatments.",
         },
         {
-          title: "We Keep Your Med Spa Visible (Ongoing)",
+          title: "We Keep Your Practice Visible (Ongoing)",
           body: "Monthly re-audits, citation monitoring, profile management, and a simple report showing what moved and how many qualified treatment inquiries came in.",
         },
       ],
     },
     offer: {
       ...sharedLandingContent.offer,
-      heading: "Everything Your Med Spa Needs to Rank Across Google and AI",
+      heading: "Everything You Need to Rank Across Google and AI",
       intro:
         "The scope is built around your treatments, market, current visibility, and local competition. We handle the implementation.",
       note: "We work with one med spa per agreed treatment category in each market.",
@@ -112,7 +111,7 @@ export const medSpasCampaign = defineAiSeoCampaign({
       ...sharedLandingContent.guarantee,
       promise: "45 Qualified Treatment Inquiries",
       promiseSeparator: " ",
-      body: "We build the system that gets your med spa recommended across Google Maps, organic search, AI Overviews, and ChatGPT. If you do not receive 45 qualified treatment inquiries in 90 days, we work free until you do.",
+      body: "We build the system that gets your practice recommended across Google Maps, organic search, AI Overviews, and ChatGPT. If you do not receive 45 qualified treatment inquiries in 90 days, we work free until you do.",
       pills: [
         "✅ 45 qualified treatment inquiries in 90 days",
         sharedLandingContent.guarantee.pills[1],
@@ -132,9 +131,9 @@ export const medSpasCampaign = defineAiSeoCampaign({
         },
         sharedLandingContent.faq.items[3],
         {
-          question: "Does this work across multiple med-spa locations?",
+          question: "Does this work across multiple locations?",
           answer:
-            "Yes. The scope is built around the treatments, markets, locations, and local competition that matter to your med spa.",
+            "Yes. The scope is built around the treatments, markets, locations, and local competition that matter to your practice.",
         },
         sharedLandingContent.faq.items[5],
         sharedLandingContent.faq.items[6],
@@ -142,7 +141,7 @@ export const medSpasCampaign = defineAiSeoCampaign({
           question:
             "What happens if we do not receive 45 qualified treatment inquiries?",
           answer:
-            "We continue working at no management fee until your med spa receives the agreed result, consistent with the guarantee.",
+            "We continue working at no management fee until your practice receives the agreed result, consistent with the guarantee.",
         },
         sharedLandingContent.faq.items[8],
         {
@@ -165,29 +164,29 @@ export const medSpasCampaign = defineAiSeoCampaign({
       "Share your details and two quick answers before booking a med-spa visibility audit.",
     promise: "45 Qualified Treatment Inquiries",
     intro:
-      "Enter your details, then answer two quick questions to see if your established med spa qualifies for the guarantee.",
+      "Enter your details, then answer two quick questions to see if your established practice qualifies for the guarantee.",
     expectations: [
       sharedApplicationContent.expectations[0],
       {
         before: "We ",
-        emphasis: "pull up your med spa's live rankings",
+        emphasis: "pull up your live rankings",
         after:
-          " on the call and show you where you stand against the med spas appearing above you in Google Maps, AI Overviews, and ChatGPT.",
+          " on the call and show you where you stand against local competitors appearing above you in Google Maps, AI Overviews, and ChatGPT.",
       },
       {
         before: "We estimate ",
         emphasis: "how many treatment inquiries you may be missing",
-        after: " to the med spas prospective patients are finding first.",
+        after: " to the providers prospective patients are finding first.",
       },
       {
         before:
-          "We map the exact 3 signals (Google Business Profile, Maps & AI search citations) that move your med spa into the ",
+          "We map the exact 3 signals (Google Business Profile, Maps & AI search citations) that move your practice into the ",
         emphasis: "Top 3",
         after: ".",
       },
     ],
     callout:
-      "Many med spas do not know which local competitors Google or ChatGPT surfaces first. On the call, you'll see who is appearing ahead of you and which visibility gaps may be costing you treatment inquiries.",
+      "Many practices do not know which local competitors Google or ChatGPT surfaces first. On the call, you'll see who is appearing ahead of you and which visibility gaps may be costing you treatment inquiries.",
     qualification: {
       kind: "owner-budget",
       ownerQuestion:
