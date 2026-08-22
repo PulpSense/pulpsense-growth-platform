@@ -73,10 +73,10 @@ export const replaceCalRescheduleUid = (
     description,
     replacementBookingUid,
   );
-  if (previousMatches === 0 && replacementMatches > 0) {
+  if (previousMatches === 0 && replacementMatches === 1) {
     return { outcome: "already_current" as const, description };
   }
-  if (previousMatches !== 1) {
+  if (previousMatches !== 1 || replacementMatches !== 0) {
     throw new Error("google_reschedule_link_not_uniquely_recognized");
   }
 
@@ -95,7 +95,7 @@ export const replaceCalRescheduleUid = (
   );
   if (
     countRecognizedUidLinks(updated, previousBookingUid) !== 0 ||
-    countRecognizedUidLinks(updated, replacementBookingUid) === 0
+    countRecognizedUidLinks(updated, replacementBookingUid) !== 1
   ) {
     throw new Error("google_reschedule_link_rewrite_failed");
   }
@@ -150,7 +150,7 @@ export const refreshGoogleRescheduleLink = async (
     countRecognizedUidLinks(
       readBack.description,
       input.replacementBookingUid,
-    ) === 0
+    ) !== 1
   ) {
     throw new Error("google_reschedule_link_readback_failed");
   }

@@ -534,9 +534,39 @@ export const createCalendarReconciliationAdapters = (
 const rescheduleLinkPayloadSchema = z.object({
   submissionId: z.string().uuid(),
   lifecycleEventId: z.string().min(1).max(500),
+  salesAppointmentId: z.string().min(1).max(200),
+  personId: z.string().min(1).max(200),
+  oldStart: z.string().datetime({ offset: true }),
+  intendedStart: z.string().datetime({ offset: true }),
   previousBookingUid: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/u),
   replacementBookingUid: z.string().regex(/^[A-Za-z0-9_-]{1,200}$/u),
 });
+
+export const googleRescheduleLinkAlertText = (input: {
+  payload: z.infer<typeof rescheduleLinkPayloadSchema>;
+  classification: string;
+  twentyOrigin: string;
+  projectRef: string;
+  runId: string;
+  alertAttempt: number;
+}) => {
+  const twentyOrigin = input.twentyOrigin.replace(/\/+$/u, "");
+  const appointmentReference = `<${twentyOrigin}/object/salesAppointment/${encodeURIComponent(input.payload.salesAppointmentId)}|Open Sales Appointment>`;
+  const personReference = `<${twentyOrigin}/object/person/${encodeURIComponent(input.payload.personId)}|Open Person>`;
+  return [
+    ":rotating_light: *Google Calendar reschedule link needs attention*",
+    `${appointmentReference} · ${personReference}`,
+    `Lead Journey: \`${input.payload.submissionId}\``,
+    `Old Cal time: ${input.payload.oldStart}`,
+    `Intended Google time: ${input.payload.intendedStart}`,
+    `Previous Cal UID: \`${input.payload.previousBookingUid}\``,
+    `Current Cal UID: \`${input.payload.replacementBookingUid}\``,
+    `Classification: \`${input.classification}\``,
+    `Retry state: description repair exhausted after 3 attempts; Slack delivery attempt ${input.alertAttempt}/3`,
+    `Trigger run: <https://cloud.trigger.dev/projects/v3/${encodeURIComponent(input.projectRef)}/runs/${encodeURIComponent(input.runId)}|${input.runId}>`,
+    "Repair: the rescheduled meeting time remains canonical; update the event description link manually if needed.",
+  ].join("\n");
+};
 
 export const refreshGoogleCalendarRescheduleLinkTask = schemaTask({
   id: "refresh-google-calendar-reschedule-link",
@@ -550,6 +580,7 @@ export const refreshGoogleCalendarRescheduleLinkTask = schemaTask({
       GOOGLE_CALENDAR_CLIENT_SECRET: process.env.GOOGLE_CALENDAR_CLIENT_SECRET,
       GOOGLE_CALENDAR_REFRESH_TOKEN: process.env.GOOGLE_CALENDAR_REFRESH_TOKEN,
       GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID,
+      TWENTY_API_ORIGIN: process.env.TWENTY_API_ORIGIN,
       SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN,
     };
     try {
@@ -577,7 +608,7 @@ export const refreshGoogleCalendarRescheduleLinkTask = schemaTask({
         replacementBookingUid: payload.replacementBookingUid,
         outcome: result.outcome,
       });
-      return result;
+      return { outcome: result.outcome };
     } catch (error) {
       const classification =
         error instanceof Error ? error.message : "unknown_link_refresh_failure";
@@ -587,31 +618,36 @@ export const refreshGoogleCalendarRescheduleLinkTask = schemaTask({
         replacementBookingUid: payload.replacementBookingUid,
         classification,
       });
-      try {
-        await sendReliabilityAlert(
-          {
-            token: required(process.env.SLACK_BOT_TOKEN, "SLACK_BOT_TOKEN"),
-            text: [
-              ":rotating_light: *Google Calendar reschedule link needs attention*",
-              `Lead Journey: \`${payload.submissionId}\``,
-              `Previous Cal UID: \`${payload.previousBookingUid}\``,
-              `Current Cal UID: \`${payload.replacementBookingUid}\``,
-              `Classification: \`${classification}\``,
-              `Trigger run: <https://cloud.trigger.dev/projects/v3/${encodeURIComponent(ctx.project.ref)}/runs/${encodeURIComponent(ctx.run.id)}|${ctx.run.id}>`,
-              "The rescheduled meeting time remains canonical. Update the event description link manually if needed.",
-            ].join("\n"),
-          },
-          fetch,
-        );
-      } catch (alertError) {
-        logger.error("Google reschedule link failure alert delivery failed", {
-          submissionId: payload.submissionId,
-          classification:
-            alertError instanceof Error
-              ? alertError.message
-              : "unknown_slack_failure",
-        });
-      }
+      let alertAttempt = 0;
+      await retry.onThrow(
+        async () => {
+          alertAttempt += 1;
+          return sendReliabilityAlert(
+            {
+              token: required(process.env.SLACK_BOT_TOKEN, "SLACK_BOT_TOKEN"),
+              text: googleRescheduleLinkAlertText({
+                payload,
+                classification,
+                twentyOrigin: required(
+                  process.env.TWENTY_API_ORIGIN,
+                  "TWENTY_API_ORIGIN",
+                ),
+                projectRef: ctx.project.ref,
+                runId: ctx.run.id,
+                alertAttempt,
+              }),
+            },
+            fetch,
+          );
+        },
+        {
+          maxAttempts: 3,
+          factor: 2,
+          minTimeoutInMs: 1_000,
+          maxTimeoutInMs: 10_000,
+          randomize: true,
+        },
+      );
       return { outcome: "needs_attention" as const, classification };
     }
   },
