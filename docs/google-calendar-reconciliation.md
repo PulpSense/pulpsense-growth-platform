@@ -63,6 +63,14 @@ Changing from the former read-only grant requires running the utility again and
 replacing `GOOGLE_CALENDAR_REFRESH_TOKEN`; an existing refresh token does not
 gain the new permission automatically.
 
+The production authorization is intentionally single-user. Before saving a new
+refresh token, verify that the consent screen names the designated user, the
+granted scope is exactly `calendar.events.owned`, and `GOOGLE_CALENDAR_ID`
+matches the `calendarId` on a known Cal.com `google_calendar` booking reference.
+Rotate the token by rerunning the utility as that same user, replacing only
+`GOOGLE_CALENDAR_REFRESH_TOKEN`, and confirming a read-only poll succeeds. Do
+not widen the scope or retain the superseded token outside the secret store.
+
 ## Configuration
 
 Required whenever mode is not `off`:
@@ -98,6 +106,91 @@ Rollout controls:
   The canary Opportunity is written with `isTest = true`; the Sales Appointment
   is `NON_PRODUCTION`, `isTest = true`, and `isCommercial = false`.
 
+## Historical mapping audit
+
+The backfill utility validates an operator-reviewed mapping; it does not
+discover candidates. Build its input from canonical Twenty booking Notes and
+their related Person, Opportunity, Sales Appointment, and BookingVersion
+records, corroborated with the exact Cal booking and its `google_calendar`
+reference. Never derive a Cal UID from a Google `iCalUID`, title, attendee, or
+approximate time.
+
+Keep the mapping input ignored, for example
+`apps/automations/.env.sales-appointment-mapping.json`. Retain the redacted
+reports under `docs/evidence/`:
+
+```bash
+pnpm --filter @pulpsense/automations backfill:sales-appointments \
+  .env.sales-appointment-mapping.json \
+  > ../../docs/evidence/calendar-mapping-dry-run.json
+pnpm --filter @pulpsense/automations backfill:sales-appointments \
+  .env.sales-appointment-mapping.json --apply \
+  > ../../docs/evidence/calendar-mapping-apply.json
+pnpm --filter @pulpsense/automations backfill:sales-appointments \
+  .env.sales-appointment-mapping.json --read-back \
+  > ../../docs/evidence/calendar-mapping-read-back.json
+```
+
+`ready` means the local evidence is structurally complete; it is not permission
+to skip provider review. Any `ambiguous` row blocks apply and rollout. Apply
+also refuses a deterministic-ID, UID, relationship, classification, status, or
+time conflict with live Twenty. Read-back must report `matches: true` for every
+row. Record counts for eligible, already mapped, newly mapped,
+intentionally ineligible, and unresolved appointments. General reconciliation
+must remain disabled while any eligible candidate or live difference lacks an
+evidence-backed explanation.
+
+## Operating modes
+
+| Mode              | Required controls                         | Behavior                                                                                                                                               |
+| ----------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Off               | `GOOGLE_CALENDAR_RECONCILIATION_MODE=off` | Polling and mutation are disabled; this is the immediate rollback.                                                                                     |
+| Observe           | mode `observe`                            | Reads and classifies exact mapped events without suppressing automation or mutating Cal.                                                               |
+| Exact-UID canary  | mode `reconcile`, canary-only `true`      | Mutation requires an exact current Cal UID in the allowlist and the configured internal attendee email. Wildcards and external attendees are rejected. |
+| General reconcile | mode `reconcile`, canary-only `false`     | All otherwise eligible mapped Sales Appointments are evaluated. The retained exact-UID allowlist is audit history and no longer gates eligibility.     |
+
+The completed canary must not be repeated simply to enter general mode. Remove
+the simulated-failure UID, retain the canary allowlist, and change only the
+canary-only gate after the mapping and documentation reviews pass.
+
+## Slack outcomes and intervention
+
+Routine no-op and successful reconciliations stay in Trigger logs and Twenty;
+they do not post to Slack. Channel `C09FTA0TEEN` is reserved for past-time
+rejections, ambiguous or duplicate provider events, exhausted Cal or Google
+repairs, missing mappings that cannot be recovered, and recovery of a
+previously alerted revision.
+
+A needs-attention root message identifies the Sales Appointment, Person,
+canonical time, intended Google time, classification, retry state, run, and
+operator action. Retries and recovery remain on that revision's thread. An
+operator must intervene when retries are exhausted, two active provider events
+exist, the Google edit is in the past, the mapping is not exact, or read-back
+does not converge. Recovery is complete only after the same lineage is
+verified across Google, Cal.com, Twenty, Trigger, and Brevo and the Slack thread
+records recovery when an alert was emitted.
+
+## Manual repair
+
+1. Set `GOOGLE_CALENDAR_RECONCILIATION_MODE=off` if any invariant is failing.
+2. Preserve the Trigger run, Twenty revision, exact Cal UID lineage, Google
+   event ID, and Slack thread before changing state.
+3. Determine the canonical business outcome and time from operator, Cal, and
+   Twenty evidence. Do not guess a mapping.
+4. Repair through the canonical lifecycle or outcome path. Never delete a
+   provider event automatically, revive a cancelled booking, reset lineage or
+   `automationGeneration`, or rewrite BookingVersions by hand. A cancelled Cal
+   booking is terminal; create a new booking when another meeting is needed.
+5. Read back the active Google event and reschedule link, current Cal booking,
+   Twenty Sales Appointment and BookingVersion chain, Trigger generation and
+   pending work, and Brevo appointment state. Confirm stale reminder and
+   pre-call work is suppressed and no nurture module replayed.
+6. Restore `reconcile` only after the evidence is internally consistent and
+   the abnormal Slack thread has a recovery result.
+
+An eligible `NO_SHOW` within the seven-day lookback may be moved to a future
+time and return to `SCHEDULED`. `CANCELLED` remains terminal.
+
 ## Rollout
 
 1. Deploy the additive hidden Twenty fields and initialize existing rows.
@@ -113,6 +206,10 @@ Rollout controls:
 8. After the complete canary passes, set canary-only to `false` to enable all
    otherwise eligible Sales Appointments. Retain the exact UID allowlist as the
    audit record of the canary set.
+9. Observe at least two consecutive five-minute poll cycles. Inspect every
+   dispatched child run, Twenty and provider read-back, and Slack. Immediately
+   set mode to `off` if any duplicate event, unexplained Cal mutation, stale
+   automation, missing mapping, or unexpected alert appears.
 
 Provider-owned Google and Cal emails may both be delivered. The description
 patch sets `sendUpdates=none`, but Google notes that some messages may still be

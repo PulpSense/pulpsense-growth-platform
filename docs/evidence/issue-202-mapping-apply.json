@@ -1,0 +1,35 @@
+{
+  "mode": "apply",
+  "mutations": true,
+  "ready": [
+    {
+      "row": 1,
+      "calBookingUid": "d8QbRPSXy4h9naZWkpTS6d",
+      "sourceNoteId": "bcac7fba-303b-5b9c-af76-8e529d0c0147",
+      "salesAppointmentId": "3e4be473-c294-5193-9426-3c92a0b33595",
+      "bookingVersionId": "0996b2f2-5a0d-5b00-80c0-9b7d5b3fded5"
+    },
+    {
+      "row": 2,
+      "calBookingUid": "2q7BGjgazFSymRksGmy7at",
+      "sourceNoteId": "2a493a24-4ada-5434-8db3-5b2818778494",
+      "salesAppointmentId": "e722a057-dee4-5f69-9c32-4a7f7531b033",
+      "bookingVersionId": "6c3156f2-3c88-58ef-b8ab-700cc7b9a1d7"
+    },
+    {
+      "row": 3,
+      "calBookingUid": "fwZSmkGJWyp6F8oXRyv5YX",
+      "sourceNoteId": "18deaa97-6fd0-55a7-9bdb-44276075dd3a",
+      "salesAppointmentId": "6fe5f210-06bf-5c65-b06f-e3636add37bb",
+      "bookingVersionId": "b73e85f2-96c1-501a-85b2-7f54419d44c3"
+    },
+    {
+      "row": 4,
+      "calBookingUid": "2s3n7wvT5z1U6rwPS6t3Mp",
+      "sourceNoteId": "61b93c87-3a1e-5065-959d-109e31332637",
+      "salesAppointmentId": "65b75482-bb0d-5246-9d3b-cbd200fee179",
+      "bookingVersionId": "b7d27b96-644c-5cac-934d-95404fbdefde"
+    }
+  ],
+  "ambiguous": []
+}
