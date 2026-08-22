@@ -14,7 +14,7 @@ booking ledger.
 - The direct Google event `id` is the lookup key. `iCalUID` is stored only as
   corroborating lineage.
 - Only the event start instant is compared. Other event edits are ignored.
-- A changed start is persisted as an observation, then reread after a 60-second
+- A changed start is persisted as an observation, then reread after a five-minute
   durable debounce. Only a stable revision increments `automationGeneration`
   and invalidates old reminder and nurture work.
 - The reconciler rereads Twenty, Google, and Cal before each of at most three
