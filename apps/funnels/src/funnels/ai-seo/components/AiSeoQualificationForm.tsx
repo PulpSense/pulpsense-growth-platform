@@ -10,6 +10,7 @@ import {
   stripPhoneToDigits,
 } from "@/components/ui/phone";
 import { COUNTRIES, type Country } from "@/components/ui/phoneCountries";
+import type { ApplicationPageContent } from "@/funnels/ai-seo/campaign-config";
 import type { AiSeoFunnelId } from "@/funnels/ai-seo/campaigns";
 import { useFunnelSubmission } from "@/lib/funnel/use-funnel-submission";
 import { isValidEmail } from "@/utils/email";
@@ -46,7 +47,7 @@ declare global {
 type Step =
   | "owner"
   | "marketing-budget"
-  | "growth-constraint"
+  | "single-select"
   | "contact"
   | "calendar"
   | "not-qualified";
@@ -84,6 +85,7 @@ type Props = {
   calNamespace?: string;
   turnstileSiteKey?: string;
   qualifiedRedirect: string;
+  qualification: ApplicationPageContent["qualification"];
 };
 
 const initialContact: ContactData = {
@@ -100,20 +102,6 @@ const qualificationQuestions = {
   marketing_budget:
     "What monthly marketing budget have you set aside to generate more leads?",
 } as const;
-
-const lawFirmQualificationQuestions = {
-  growth_constraint:
-    "What is currently stopping your firm from signing more matters?",
-} as const;
-
-const lawFirmGrowthConstraints = [
-  "Not enough new-client inquiries",
-  "Too many low-quality inquiries",
-  "Intake isn't converting enough inquiries",
-  "We can't tell which marketing produces signed matters",
-] as const;
-
-type LawFirmGrowthConstraint = (typeof lawFirmGrowthConstraints)[number];
 
 const recordQualificationSnapshot = (
   status: "qualified" | "unqualified",
@@ -135,8 +123,9 @@ export function AiSeoQualificationForm({
   calNamespace,
   turnstileSiteKey: configuredTurnstileSiteKey,
   qualifiedRedirect,
+  qualification,
 }: Props) {
-  const isLawFirmFunnel = funnelId === "ai-seo";
+  const usesSingleSelectQualification = qualification.kind === "single-select";
   const turnstileSiteKey =
     configuredTurnstileSiteKey ??
     (import.meta.env.DEV ? TURNSTILE_ALWAYS_PASS_SITE_KEY : undefined);
@@ -478,15 +467,16 @@ export function AiSeoQualificationForm({
     );
   };
 
-  const chooseGrowthConstraint = async (
-    growthConstraint: LawFirmGrowthConstraint,
-  ) => {
+  const chooseSingleSelectAnswer = async (answer: string) => {
+    if (qualification.kind !== "single-select") return;
     await submitQualifiedApplication(
-      { growthConstraint },
+      { [qualification.submissionField]: answer },
       {
-        answers: { growth_constraint: growthConstraint },
-        questions: lawFirmQualificationQuestions,
-        formVersion: "2026-08-22",
+        answers: { [qualification.analyticsField]: answer },
+        questions: {
+          [qualification.analyticsField]: qualification.question,
+        },
+        formVersion: qualification.formVersion,
       },
     );
   };
@@ -573,7 +563,7 @@ export function AiSeoQualificationForm({
         },
         { eventId: contactResult.eventId, serverHandled: true },
       );
-      setStep(isLawFirmFunnel ? "growth-constraint" : "owner");
+      setStep(usesSingleSelectQualification ? "single-select" : "owner");
       trackFunnelEvent("funnel_step_viewed", { step: "qualification" });
     } catch {
       setSubmissionError(
@@ -587,14 +577,14 @@ export function AiSeoQualificationForm({
   const currentStep =
     step === "contact"
       ? 1
-      : step === "owner" || step === "growth-constraint"
+      : step === "owner" || step === "single-select"
         ? 2
         : step === "marketing-budget"
           ? 3
-          : isLawFirmFunnel
+          : usesSingleSelectQualification
             ? 3
             : 4;
-  const totalSteps = isLawFirmFunnel ? 3 : 4;
+  const totalSteps = usesSingleSelectQualification ? 3 : 4;
 
   const handleBookingSuccessful = useCallback(() => {
     trackFunnelEvent("booking_interaction", {
@@ -650,21 +640,19 @@ export function AiSeoQualificationForm({
           </div>
         )}
 
-        {step === "growth-constraint" && (
+        {step === "single-select" && qualification.kind === "single-select" && (
           <div className="pr-tf-step is-active">
-            <p className="pr-tf-q">
-              What is currently stopping your firm from signing more matters?
-            </p>
+            <p className="pr-tf-q">{qualification.question}</p>
             <div className="pr-tf-choices">
-              {lawFirmGrowthConstraints.map((growthConstraint) => (
+              {qualification.options.map((answer) => (
                 <button
-                  key={growthConstraint}
+                  key={answer}
                   type="button"
                   className="pr-tf-choice"
                   disabled={submitting}
-                  onClick={() => void chooseGrowthConstraint(growthConstraint)}
+                  onClick={() => void chooseSingleSelectAnswer(answer)}
                 >
-                  {growthConstraint}
+                  {answer}
                 </button>
               ))}
             </div>
@@ -949,7 +937,9 @@ export function AiSeoQualificationForm({
                 className="pr-tf-back"
                 onClick={() =>
                   setStep(
-                    isLawFirmFunnel ? "growth-constraint" : "marketing-budget",
+                    usesSingleSelectQualification
+                      ? "single-select"
+                      : "marketing-budget",
                   )
                 }
               >

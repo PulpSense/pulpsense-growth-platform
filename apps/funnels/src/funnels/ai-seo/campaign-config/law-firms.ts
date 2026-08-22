@@ -1,3 +1,5 @@
+import { LAW_FIRM_GROWTH_CONSTRAINTS } from "@pulpsense/contracts";
+
 import { defineAiSeoCampaign } from "./define";
 import { validateLawFirmCampaignPresentation } from "./law-firm-policy";
 import type { GuaranteeTermsContent } from "./types";
@@ -308,6 +310,15 @@ const lawFirmsCampaignConfig = defineAiSeoCampaign({
     guaranteeTerms: lawFirmGuaranteeTerms,
     proofRating: null,
     proofLabel: null,
+    qualification: {
+      kind: "single-select",
+      question:
+        "What is currently stopping your firm from signing more matters?",
+      analyticsField: "growth_constraint",
+      submissionField: "growthConstraint",
+      formVersion: "2026-08-22",
+      options: LAW_FIRM_GROWTH_CONSTRAINTS,
+    },
   },
   thankYou: {
     confirmation: {

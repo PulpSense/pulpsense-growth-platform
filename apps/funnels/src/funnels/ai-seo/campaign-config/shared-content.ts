@@ -322,6 +322,7 @@ export const sharedApplicationContent = {
   guaranteeTerms: null,
   proofRating: "4.9/5",
   proofLabel: "from 100+ service business owners",
+  qualification: { kind: "owner-budget" },
 } as const satisfies ApplicationPageContent;
 
 export const sharedThankYouContent = {

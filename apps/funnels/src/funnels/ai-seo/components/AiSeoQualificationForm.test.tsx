@@ -3,7 +3,9 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LAW_FIRM_GROWTH_CONSTRAINTS } from "@pulpsense/contracts";
 
+import type { ApplicationPageContent } from "@/funnels/ai-seo/campaign-config";
 import type { AiSeoFunnelId } from "@/funnels/ai-seo/campaigns";
 
 import { AiSeoQualificationForm } from "./AiSeoQualificationForm";
@@ -49,6 +51,19 @@ const getButton = (label: string) =>
     (button) => button.textContent === label,
   ) as HTMLButtonElement;
 
+const lawFirmQualification = {
+  kind: "single-select",
+  question: "What is currently stopping your firm from signing more matters?",
+  analyticsField: "growth_constraint",
+  submissionField: "growthConstraint",
+  formVersion: "2026-08-22",
+  options: LAW_FIRM_GROWTH_CONSTRAINTS,
+} as const satisfies ApplicationPageContent["qualification"];
+
+const ownerBudgetQualification = {
+  kind: "owner-budget",
+} as const satisfies ApplicationPageContent["qualification"];
+
 const enterValue = async (selector: string, value: string) => {
   const input = document.querySelector<HTMLInputElement>(selector);
   expect(input).toBeInstanceOf(HTMLInputElement);
@@ -65,6 +80,7 @@ const enterValue = async (selector: string, value: string) => {
 const renderForm = async (
   turnstileSiteKey: string | null = "test-site-key",
   funnelId: AiSeoFunnelId = "ai-seo",
+  qualification: ApplicationPageContent["qualification"] = lawFirmQualification,
 ) => {
   const container = document.createElement("div");
   container.id = "pr-funnel";
@@ -78,6 +94,7 @@ const renderForm = async (
         calLink="pulpsense/audit"
         turnstileSiteKey={turnstileSiteKey ?? undefined}
         qualifiedRedirect="/thank-you"
+        qualification={qualification}
       />,
     );
   });
@@ -402,7 +419,7 @@ describe("AiSeoQualificationForm step order", () => {
     expect(document.body.textContent).toContain("Book Free Audit Call");
   });
 
-  it("keeps the existing qualification questions for other verticals", async () => {
+  it("selects the qualification flow from configuration", async () => {
     let issueToken: ((token: string) => void) | undefined;
     window.turnstile = {
       render: vi.fn((_element, options) => {
@@ -419,7 +436,7 @@ describe("AiSeoQualificationForm step order", () => {
       leadJourneyId: "submission-id",
     });
 
-    await renderForm("test-site-key", "ai-seo-dentists");
+    await renderForm("test-site-key", "ai-seo", ownerBudgetQualification);
     await act(async () => issueToken?.("verified-token"));
     await enterValue("#ai-seo-first", "Santi");
     await enterValue("#ai-seo-email", "santi@example.com");
