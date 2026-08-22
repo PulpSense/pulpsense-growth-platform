@@ -1,15 +1,35 @@
 # Vertical Funnel Customization Brief
 
-**Status:** Implementation-ready synthesis of six verified VOC reports
+**Status:** Research synthesis; not the current implementation authority
 **Prepared:** 2026-08-21
-**Decision:** Reduce Meta CPL waste and improve qualified-booking economics by replacing one generic AI-SEO funnel with a shared conversion shell plus six vertical campaign configurations.
+**Updated:** 2026-08-22
+**Decision at time of writing:** Reduce Meta CPL waste and improve qualified-booking economics by replacing one generic AI-SEO funnel with a shared conversion shell plus six vertical campaign configurations.
 **Source set:** [`law-firms-voc.md`](./law-firms-voc.md), [`dental-practices-voc.md`](./dental-practices-voc.md), [`dental-implants-voc.md`](./dental-implants-voc.md), [`plastic-surgery-voc.md`](./plastic-surgery-voc.md), [`hair-restoration-voc.md`](./hair-restoration-voc.md), and [`med-spas-voc.md`](./med-spas-voc.md).
+
+> **Current implementation authority:** Use
+> [`../vertical-funnel-personalization-playbook.md`](../vertical-funnel-personalization-playbook.md)
+> for vertical rollout decisions. This brief remains the cross-vertical research
+> and experiment backlog. Its proposed alternative offers, calculators, 4–6
+> question forms, qualification branches, claim removals, and measurement phases
+> are not approved changes to the current funnel.
+>
+> The approved law-firm pattern preserves the standard funnel's structure, CRO,
+> two-question owner/budget qualification flow, 45-in-90-days offer structure,
+> work-free remedy, shared proof, and shared disclosure. It personalizes the
+> major headlines, supporting copy, result noun, selected FAQs, application
+> language, and thank-you framing. Apply that constrained approach to the other
+> verticals unless a separate experiment is explicitly approved.
+
+> **Historical baseline:** Sections 1–8 describe the repository and strategic
+> options as assessed on 2026-08-21, before the typed campaign architecture and
+> approved law-firm personalization were completed. Read references to the
+> “current funnel” in those sections as the baseline at that time.
 
 > **Traceability rule:** Statements tagged **[LF]**, **[DP]**, **[DI]**, **[PS]**, **[HR]**, or **[MS]** are synthesized from the corresponding report above. Where a report labels evidence as inference, adjacent-category evidence, vendor evidence, or a hypothesis, this brief preserves that limitation. This document does not create new outcome claims or benchmarks.
 
 ## 1. Strategic conclusion
 
-The current funnel is vertically renamed but not vertically customized. All six campaigns share a hard-coded hero—**“45 New Calls in 90 Days by Ranking #1 Google & ChatGPT”**—the same generic benefits, comparison, offer, guarantee, proof, form, and qualification logic. The campaign registry changes metadata, a small callout, slug, funnel ID, and pixel destination, but not the actual buyer promise or economics.
+At the time of the original assessment, the funnel was vertically renamed but not vertically customized. All six campaigns shared a hard-coded hero—**“45 New Calls in 90 Days by Ranking #1 Google & ChatGPT”**—the same generic benefits, comparison, offer, guarantee, proof, form, and qualification logic. The campaign registry changed metadata, a small callout, slug, funnel ID, and pixel destination, but not the actual buyer promise or economics.
 
 Across all six VOC studies, raw calls are the wrong optimization unit:
 
@@ -39,7 +59,7 @@ The expected gain is not necessarily the lowest raw Meta CPL. Better vertical sp
 
 Judge variants on **cost per qualified lead, cost per showed booking, and cost per opportunity**, with collected revenue and retention as lagging truth. A higher CPL is acceptable when the downstream yield improves enough to lower cost per opportunity or increase contribution per 1,000 impressions/sales hour. [LF §Recommended experiment measurement; DP §Messaging experiments; DI §Measurement guardrails; PS §Messaging tests; HR §Messaging tests; MS §Buyer economics]
 
-## 2. Current implementation diagnosis and affected surfaces
+## 2. Implementation diagnosis at the time of research
 
 ### What is already a good shared shell
 
@@ -55,22 +75,22 @@ These should remain common.
 
 ### Where generic hard-coding defeats vertical routes
 
-| Surface | Current issue | Required change |
-|---|---|---|
-| `apps/funnels/src/funnels/ai-seo/campaigns.ts` | Registry contains metadata/callouts but not full vertical content, economics, form schema, proof, or experiment IDs. Titles still promise 45 calls. | Expand each campaign to reference a typed vertical configuration: hero, message-match angle, vocabulary, leak stages, proof cards, objections, form branch, calculator, CTA, claim guardrails, and experiment metadata. |
-| `apps/funnels/src/funnels/ai-seo/components/landing/HeroSection.astro` | Hero and subhead are hard-coded to 45 calls, #1 Google/ChatGPT, no ad spend, and a guarantee. | Make all hero fields props-driven. Add optional bottleneck selector and vertical trust strip. |
-| `BenefitsSection.astro`, `MarketShiftSection.astro`, `EducationSection.astro` | Explain generic AI visibility and calls rather than the niche’s decision journey and leak. | Keep layout; inject niche cards, economic unit, patient/client journey, and source-qualified evidence. |
-| `ComparisonSection.astro` | False binary of paid ads vs AI search; repeats “45 calls or free.” | Replace with either “vanity metrics vs business outcomes” or niche-specific “current reporting vs closed-loop system.” Keep paid + local/organic/AI as complementary channels. |
-| `ResultsSection.astro` | Cross-industry proof: retirement community ranking and dental call volume are shown to every niche. | Render only comparable, verified proof. If none exists, show a sample audit artifact and label the niche as a pilot—never borrow another vertical’s outcome as proof. |
-| `ProcessSection.astro`, `OfferStackSection.astro` | Scope ends at rankings, directories, reviews, content, and calls. | Add measurement/integration, response/booking/follow-up diagnosis, and vertical-specific audit deliverables. Keep actual service boundaries explicit. |
-| `GuaranteeSection.astro`, `FaqSection.astro` | Unconditional call guarantee is repeated. | Remove fixed call guarantee from unsubstantiated routes. Replace with process risk reversal: buyer keeps findings, assumptions are visible, data ownership/exit terms are clear. |
-| `QualificationSection.astro` | Heading and intro repeat 45 calls and guarantee. | Use campaign-specific audit name, value, fit criteria, and expectations. |
-| `AiSeoQualificationForm.tsx` | Only operational qualifiers are decision-maker and budget; all six niches submit the same answers. | Preserve short contact-first step, then add a vertical branch with economic-unit, capacity, bottleneck, and tracking-readiness questions. Avoid collecting sensitive case/health details. |
-| `packages/contracts/src/funnel-events.ts` | Application schema can only store owner, budget, and optional investment intent. | Add a versioned vertical-answer discriminated union keyed by funnel ID; preserve backward compatibility for in-flight events. |
-| `apps/funnels/src/utils/funnelAnalytics.ts` | Analytics can report generic qualification answers but has no explicit vertical segment, bottleneck, economic unit, experiment variant, calculator completion, or downstream quality event. | Add allowlisted events/properties for segment selected, calculator completed, form branch, experiment exposure, qualified lead, and booking show/outcome imports. Do not place PHI/confidential legal details in analytics. |
-| `apps/funnels/src/funnels/ai-seo/components/thank-you/ConfirmationHero.astro` | Repeats the 45-call guarantee. | Replace with vertical audit preparation and required baseline data. |
-| `apps/automations/src/email/precall-copy.ts` | Pre-call sequence repeatedly frames calls as the main result and repeats the guarantee. | Branch copy by funnel ID; ask for the niche’s 60–180 day funnel baseline and prime source-to-revenue diagnosis. |
-| `apps/automations/src/trigger/process-funnel-event.ts` and CRM destinations | Booking is recorded, but later show/opportunity/revenue stages are outside the funnel contract. | Preserve booking flow; add CRM/imported lifecycle mapping for show, opportunity/case acceptance, won/collected revenue, and retention where relevant. |
+| Surface                                                                       | Current issue                                                                                                                                                                               | Required change                                                                                                                                                                                                             |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/funnels/src/funnels/ai-seo/campaigns.ts`                                | Registry contains metadata/callouts but not full vertical content, economics, form schema, proof, or experiment IDs. Titles still promise 45 calls.                                         | Expand each campaign to reference a typed vertical configuration: hero, message-match angle, vocabulary, leak stages, proof cards, objections, form branch, calculator, CTA, claim guardrails, and experiment metadata.     |
+| `apps/funnels/src/funnels/ai-seo/components/landing/HeroSection.astro`        | Hero and subhead are hard-coded to 45 calls, #1 Google/ChatGPT, no ad spend, and a guarantee.                                                                                               | Make all hero fields props-driven. Add optional bottleneck selector and vertical trust strip.                                                                                                                               |
+| `BenefitsSection.astro`, `MarketShiftSection.astro`, `EducationSection.astro` | Explain generic AI visibility and calls rather than the niche’s decision journey and leak.                                                                                                  | Keep layout; inject niche cards, economic unit, patient/client journey, and source-qualified evidence.                                                                                                                      |
+| `ComparisonSection.astro`                                                     | False binary of paid ads vs AI search; repeats “45 calls or free.”                                                                                                                          | Replace with either “vanity metrics vs business outcomes” or niche-specific “current reporting vs closed-loop system.” Keep paid + local/organic/AI as complementary channels.                                              |
+| `ResultsSection.astro`                                                        | Cross-industry proof: retirement community ranking and dental call volume are shown to every niche.                                                                                         | Render only comparable, verified proof. If none exists, show a sample audit artifact and label the niche as a pilot—never borrow another vertical’s outcome as proof.                                                       |
+| `ProcessSection.astro`, `OfferStackSection.astro`                             | Scope ends at rankings, directories, reviews, content, and calls.                                                                                                                           | Add measurement/integration, response/booking/follow-up diagnosis, and vertical-specific audit deliverables. Keep actual service boundaries explicit.                                                                       |
+| `GuaranteeSection.astro`, `FaqSection.astro`                                  | Unconditional call guarantee is repeated.                                                                                                                                                   | Remove fixed call guarantee from unsubstantiated routes. Replace with process risk reversal: buyer keeps findings, assumptions are visible, data ownership/exit terms are clear.                                            |
+| `QualificationSection.astro`                                                  | Heading and intro repeat 45 calls and guarantee.                                                                                                                                            | Use campaign-specific audit name, value, fit criteria, and expectations.                                                                                                                                                    |
+| `AiSeoQualificationForm.tsx`                                                  | Only operational qualifiers are decision-maker and budget; all six niches submit the same answers.                                                                                          | Preserve short contact-first step, then add a vertical branch with economic-unit, capacity, bottleneck, and tracking-readiness questions. Avoid collecting sensitive case/health details.                                   |
+| `packages/contracts/src/funnel-events.ts`                                     | Application schema can only store owner, budget, and optional investment intent.                                                                                                            | Add a versioned vertical-answer discriminated union keyed by funnel ID; preserve backward compatibility for in-flight events.                                                                                               |
+| `apps/funnels/src/utils/funnelAnalytics.ts`                                   | Analytics can report generic qualification answers but has no explicit vertical segment, bottleneck, economic unit, experiment variant, calculator completion, or downstream quality event. | Add allowlisted events/properties for segment selected, calculator completed, form branch, experiment exposure, qualified lead, and booking show/outcome imports. Do not place PHI/confidential legal details in analytics. |
+| `apps/funnels/src/funnels/ai-seo/components/thank-you/ConfirmationHero.astro` | Repeats the 45-call guarantee.                                                                                                                                                              | Replace with vertical audit preparation and required baseline data.                                                                                                                                                         |
+| `apps/automations/src/email/precall-copy.ts`                                  | Pre-call sequence repeatedly frames calls as the main result and repeats the guarantee.                                                                                                     | Branch copy by funnel ID; ask for the niche’s 60–180 day funnel baseline and prime source-to-revenue diagnosis.                                                                                                             |
+| `apps/automations/src/trigger/process-funnel-event.ts` and CRM destinations   | Booking is recorded, but later show/opportunity/revenue stages are outside the funnel contract.                                                                                             | Preserve booking flow; add CRM/imported lifecycle mapping for show, opportunity/case acceptance, won/collected revenue, and retention where relevant.                                                                       |
 
 ### Recommended content architecture
 
@@ -78,13 +98,35 @@ Do **not** clone six pages. Add a typed `VerticalFunnelConfig` consumed by share
 
 ```ts
 type VerticalFunnelConfig = {
-  identity: { campaignKey: AiSeoCampaignKey; audience: string; auditName: string };
-  hero: { eyebrow: string; promise: string; subhead: string; primaryCta: string; secondaryCta?: string };
+  identity: {
+    campaignKey: AiSeoCampaignKey;
+    audience: string;
+    auditName: string;
+  };
+  hero: {
+    eyebrow: string;
+    promise: string;
+    subhead: string;
+    primaryCta: string;
+    secondaryCta?: string;
+  };
   messageMatch: { adAngles: AdAngle[]; recognitionItems: string[] };
-  economics: { unitName: string; stages: string[]; calculator: CalculatorConfig };
-  proof: { requirements: ProofRequirement[]; caseStudies: VerifiedProof[]; pilotFallback: PilotProof };
+  economics: {
+    unitName: string;
+    stages: string[];
+    calculator: CalculatorConfig;
+  };
+  proof: {
+    requirements: ProofRequirement[];
+    caseStudies: VerifiedProof[];
+    pilotFallback: PilotProof;
+  };
   objections: ObjectionResponse[];
-  form: { initialFields: FieldConfig[]; progressiveFields: FieldConfig[]; prohibitedDataNote?: string };
+  form: {
+    initialFields: FieldConfig[];
+    progressiveFields: FieldConfig[];
+    prohibitedDataNote?: string;
+  };
   claims: { remove: string[]; qualifiers: string[] };
   experiments: ExperimentConfig[];
 };
@@ -110,14 +152,14 @@ These elements can stay common across all six routes:
 
 ## 4. Cross-niche campaign matrix
 
-| Niche | Buyer JTBD | Core economic unit | Biggest likely leak to diagnose | Primary message-match angle | Primary CTA | Downstream truth event |
-|---|---|---|---|---|---|---|
-| Law firms | Build predictable, suitable matters and prove source-to-signature economics | Signed/retained matter; collected fee or expected case value with realization horizon | Intake response + qualification + attribution, varying by practice area | “Your agency reports calls. Your partners care about signed matters.” | **Map My Firm’s Lost-Matter Funnel** | Signed matter, then collected fees/realized value |
-| General dental | Fill the right chair capacity with payer/service-fit patients who keep appointments | Kept appointment progressing to accepted/collected treatment | Missed calls, booking, no-shows, payer/service mismatch | “Before buying more leads, see where current calls stop becoming kept appointments.” | **Get My Demand-to-Schedule Audit** | Kept appointment; accepted/collected treatment where integrated |
-| Dental implants | Turn implant demand into accepted, scheduled cases | Accepted/scheduled implant case; collected production | Consultation, financing clarity, follow-up after “need to think” | “See where your next implant case is lost—from search to consultation and follow-up.” | **Map My Implant-Case Leaks** | Accepted/scheduled case, then collected production |
-| Plastic surgery | Generate procedure-fit attended consults that become deposits/booked surgery | Deposit or surgery booked; collected case revenue | Procedure fit + consult attendance + financing/deposit | “Find the leak between inquiry and booked surgery for the procedures you want.” | **Map My Case Leakage** | Surgery booked/deposit; collected revenue |
-| Hair restoration | Fill consult capacity with viable, realistic, finance-ready candidates | Booked surgical case; separate non-surgical start/LTV | Clinical pre-screen + trust/comparison shopping + long nurture | “Meta says leads; your coordinator says price shoppers.” | **Get My Consult-to-Case Leak Map** | Booked procedure or non-surgical start; contribution/LTV |
-| Med spas | Acquire treatment-fit guests who show, buy, and return without discounting brand | Kept treated visit and 12-month collected patient value | No-show/cancellation + treatment fit + rebooking/reactivation | “More qualified consults that show—not another list of cheap leads.” | **Get My Local Patient-Demand & Revenue-Leak Audit** | Treated/collected visit; second rebook/90–180 day retention |
+| Niche            | Buyer JTBD                                                                          | Core economic unit                                                                    | Biggest likely leak to diagnose                                         | Primary message-match angle                                                           | Primary CTA                                          | Downstream truth event                                          |
+| ---------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
+| Law firms        | Build predictable, suitable matters and prove source-to-signature economics         | Signed/retained matter; collected fee or expected case value with realization horizon | Intake response + qualification + attribution, varying by practice area | “Your agency reports calls. Your partners care about signed matters.”                 | **Map My Firm’s Lost-Matter Funnel**                 | Signed matter, then collected fees/realized value               |
+| General dental   | Fill the right chair capacity with payer/service-fit patients who keep appointments | Kept appointment progressing to accepted/collected treatment                          | Missed calls, booking, no-shows, payer/service mismatch                 | “Before buying more leads, see where current calls stop becoming kept appointments.”  | **Get My Demand-to-Schedule Audit**                  | Kept appointment; accepted/collected treatment where integrated |
+| Dental implants  | Turn implant demand into accepted, scheduled cases                                  | Accepted/scheduled implant case; collected production                                 | Consultation, financing clarity, follow-up after “need to think”        | “See where your next implant case is lost—from search to consultation and follow-up.” | **Map My Implant-Case Leaks**                        | Accepted/scheduled case, then collected production              |
+| Plastic surgery  | Generate procedure-fit attended consults that become deposits/booked surgery        | Deposit or surgery booked; collected case revenue                                     | Procedure fit + consult attendance + financing/deposit                  | “Find the leak between inquiry and booked surgery for the procedures you want.”       | **Map My Case Leakage**                              | Surgery booked/deposit; collected revenue                       |
+| Hair restoration | Fill consult capacity with viable, realistic, finance-ready candidates              | Booked surgical case; separate non-surgical start/LTV                                 | Clinical pre-screen + trust/comparison shopping + long nurture          | “Meta says leads; your coordinator says price shoppers.”                              | **Get My Consult-to-Case Leak Map**                  | Booked procedure or non-surgical start; contribution/LTV        |
+| Med spas         | Acquire treatment-fit guests who show, buy, and return without discounting brand    | Kept treated visit and 12-month collected patient value                               | No-show/cancellation + treatment fit + rebooking/reactivation           | “More qualified consults that show—not another list of cheap leads.”                  | **Get My Local Patient-Demand & Revenue-Leak Audit** | Treated/collected visit; second rebook/90–180 day retention     |
 
 ## 5. Niche briefs
 
@@ -508,23 +550,23 @@ Remove unqualified 45 calls; guaranteed patients/revenue/clinical outcomes; perm
 
 Scores are relative and directional: **Impact** estimates likely effect on qualified-booking/opportunity economics; **Effort** estimates design/engineering/data burden. Validate with real Meta and CRM outcomes.
 
-| Priority | Change | Expected impact | Effort | Why now / acceptance criterion |
-|---:|---|---|---|---|
-| P0 | Remove/disable the hard-coded 45-call, #1 Google/ChatGPT, and results-guaranteed copy across hero, guarantee, qualification, FAQ, comparison, thank-you, and pre-call emails | Very high | Low–medium | Every route stops making the least defensible promise; campaign-specific bounded copy renders end to end. |
-| P0 | Make hero/subhead/CTA/recognition strip props-driven from the campaign registry | Very high | Medium | Six routes visibly communicate six economic units; ad angle can select matching variant. |
-| P0 | Replace generic form qualification with short niche branches: segment, desired economic unit, capacity, biggest leak, and tracking readiness | Very high | Medium–high | CRM receives structured vertical fields; qualification no longer equals only owner + `$1,500+` budget. |
-| P0 | Add experiment IDs and preserve `funnel_id`, ad/creative IDs, niche segment, and angle through booking/CRM | Very high | Medium | Every qualified lead, booking, show, and opportunity can be joined back to a variant. |
-| P1 | Replace cross-industry results with a verified vertical proof registry and honest pilot fallback | High | Medium | No route displays irrelevant proof as if comparable; every proof card includes denominator, timeframe, definitions, and source. |
-| P1 | Add reusable leak-map component with configurable stages and self-selection | High | Medium | Selector drives page copy, form defaults, sales context, and analytics. |
-| P1 | Add shared range-based calculator engine with niche schemas | High | High | User can edit assumptions; formulas visible; no default benchmark masquerades as truth; capacity warning works. |
-| P1 | Branch qualification/contract payloads by funnel ID with schema versioning | High | High | New vertical answers reach automations/CRM without breaking old submissions or lifecycle events. |
-| P1 | Replace generic comparison/offer/process sections with outcome chain, data ownership, audit deliverables, and vertical objections | High | Medium | Each route explains visibility as a mechanism connected to its commercial endpoint. |
-| P1 | Branch thank-you preparation and pre-call nurture by funnel ID | High | Medium | Buyer arrives with relevant baseline data and no longer receives generic call-guarantee emails. |
-| P2 | Add CRM lifecycle mapping for showed meeting, sales-qualified opportunity, won/lost reason, collected revenue, and retention imports | Very high long-term | High | Dashboard can distinguish cheap leads from commercial outcomes and train Meta/offline optimization when volume permits. |
-| P2 | Add practice/treatment sub-routes (law practice area; dental service/payer; surgery procedure; hair path; med-spa treatment) | High | High | Top-volume ad sets get exact message match without cloning pages. |
-| P2 | Add vertical proof assets, sample audit visuals, and calculator screenshots | Medium–high | Medium–high | Credible artifact-based selling replaces generic logos and vanity ranking cards. |
-| P3 | Personalize section order based on bottleneck and buyer role | Medium | High | Manager sees operations first; owner sees economics first; only after P0/P1 produce enough traffic. |
-| P3 | Feed offline opportunity/revenue signals back to Meta | High if volume/data quality sufficient | High | Only after event definitions, consent, match quality, lag, and deduplication are verified. |
+| Priority | Change                                                                                                                                                                       | Expected impact                        | Effort      | Why now / acceptance criterion                                                                                                  |
+| -------: | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------- |
+|       P0 | Remove/disable the hard-coded 45-call, #1 Google/ChatGPT, and results-guaranteed copy across hero, guarantee, qualification, FAQ, comparison, thank-you, and pre-call emails | Very high                              | Low–medium  | Every route stops making the least defensible promise; campaign-specific bounded copy renders end to end.                       |
+|       P0 | Make hero/subhead/CTA/recognition strip props-driven from the campaign registry                                                                                              | Very high                              | Medium      | Six routes visibly communicate six economic units; ad angle can select matching variant.                                        |
+|       P0 | Replace generic form qualification with short niche branches: segment, desired economic unit, capacity, biggest leak, and tracking readiness                                 | Very high                              | Medium–high | CRM receives structured vertical fields; qualification no longer equals only owner + `$1,500+` budget.                          |
+|       P0 | Add experiment IDs and preserve `funnel_id`, ad/creative IDs, niche segment, and angle through booking/CRM                                                                   | Very high                              | Medium      | Every qualified lead, booking, show, and opportunity can be joined back to a variant.                                           |
+|       P1 | Replace cross-industry results with a verified vertical proof registry and honest pilot fallback                                                                             | High                                   | Medium      | No route displays irrelevant proof as if comparable; every proof card includes denominator, timeframe, definitions, and source. |
+|       P1 | Add reusable leak-map component with configurable stages and self-selection                                                                                                  | High                                   | Medium      | Selector drives page copy, form defaults, sales context, and analytics.                                                         |
+|       P1 | Add shared range-based calculator engine with niche schemas                                                                                                                  | High                                   | High        | User can edit assumptions; formulas visible; no default benchmark masquerades as truth; capacity warning works.                 |
+|       P1 | Branch qualification/contract payloads by funnel ID with schema versioning                                                                                                   | High                                   | High        | New vertical answers reach automations/CRM without breaking old submissions or lifecycle events.                                |
+|       P1 | Replace generic comparison/offer/process sections with outcome chain, data ownership, audit deliverables, and vertical objections                                            | High                                   | Medium      | Each route explains visibility as a mechanism connected to its commercial endpoint.                                             |
+|       P1 | Branch thank-you preparation and pre-call nurture by funnel ID                                                                                                               | High                                   | Medium      | Buyer arrives with relevant baseline data and no longer receives generic call-guarantee emails.                                 |
+|       P2 | Add CRM lifecycle mapping for showed meeting, sales-qualified opportunity, won/lost reason, collected revenue, and retention imports                                         | Very high long-term                    | High        | Dashboard can distinguish cheap leads from commercial outcomes and train Meta/offline optimization when volume permits.         |
+|       P2 | Add practice/treatment sub-routes (law practice area; dental service/payer; surgery procedure; hair path; med-spa treatment)                                                 | High                                   | High        | Top-volume ad sets get exact message match without cloning pages.                                                               |
+|       P2 | Add vertical proof assets, sample audit visuals, and calculator screenshots                                                                                                  | Medium–high                            | Medium–high | Credible artifact-based selling replaces generic logos and vanity ranking cards.                                                |
+|       P3 | Personalize section order based on bottleneck and buyer role                                                                                                                 | Medium                                 | High        | Manager sees operations first; owner sees economics first; only after P0/P1 produce enough traffic.                             |
+|       P3 | Feed offline opportunity/revenue signals back to Meta                                                                                                                        | High if volume/data quality sufficient | High        | Only after event definitions, consent, match quality, lag, and deduplication are verified.                                      |
 
 ### Recommended first release scope
 
@@ -543,28 +585,28 @@ Choose the first two launch niches from current Meta spend and sales-opportunity
 
 ### 7.1 Required funnel stages
 
-| Stage | Definition | Source of truth | Primary rate/cost |
-|---|---|---|---|
-| Landing view | Valid page view with campaign/variant identified | PostHog/server logs | Cost per landing view; diagnostic only |
-| Lead/contact | Contact accepted and deduplicated; not yet fit-qualified | Funnel event/CRM person | **CPL** = spend ÷ accepted leads |
-| Qualified lead | Meets predeclared vertical fit: decision access, relevant business model/segment, economic capacity/open capacity, non-disqualifying need, and tracking/data willingness; definition version stored | Application payload + CRM | **CPQL** = spend ÷ qualified leads; lead→qualified rate |
-| Booked call | Valid Cal booking linked to submission/prospect | Booking event | Cost per booking; qualified→book rate |
-| Showed call | Prospect attended enough of the scheduled diagnostic for discovery; exclude reschedule/cancel/no-show | Cal/CRM activity | Cost per show; booking show rate |
-| Sales-qualified opportunity | Sales confirms fit, pain, authority/process, timing, and plausible economics; stage definition consistent by niche | CRM opportunity | Cost per opportunity; show→opportunity rate |
-| Opportunity accepted / case acceptance | **PulpSense commercial event:** proposal accepted/contract signed. **Client downstream event:** use niche-specific patient/client unit below and never mix the two | CRM + client system | Opportunity win rate; customer acquisition cost |
-| Collected revenue | Cash actually collected, net definition explicit; keep expected/booked value separate | Finance/CRM/client PMS | Collected CAC/ROAS/contribution/payback |
-| Retention | PulpSense client active at 60/90 days; for med spa/non-surgical paths, patient rebook/return in defined window | CRM/billing/POS/PMS | Logo/revenue retention; second rebook/90–180 day return |
+| Stage                                  | Definition                                                                                                                                                                                          | Source of truth           | Primary rate/cost                                       |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------- |
+| Landing view                           | Valid page view with campaign/variant identified                                                                                                                                                    | PostHog/server logs       | Cost per landing view; diagnostic only                  |
+| Lead/contact                           | Contact accepted and deduplicated; not yet fit-qualified                                                                                                                                            | Funnel event/CRM person   | **CPL** = spend ÷ accepted leads                        |
+| Qualified lead                         | Meets predeclared vertical fit: decision access, relevant business model/segment, economic capacity/open capacity, non-disqualifying need, and tracking/data willingness; definition version stored | Application payload + CRM | **CPQL** = spend ÷ qualified leads; lead→qualified rate |
+| Booked call                            | Valid Cal booking linked to submission/prospect                                                                                                                                                     | Booking event             | Cost per booking; qualified→book rate                   |
+| Showed call                            | Prospect attended enough of the scheduled diagnostic for discovery; exclude reschedule/cancel/no-show                                                                                               | Cal/CRM activity          | Cost per show; booking show rate                        |
+| Sales-qualified opportunity            | Sales confirms fit, pain, authority/process, timing, and plausible economics; stage definition consistent by niche                                                                                  | CRM opportunity           | Cost per opportunity; show→opportunity rate             |
+| Opportunity accepted / case acceptance | **PulpSense commercial event:** proposal accepted/contract signed. **Client downstream event:** use niche-specific patient/client unit below and never mix the two                                  | CRM + client system       | Opportunity win rate; customer acquisition cost         |
+| Collected revenue                      | Cash actually collected, net definition explicit; keep expected/booked value separate                                                                                                               | Finance/CRM/client PMS    | Collected CAC/ROAS/contribution/payback                 |
+| Retention                              | PulpSense client active at 60/90 days; for med spa/non-surgical paths, patient rebook/return in defined window                                                                                      | CRM/billing/POS/PMS       | Logo/revenue retention; second rebook/90–180 day return |
 
 ### 7.2 Niche-specific downstream events
 
-| Niche | Qualified lead for PulpSense | Client-side outcome events to request |
-|---|---|---|
-| Law | Relevant practice/market, can accept matters, decision/operational access, measurable acquisition spend or plan | valid/qualified inquiry, consult booked/showed, signed matter, expected value, collected fees, realization date |
-| General dental | Desired service/payer/capacity defined; owner/manager/growth access; enough inquiry/schedule data | booked NP, kept NP, accepted/started treatment, collected production, recall/household retention |
-| Implants | Target procedures/capacity defined; coordinator/tracking readiness | contacted, consult booked/showed, accepted, financed where appropriate, scheduled, collected by case type |
-| Plastic surgery | Target procedures/capacity; tracks or will track attended consult/deposit | contacted, consult booked/showed, qualified/declined reason, deposit, surgery booked, collected, cancel/refund |
-| Hair restoration | Surgical vs non-surgical path and capacity clear; disposition tracking | contacted, pre-screen complete, consult booked/showed, plan, booked surgery or non-surgical start, contribution/retention |
-| Med spa | Priority treatments/open capacity; booking/POS access; compliant provider operation | qualified booked, showed, treated, collected, second rebook, membership, 90/180-day return/reactivation |
+| Niche            | Qualified lead for PulpSense                                                                                    | Client-side outcome events to request                                                                                     |
+| ---------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Law              | Relevant practice/market, can accept matters, decision/operational access, measurable acquisition spend or plan | valid/qualified inquiry, consult booked/showed, signed matter, expected value, collected fees, realization date           |
+| General dental   | Desired service/payer/capacity defined; owner/manager/growth access; enough inquiry/schedule data               | booked NP, kept NP, accepted/started treatment, collected production, recall/household retention                          |
+| Implants         | Target procedures/capacity defined; coordinator/tracking readiness                                              | contacted, consult booked/showed, accepted, financed where appropriate, scheduled, collected by case type                 |
+| Plastic surgery  | Target procedures/capacity; tracks or will track attended consult/deposit                                       | contacted, consult booked/showed, qualified/declined reason, deposit, surgery booked, collected, cancel/refund            |
+| Hair restoration | Surgical vs non-surgical path and capacity clear; disposition tracking                                          | contacted, pre-screen complete, consult booked/showed, plan, booked surgery or non-surgical start, contribution/retention |
+| Med spa          | Priority treatments/open capacity; booking/POS access; compliant provider operation                             | qualified booked, showed, treated, collected, second rebook, membership, 90/180-day return/reactivation                   |
 
 ### 7.3 Experiment reporting rules
 
@@ -619,7 +661,11 @@ Use a predeclared minimum observation window that covers the niche’s lag. Hair
 
 For each pilot, freeze 90–180 days of pre-change data where available. Export timestamps, source/campaign, response, disposition, booked/show/cancel, downstream outcome, value type, collected amount, and follow-up touches. Conduct interviews across accepted/won, lost/no-show, and buyer/operator groups. Publish only definitions and rates supported by the resulting dataset.
 
-## 9. Rollout and test sequence
+## 9. Historical experiment roadmap
+
+> This roadmap captures the broader research opportunity. It is not the current
+> vertical-personalization rollout sequence. See the authoritative playbook for
+> the approved implementation and review process.
 
 ### Phase 0 — Measurement and claim cleanup (week 0–1)
 
@@ -654,7 +700,11 @@ For each pilot, freeze 90–180 days of pre-change data where available. Export 
 - Reallocate spend based on expected contribution and sales capacity.
 - Feed offline events to Meta only after data quality, volume, consent, and dedupe are verified.
 
-## 10. Implementation acceptance checklist
+## 10. Historical expanded-program acceptance checklist
+
+> These items apply only if the expanded diagnostic, calculator,
+> vertical-qualification, and downstream-measurement program is separately
+> approved. They are not acceptance criteria for routine copy personalization.
 
 - [ ] Six live routes no longer show the same hero/subhead/CTA.
 - [ ] No unsubstantiated fixed call, ranking, case, patient, or revenue guarantee remains in landing, thank-you, FAQ, comparison, or pre-call email.
@@ -669,7 +719,10 @@ For each pilot, freeze 90–180 days of pre-change data where available. Export 
 - [ ] No PHI, sensitive medical data, or confidential legal facts flow to Meta/PostHog.
 - [ ] Experiment decisions use downstream economics and report loss reasons/sample counts.
 
-## 11. Recommended immediate implementation order
+## 11. Historical recommended implementation order
+
+> Superseded for routine vertical rollout by
+> [`../vertical-funnel-personalization-playbook.md`](../vertical-funnel-personalization-playbook.md).
 
 1. **Delete the generic promise debt:** update `HeroSection.astro`, `GuaranteeSection.astro`, `QualificationSection.astro`, `FaqSection.astro`, `ComparisonSection.astro`, `ConfirmationHero.astro`, and `precall-copy.ts` so unverified “45 calls / #1 / guaranteed” language is no longer universal.
 2. **Expand `campaigns.ts` into a true vertical registry:** hero, CTA, economic unit, stages, recognition, objection/proof/claim sets, form branch, calculator key, and experiment IDs.
