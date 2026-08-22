@@ -63,6 +63,10 @@ export async function processTwentySalesOutcome(
   if (!outcome) {
     return { emitted: null, ignored: "intermediate_stage" } as const;
   }
+  const hasRevenue = event.amount !== undefined && event.currency !== undefined;
+  if (outcome === "won" && !hasRevenue) {
+    return { emitted: null, ignored: "won_pending_revenue" } as const;
+  }
   const prospectId =
     event.prospectId ?? (await dependencies.resolveProspectId(event.personId));
   const previousOutcome = event.previousOutcome;
@@ -77,6 +81,10 @@ export async function processTwentySalesOutcome(
       previous_outcome: previousOutcome,
       corrected_outcome: outcome,
     };
+  } else if (!previousOutcome) {
+    emitted = outcome === "won" ? "sale_completed" : "sale_lost";
+    insertId = `${emitted}:${event.opportunityId}`;
+    outcomeProperties = { outcome };
   } else if (
     outcome === "won" &&
     !event.updatedFields.includes("stage") &&
@@ -101,8 +109,9 @@ export async function processTwentySalesOutcome(
       originating_lead_journey_id: event.originatingLeadJourneyId,
       twenty_person_id: event.personId,
       twenty_opportunity_id: event.opportunityId,
-      amount: event.amount,
-      currency: event.currency,
+      ...(hasRevenue
+        ? { amount: event.amount, currency: event.currency }
+        : {}),
       ...outcomeProperties,
     },
   });

@@ -39,15 +39,25 @@ export const twentySalesWebhookEventSchema = z
     isTest: z.boolean(),
     stageValue: twentyStageValueSchema,
     previousOutcome: z.enum(["won", "lost"]).optional(),
-    amount: z.number().finite().nonnegative(),
+    amount: z.number().finite().nonnegative().optional(),
     currency: z
       .string()
       .trim()
-      .regex(/^[A-Z]{3}$/u),
+      .regex(/^[A-Z]{3}$/u)
+      .optional(),
     updatedFields: z.array(z.string().min(1).max(200)).max(100),
     environment: z.literal("production"),
   })
-  .strict();
+  .strict()
+  .superRefine((event, context) => {
+    if ((event.amount === undefined) !== (event.currency === undefined)) {
+      context.addIssue({
+        code: "custom",
+        message: "amount and currency must be provided together",
+        path: event.amount === undefined ? ["amount"] : ["currency"],
+      });
+    }
+  });
 
 export type TwentySalesWebhookEvent = z.infer<
   typeof twentySalesWebhookEventSchema
