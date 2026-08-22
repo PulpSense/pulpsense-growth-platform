@@ -55,7 +55,7 @@ export const medSpasCampaign = defineAiSeoCampaign({
         "They search, compare a short list, and contact the provider that feels most credible. If you're missing from that list, they choose another practice.",
     },
     education: {
-      heading: "This Isn't Traditional SEO. This Isn't Ads.",
+      heading: "This Isn't SEO. This Isn't Ads.",
       intro:
         "Getting recommended by AI requires a different set of signals than traditional SEO or ads.",
       items: [
