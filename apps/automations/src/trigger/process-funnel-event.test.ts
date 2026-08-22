@@ -531,6 +531,9 @@ describe("process-funnel-event", () => {
       bookingVersionId: "version_456",
       outcome: "rescheduled",
     });
+    const refreshGoogleRescheduleLink = vi.fn().mockResolvedValue({
+      id: "link-refresh-run",
+    });
 
     await expect(
       processFunnelEvent(rescheduledEvent, {
@@ -539,6 +542,7 @@ describe("process-funnel-event", () => {
         publishBrevoLifecycle,
         scheduleMeetingReminders,
         projectSalesAppointment,
+        refreshGoogleRescheduleLink,
         log: { info: vi.fn() },
       }),
     ).resolves.toEqual({ ok: true, bookingUid: "cal_booking_456" });
@@ -552,6 +556,7 @@ describe("process-funnel-event", () => {
     });
     expect(upsertTwentyPerson).toHaveBeenCalledWith(rescheduledEvent);
     expect(projectSalesAppointment).toHaveBeenCalledWith(rescheduledEvent);
+    expect(refreshGoogleRescheduleLink).toHaveBeenCalledWith(rescheduledEvent);
   });
 
   it("projects a verified cancellation before completing lifecycle handling", async () => {

@@ -12,6 +12,7 @@ export type GoogleCalendarEvent = {
   sequence: number;
   status: "confirmed" | "cancelled";
   start: string;
+  description?: string;
 };
 
 export type CalBooking = {
