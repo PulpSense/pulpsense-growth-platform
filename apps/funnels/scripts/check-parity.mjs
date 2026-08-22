@@ -47,6 +47,7 @@ const campaignRoutes = [
   {
     slug: "visibility-audit/law-firms",
     funnelId: "ai-seo",
+    resultMarker: "45 Qualified New-Client Inquiries",
     lawFirmPilot: true,
   },
   {
@@ -68,11 +69,12 @@ const campaignRoutes = [
   {
     slug: "visibility-audit/med-spas",
     funnelId: "ai-seo-med-spas",
+    resultMarker: "45 Qualified Treatment Inquiries",
   },
 ];
 
 const campaignPublicRoutes = campaignRoutes.flatMap(
-  ({ slug, funnelId, lawFirmPilot = false }) => {
+  ({ slug, funnelId, resultMarker = "45 New Calls", lawFirmPilot = false }) => {
     const landingPath = `/${slug}/`;
     const applicationPath = `${landingPath}apply/`;
     const thankYouPath = `${landingPath}thank-you/`;
@@ -82,9 +84,7 @@ const campaignPublicRoutes = campaignRoutes.flatMap(
         path: landingPath,
         funnelId,
         deck: "VisibilityDeckCarousel",
-        markers: lawFirmPilot
-          ? ["45 Qualified New-Client Inquiries", "Get Your Visibility Audit"]
-          : ["45 New Calls", "Get Your Visibility Audit"],
+        markers: [resultMarker, "Get Your Visibility Audit"],
         lawFirmPilot,
       },
       {
@@ -93,12 +93,8 @@ const campaignPublicRoutes = campaignRoutes.flatMap(
         funnelId,
         thankYouPath,
         markers: lawFirmPilot
-          ? [
-              "45 Qualified New-Client Inquiries",
-              "What to expect on our call",
-              "Guarantee terms",
-            ]
-          : ["45 New Calls", "What to expect on our call"],
+          ? [resultMarker, "What to expect on our call", "Guarantee terms"]
+          : [resultMarker, "What to expect on our call"],
         lawFirmPilot,
       },
       {
