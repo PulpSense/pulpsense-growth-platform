@@ -1,8 +1,17 @@
 import type {
   ApplicationPageContent,
+  GuaranteeTermsContent,
   LandingContent,
   ThankYouContent,
 } from "./types";
+
+export const sharedGuaranteeTerms = {
+  heading: "Guarantee terms",
+  items: [
+    "Available to approved clients who meet the agreed onboarding, access, implementation, tracking, and response requirements. Results are measured against the baseline and qualifying-result definition agreed during onboarding; spam, duplicates, vendors, and other invalid inquiries do not count.",
+    "If the 90-day target is not met, PulpSense continues the agreed services at no service fee until it is met. The guarantee does not promise revenue, ROI, rankings, sales, retained clients, or other downstream outcomes.",
+  ],
+} as const satisfies GuaranteeTermsContent;
 
 export const sharedLandingContent = {
   hero: {
@@ -217,7 +226,7 @@ export const sharedLandingContent = {
       "✅ No paid advertising required",
       "✅ Baseline agreed during onboarding",
     ],
-    terms: null,
+    terms: sharedGuaranteeTerms,
   },
   faq: {
     heading: "Frequently Asked Questions",
@@ -319,7 +328,7 @@ export const sharedApplicationContent = {
   ],
   callout:
     "Many established businesses have no idea their next customer just went to a competitor that Google or ChatGPT recommended first. On the call, you'll see exactly who's getting picked ahead of you, and what it's costing you.",
-  guaranteeTerms: null,
+  guaranteeTerms: sharedGuaranteeTerms,
   proofRating: "4.9/5",
   proofLabel: "from 100+ service business owners",
   qualification: { kind: "owner-budget" },

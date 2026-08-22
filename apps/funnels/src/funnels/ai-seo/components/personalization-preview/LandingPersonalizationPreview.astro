@@ -1,6 +1,9 @@
 ---
 import type { LandingContent } from "../../campaign-config";
-import { sharedLandingContent } from "../../campaign-config/shared-content";
+import {
+  sharedGuaranteeTerms,
+  sharedLandingContent,
+} from "../../campaign-config/shared-content";
 import DisclosureFooter from "../DisclosureFooter.astro";
 import BenefitsSection from "../landing/BenefitsSection.astro";
 import ComparisonSection from "../landing/ComparisonSection.astro";
@@ -111,7 +114,7 @@ const ctaPath = "/personalization-preview/apply/";
     {content.reviews && <ReviewsSection content={content.reviews} />}
   </main>
 
-  <DisclosureFooter />
+  <DisclosureFooter guaranteeTerms={sharedGuaranteeTerms} />
   <StickyCta content={content.stickyCta} {ctaPath} />
 </div>
 <LandingInteractions />

@@ -3,6 +3,7 @@ import type { AiSeoCampaignConfig } from "./types";
 export const RETIRED_LAW_FIRM_COPY = [
   "legal inquiries",
   "45 calls or free",
+  "refund",
   "Why Regional Service Businesses Are Moving Beyond Traditional Marketing",
 ] as const;
 
@@ -12,8 +13,9 @@ export const validateLawFirmCampaignPresentation = <
   campaign: Campaign,
 ): Campaign => {
   const serialized = JSON.stringify(campaign);
+  const normalized = serialized.toLowerCase();
   for (const retiredCopy of RETIRED_LAW_FIRM_COPY) {
-    if (serialized.includes(retiredCopy)) {
+    if (normalized.includes(retiredCopy.toLowerCase())) {
       throw new Error(
         `Law-firm campaign contains retired copy: ${retiredCopy}`,
       );

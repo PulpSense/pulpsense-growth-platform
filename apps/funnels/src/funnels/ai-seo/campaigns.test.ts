@@ -8,6 +8,7 @@ import {
 } from "./campaigns";
 import {
   sharedApplicationContent,
+  sharedGuaranteeTerms,
   sharedLandingContent,
   sharedThankYouContent,
 } from "./campaign-config/shared-content";
@@ -211,7 +212,7 @@ describe("AI SEO campaigns", () => {
       lawFirms?.landing.comparison.rows.find(
         ({ feature }) => feature === "Guarantee",
       )?.pulpsense,
-    ).toBe("45 qualified inquiries or a full refund");
+    ).toBe("45 qualified inquiries or we work free");
     expect(lawFirms?.landing.results?.items).toBe(
       sharedLandingContent.results?.items,
     );
@@ -266,24 +267,25 @@ describe("AI SEO campaigns", () => {
     }
   });
 
-  it("makes the law-firm guarantee terms conspicuous without removing standard proof", () => {
+  it("keeps the law-firm guarantee aligned with the shared disclosure", () => {
     const lawFirms = AI_SEO_CAMPAIGNS[0];
     if (!lawFirms) throw new Error("Law-firm campaign is missing");
 
-    expect(lawFirms.landing.guarantee.terms?.items).toHaveLength(5);
+    expect(lawFirms.landing.guarantee.terms).toBe(sharedGuaranteeTerms);
     expect(lawFirms.application.guaranteeTerms).toBe(
       lawFirms.landing.guarantee.terms,
     );
-    expect(JSON.stringify(lawFirms)).toContain(
-      "return missed inquiries within 15 minutes",
-    );
-    expect(JSON.stringify(lawFirms)).toContain(
-      "record dispositions within two business days",
-    );
-
-    const serialized = JSON.stringify(lawFirms);
+    const serialized = JSON.stringify(lawFirms).toLowerCase();
     for (const retiredCopy of RETIRED_LAW_FIRM_COPY) {
-      expect(serialized).not.toContain(retiredCopy);
+      expect(serialized).not.toContain(retiredCopy.toLowerCase());
+    }
+  });
+
+  it("uses one concise guarantee disclosure across every campaign", () => {
+    expect(sharedGuaranteeTerms.items).toHaveLength(2);
+    for (const campaign of AI_SEO_CAMPAIGNS) {
+      expect(campaign.landing.guarantee.terms).toBe(sharedGuaranteeTerms);
+      expect(campaign.application.guaranteeTerms).toBe(sharedGuaranteeTerms);
     }
   });
 });

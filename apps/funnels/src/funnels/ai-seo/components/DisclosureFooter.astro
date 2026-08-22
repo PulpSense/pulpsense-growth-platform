@@ -1,3 +1,11 @@
+---
+import type { GuaranteeTermsContent } from "../campaign-config/types";
+
+type Props = { guaranteeTerms?: GuaranteeTermsContent | null };
+
+const { guaranteeTerms } = Astro.props;
+---
+
 <section class="pr-footer">
   <div class="pr-container pr-container-md">
     <div>
@@ -9,6 +17,14 @@
         do not guarantee future performance. PulpSense makes no representation
         that you will achieve the same or similar results.
       </p>
+      {
+        guaranteeTerms && (
+          <p style="margin: 0.75rem 0 0">
+            <strong>{guaranteeTerms.heading}:</strong>{" "}
+            {guaranteeTerms.items.join(" ")}
+          </p>
+        )
+      }
     </div>
     <div
       style="

@@ -1,6 +1,9 @@
 ---
 import DisclosureFooter from "../DisclosureFooter.astro";
-import { sharedApplicationContent } from "../../campaign-config/shared-content";
+import {
+  sharedApplicationContent,
+  sharedGuaranteeTerms,
+} from "../../campaign-config/shared-content";
 
 import QualificationQuestionPreview from "./QualificationQuestionPreview.astro";
 
@@ -73,5 +76,5 @@ const placeholder = "PERSONALIZATION";
       </div>
     </section>
   </main>
-  <DisclosureFooter />
+  <DisclosureFooter guaranteeTerms={sharedGuaranteeTerms} />
 </div>

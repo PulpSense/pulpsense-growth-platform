@@ -1,6 +1,34 @@
 # Vertical funnel configuration architecture — developer approval handoff
 
-## Decision requested
+**Status:** Architecture approved and implemented; retained as a historical
+design record.
+**Updated:** 2026-08-22
+
+> **Current implementation authority:** Use
+> [`../vertical-funnel-personalization-playbook.md`](../vertical-funnel-personalization-playbook.md)
+> for creating and approving vertical funnels. This handoff explains the module
+> seams that enabled that work, but its unimplemented Phase 2/3 proposals are not
+> current requirements.
+
+## Current state
+
+The shared shell plus typed per-campaign configuration is now implemented under
+`apps/funnels/src/funnels/ai-seo/campaign-config/`. `campaigns.ts` remains the
+registry facade, the shared Astro/React components own rendering and behavior,
+and `shared-content.ts` contains deliberately universal content.
+
+The approved rollout model is narrower than some proposals in this handoff:
+
+- personalize presentation through the existing typed campaign files;
+- preserve the standard section structure and CRO behavior;
+- keep contact capture plus the same owner and budget questions;
+- personalize the nouns in those two questions without adding a third question;
+- keep answer choices, qualification thresholds, contracts, automation, and
+  booking behavior shared;
+- treat richer qualification profiles, contract v2, calculators, and downstream
+  measurement as separate future projects requiring explicit approval.
+
+## Original decision request
 
 Approve a **shared funnel shell + typed campaign configuration** architecture for the six AI SEO paid-traffic verticals:
 
@@ -611,7 +639,11 @@ Not recommended for this phase. TypeScript gives compile-time checks, co-locates
 
 Rejected for now. It couples separate deployments and confuses presentation ownership with stable event contracts. Share identifiers and schemas, not application copy.
 
-## Developer approval checklist
+## Historical developer approval checklist
+
+> This checklist records the original architectural decision. It is not an open
+> implementation checklist. Current vertical rollout acceptance criteria live in
+> the personalization playbook.
 
 Please approve or comment on these decisions:
 
@@ -638,6 +670,7 @@ Require a separate technical review for **Phase 2** because it changes cross-app
 
 The strategic and niche-specific content recommendations are documented separately:
 
+- `docs/vertical-funnel-personalization-playbook.md` — current rollout authority
 - `docs/research/vertical-funnel-customization-brief.md`
 - `docs/research/law-firms-voc.md`
 - `docs/research/dental-practices-voc.md`

@@ -66,6 +66,12 @@ src/funnels/ai-seo/
     └── funnel.css          # Shared funnel and component styles
 ```
 
+Use the
+[`../../docs/vertical-funnel-personalization-playbook.md`](../../docs/vertical-funnel-personalization-playbook.md)
+when adapting the shared AI SEO funnel to another vertical. VOC reports under
+`../../docs/research/` are research inputs; they do not independently authorize
+offer, structure, qualification, proof, or guarantee changes.
+
 Lead magnets remain internal domain objects in `packages/lead-magnets`. Their
 public pages use `/resources/{slug}`; never expose `/lead-magnets/` in new URLs.
 

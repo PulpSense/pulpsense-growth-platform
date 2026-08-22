@@ -96,7 +96,7 @@ const campaignPublicRoutes = campaignRoutes.flatMap(
           ? [
               "45 Qualified New-Client Inquiries",
               "What to expect on our call",
-              "Material guarantee terms",
+              "Guarantee terms",
             ]
           : ["45 New Calls", "What to expect on our call"],
         lawFirmPilot,
@@ -136,6 +136,19 @@ const personalizationPreviewRoutes = [
 ];
 const publicRoutes = [...campaignPublicRoutes, ...personalizationPreviewRoutes];
 const applicationHtmlByFunnelId = new Map();
+
+function assertGuaranteeTermsInsideDisclosureFooter(html, path) {
+  const disclosureFooter = html.match(
+    /<section class="pr-footer">([\s\S]*?)<\/section>/,
+  )?.[1];
+
+  assert.ok(disclosureFooter, `${path} should render the disclosure footer`);
+  assert.ok(
+    disclosureFooter.indexOf("Guarantee terms") >
+      disclosureFooter.indexOf("Important Disclosures"),
+    `${path} should include shared guarantee terms inside Important Disclosures`,
+  );
+}
 
 async function postJson(path, body) {
   return fetch(`${origin}${path}`, {
@@ -249,6 +262,7 @@ try {
       );
       assert.doesNotMatch(html, /legal inquiries/i);
       assert.doesNotMatch(html, /45 calls or free/i);
+      assert.doesNotMatch(html, /refund/i);
     }
     assert.doesNotMatch(
       html,
@@ -262,6 +276,8 @@ try {
         `${route.path} should contain ${JSON.stringify(marker)}`,
       );
     }
+
+    assertGuaranteeTermsInsideDisclosureFooter(html, route.path);
 
     if (route.funnelId) {
       assert.ok(
